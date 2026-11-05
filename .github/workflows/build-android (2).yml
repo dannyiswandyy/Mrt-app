@@ -1,0 +1,1334 @@
+# MRT Tracker - Android app builder
+# This one file holds the whole app. Every time it is saved on GitHub, it builds
+# the app and publishes the .apk under Releases ("latest").
+name: Build MRT Tracker app
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write the app project
+        run: |
+          rm -rf mrt-tracker-app
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/README.md' <<'MRTAPP_EOF'
+          # MRT Tracker (Android)
+
+          A small Android app that shows the MRT Train Tracker full screen. The tracker page is bundled inside the app (`app/src/main/assets/index.html`), so trains and timings work offline; the internet is only used for fonts.
+
+          ## Build with GitHub (no computer needed)
+
+          The easiest way is the single file `build-android.yml`, which contains this whole project:
+
+          1. Create a new **private** repository on github.com.
+          2. Add the file at `.github/workflows/build-android.yml`.
+          3. Open the **Actions** tab and wait for the green tick (about 5 minutes).
+          4. Open **Releases → latest** and download `mrt-tracker.apk` on your phone.
+
+          Each new build installs over the previous one, because the first build saves a signing key to `signing/mrt-tracker.jks` in your repository.
+
+          ## Build with Android Studio
+
+          Open this folder in Android Studio and run **Build → Build APK(s)**. A debug build needs no signing key.
+
+          ## Updating the tracker
+
+          Replace `app/src/main/assets/index.html` (or the matching part of `build-android.yml`) and build again.
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app'
+          cat > 'mrt-tracker-app/app/build.gradle' <<'MRTAPP_EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'sg.mrttracker.app'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'sg.mrttracker.app'
+                  minSdk 24
+                  targetSdk 34
+                  // GitHub passes its build number in, so each new build installs over the last one.
+                  versionCode Integer.parseInt((project.findProperty('vc') ?: '1').toString())
+                  versionName "1.${project.findProperty('vc') ?: '0'}"
+              }
+
+              signingConfigs {
+                  release {
+                      // The keystore is created once by the GitHub build and kept in the repo,
+                      // so every later build is signed with the same key.
+                      storeFile file(project.findProperty('ks') ?: 'missing.jks')
+                      storePassword 'mrttracker'
+                      keyAlias 'mrttracker'
+                      keyPassword 'mrttracker'
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      signingConfig signingConfigs.release
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main'
+          cat > 'mrt-tracker-app/app/src/main/AndroidManifest.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+
+              <application
+                  android:label="@string/app_name"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher"
+                  android:theme="@style/AppTheme"
+                  android:allowBackup="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/assets'
+          cat > 'mrt-tracker-app/app/src/main/assets/index.html' <<'MRTAPP_EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+          <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+          <title>MRT Train Tracker</title>
+          <meta name="claude:viewport-fit-sides" content="cover">
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+          <style>
+          /* Layout: a station-signage board. One line at a time, drawn as a vertical track
+             with two lanes (one per direction); trains slide down/up the lanes in real time. */
+          :root{
+            --bg:#eef1f4; --panel:#ffffff; --fg:#14181d; --muted:#5b6672; --rule:#d6dce3;
+            --track:#c7cfd8; --soft:#e3e8ee; --chip:#14181d; --chipfg:#ffffff; --warn:#a35c00; --warnbg:#fff2dc;
+            --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+            --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+            --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+            --NSL:#d42e12; --EWL:#009645; --CG:#009645; --NEL:#9900aa; --CCL:#fa9e0d; --DTL:#005ec4; --TEL:#9d5b25;
+            --BP:#748477; --SE:#748477; --SW:#748477; --PE:#748477; --PW:#748477;
+            --rowh:54px;
+            --bad:#c8102e; --badbg:#fde8ea; --good:#0a7a3d; --goodbg:#e3f4ea;
+          }
+          @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+            --bg:#0f1317; --panel:#171c22; --fg:#e8edf2; --muted:#93a0ad; --rule:#28313b;
+            --track:#34404c; --soft:#212931; --chip:#e8edf2; --chipfg:#0f1317; --warn:#ffb85c; --warnbg:#2d2210;
+            --NEL:#c04fd4; --DTL:#3d8af0; --TEL:#c08050; --bad:#ff5a6a; --badbg:#3a1519; --good:#5fd38d; --goodbg:#11291c; --BP:#93a395; --SE:#93a395; --SW:#93a395; --PE:#93a395; --PW:#93a395; color-scheme:dark}}
+          :root[data-theme="dark"]{
+            --bg:#0f1317; --panel:#171c22; --fg:#e8edf2; --muted:#93a0ad; --rule:#28313b;
+            --track:#34404c; --soft:#212931; --chip:#e8edf2; --chipfg:#0f1317; --warn:#ffb85c; --warnbg:#2d2210;
+            --NEL:#c04fd4; --DTL:#3d8af0; --TEL:#c08050; --bad:#ff5a6a; --badbg:#3a1519; --good:#5fd38d; --goodbg:#11291c; --BP:#93a395; --SE:#93a395; --SW:#93a395; --PE:#93a395; --PW:#93a395; color-scheme:dark}
+
+          *{box-sizing:border-box}
+          body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.4;
+            padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+          body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+          .wrap{max-width:720px;margin:0 auto}
+          header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-top:14px;padding-bottom:10px;display:grid;gap:10px}
+          .top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+          h1{font-family:var(--display);font-size:28px;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+          .clock{font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+          .clock small{display:block;font-family:var(--body);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+          .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+          .tabs::-webkit-scrollbar{display:none}
+          .tab{flex:0 0 auto;border:2px solid transparent;background:var(--panel);color:var(--fg);border-radius:8px;padding:6px 10px;
+            font:600 14px var(--body);display:flex;align-items:center;gap:6px;cursor:pointer}
+          .tabsep{flex:0 0 auto;align-self:center;font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:0 2px 0 6px}
+          .tab .sw{width:10px;height:10px;border-radius:3px;background:var(--c)}
+          .tab[aria-selected="true"]{border-color:var(--c)}
+          .tab:focus-visible,.row:focus-visible,input:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+          .search{display:flex;gap:8px}
+          .search input{flex:1;min-width:0;font:500 15px var(--body);padding:9px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--fg)}
+
+          .status{background:var(--panel);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;margin-top:6px}
+          .status .bar{grid-row:span 2;width:8px;align-self:stretch;border-radius:4px;background:var(--c)}
+          .status b{font-family:var(--display);font-size:20px;letter-spacing:.01em}
+          .status span{color:var(--muted);font-size:14px}
+          .notice{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px;margin-top:8px}
+
+          .legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.07em}
+
+          .board{position:relative;background:var(--panel);border-radius:12px;padding:6px 0}
+          .lanes{position:absolute;left:0;top:6px;width:64px;height:calc(100% - 12px);pointer-events:none;z-index:2}
+          .spine{position:absolute;left:28px;width:8px;border-radius:4px;background:var(--c)}
+          .spine.future{background:repeating-linear-gradient(var(--track) 0 6px,transparent 6px 10px)}
+          .train{position:absolute;left:0;top:0;width:22px;height:26px;padding:0;border:0;background:none;cursor:pointer;pointer-events:auto;
+            will-change:transform;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+          .train .tic{position:relative;z-index:1}
+          /* live pulse ring, like a location dot */
+          .train::before{content:"";position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+            background:var(--c);opacity:0;animation:ping 2s ease-out infinite;animation-delay:var(--d,0s)}
+          /* motion trail behind a moving train */
+          .train.moving::after{content:"";position:absolute;left:8px;width:6px;height:22px;border-radius:3px;opacity:.55}
+          .train.d0.moving::after{bottom:20px;background:linear-gradient(to top,var(--c),transparent)}
+          .train.d1.moving::after{top:20px;background:linear-gradient(to bottom,var(--c),transparent)}
+          /* stopped at a platform: doors open, windows glow */
+          .train.dwell .tic{animation:bob 1.2s ease-in-out infinite}
+          .train.dwell .tic .win{fill:#fff6c2;opacity:1}
+          @keyframes ping{0%{transform:scale(.5);opacity:.45}100%{transform:scale(1.9);opacity:0}}
+          @keyframes bob{50%{transform:translateY(-1.5px)}}
+          .live{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e5322d;margin-right:5px;vertical-align:1px;animation:blink 1.6s ease-in-out infinite}
+          @keyframes blink{50%{opacity:.25}}
+          .train svg{display:block;width:22px;height:26px}
+          .tic .body{fill:var(--c);stroke:var(--panel);stroke-width:1.5}
+          .tic .win{fill:#ffffff;opacity:.92}
+          .tic .lamp{fill:#fff6c2}
+          .tic .arrow{fill:var(--fg)}
+          .train.sel .tic .body{stroke:var(--fg);stroke-width:2.5}
+          .train:focus-visible{outline:2px solid var(--fg);outline-offset:1px;border-radius:6px}
+          .train.d1{left:40px}
+          .train.d0{left:3px}
+          .tinfo{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:14px;border-left:6px solid var(--c)}
+          .tinfo b{font-weight:600}
+          .tinfo .eta{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+          .tinfo button{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px}
+          .tinfo .tic{width:18px;height:22px;display:block}
+          .fleet{background:var(--panel);border-radius:10px;padding:10px 14px;margin-top:8px}
+          .fleet h2{font:600 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+          .fleet ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px}
+          .fleet li{display:grid;gap:1px;min-width:0}
+          .fleet .m{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.02em;display:flex;align-items:center;gap:6px}
+          .fleet .m i{font-style:normal;font:600 10px var(--body);letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--c);border-radius:3px;padding:1px 4px}
+          .fleet .s{font-size:13px;color:var(--muted)}
+          .hint{color:var(--muted);font-size:13px;margin-top:8px}
+          @media (prefers-reduced-motion:reduce){.train::before,.train.dwell .tic,.live{animation:none}}
+
+          .row{position:relative;min-height:var(--rowh);display:grid;grid-template-columns:64px 1fr;align-items:center;cursor:pointer;border-top:1px solid var(--soft)}
+          .row:first-of-type{border-top:0}
+          .row .dot{position:absolute;left:24px;top:calc(var(--rowh)/2 - 8px);width:16px;height:16px;border-radius:50%;background:var(--panel);border:4px solid var(--c);z-index:1}
+          .row.ix .dot{border-color:var(--fg);border-width:3px;width:18px;height:18px;left:23px;top:calc(var(--rowh)/2 - 9px)}
+          .row.future .dot{border-color:var(--track)}
+          .st{grid-column:2;display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 12px 7px 4px;min-width:0}
+          .name{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;font-weight:600;font-size:16px}
+          .code{font-family:var(--display);font-weight:700;font-size:13px;color:#fff;background:var(--c);border-radius:4px;padding:1px 5px;letter-spacing:.03em;line-height:1.25}
+          .code.sm{font-size:11px;padding:0 4px}
+          .row.future .name{color:var(--muted)}
+          .next{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;text-align:right;color:var(--muted);white-space:nowrap;display:grid;gap:1px;align-self:center}
+          .next em{font-style:normal;color:var(--fg)}
+          .detail{grid-column:1/-1;font-size:13px;color:var(--muted);display:grid;gap:4px;padding-top:4px}
+          .detail div{display:flex;justify-content:space-between;gap:10px}
+          .detail .t{font-family:var(--mono);color:var(--fg);font-variant-numeric:tabular-nums;white-space:nowrap}
+          .row.open{background:var(--soft)}
+
+          .views{display:flex;gap:4px;background:var(--soft);border-radius:10px;padding:3px}
+          .views button{flex:1;border:0;background:none;color:var(--muted);font:600 14px var(--body);padding:7px 8px;border-radius:8px;cursor:pointer;display:flex;justify-content:center;align-items:center;gap:6px}
+          .views button[aria-selected="true"]{background:var(--panel);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+          .views .badge{min-width:18px;height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;display:grid;place-items:center;padding:0 5px}
+          .tab.dis::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bad);margin-left:2px}
+          .alert{border-radius:10px;padding:10px 14px;margin-top:8px;display:grid;gap:4px;font-size:14px;cursor:pointer;border:0;text-align:left;width:100%;font-family:var(--body);color:var(--fg)}
+          .alert.ok{background:var(--goodbg);cursor:default}
+          .alert.ok b{color:var(--good)}
+          .alert.bad{background:var(--badbg);border-left:6px solid var(--bad)}
+          .alert.bad b{color:var(--bad)}
+          .alert.off{background:var(--panel)}
+          .alert.warn{background:var(--warnbg);border-left:6px solid var(--warn)}
+          .alert.warn b{color:var(--warn)}
+          .alert .sub{color:var(--muted);font-size:13px}
+          .seg{display:grid;gap:3px}
+          .seg .h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:600}
+          .chip{font:600 11px var(--body);letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:1px 6px;background:var(--bad);color:#fff}
+          .chip.sample{background:var(--muted)}
+          .row.dis .name::after{content:"Disrupted";font:600 10px var(--body);letter-spacing:.05em;text-transform:uppercase;color:#fff;background:var(--bad);border-radius:3px;padding:1px 5px}
+          .upd{display:grid;gap:12px;margin-top:10px}
+          .card{background:var(--panel);border-radius:12px;padding:14px}
+          .card h2{font-family:var(--display);font-size:20px;margin:0 0 8px;letter-spacing:.01em}
+          .card p{margin:0}
+          .card .muted,.muted{color:var(--muted);font-size:13px}
+          .msgs,.news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+          .msgs li{border-left:3px solid var(--bad);padding-left:10px;display:grid;gap:2px;max-width:65ch}
+          .news a{color:var(--fg);text-decoration:none;font-weight:600;display:block}
+          .news a:hover{text-decoration:underline}
+          .news li{display:grid;gap:2px;padding-bottom:10px;border-bottom:1px solid var(--soft)}
+          .news li:last-child{border-bottom:0;padding-bottom:0}
+          .links{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+          .links a{display:grid;gap:1px;padding:10px 12px;border-radius:8px;background:var(--soft);color:var(--fg);text-decoration:none;font-weight:600;font-size:14px}
+          .links a span{font-weight:400;font-size:12px;color:var(--muted)}
+          .set{display:grid;gap:10px}
+          .set label{font-weight:600;font-size:14px}
+          .set .rowi{display:flex;gap:8px}
+          .set input[type=password],.set input[type=text]{flex:1;min-width:0;font:500 15px var(--mono);padding:9px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--fg)}
+          .btn{border:0;border-radius:8px;padding:9px 14px;font:600 14px var(--body);background:var(--fg);color:var(--bg);cursor:pointer}
+          .btn.ghost{background:var(--soft);color:var(--fg)}
+          .toggle{display:flex;align-items:center;gap:10px;font-size:14px}
+          .toggle input{width:20px;height:20px;accent-color:var(--fg)}
+          footer{color:var(--muted);font-size:13px;margin-top:18px;display:grid;gap:8px;max-width:62ch}
+          footer b{color:var(--fg)}
+          </style>
+
+          <div class="wrap">
+            <header>
+              <div class="top">
+                <h1>MRT Train Tracker</h1>
+                <div class="clock"><span id="clock">--:--:--</span><small><span class="live"></span>Live estimate · SGT</small></div>
+              </div>
+              <div class="views" role="tablist" aria-label="Views">
+                <button type="button" role="tab" id="vTrains" aria-selected="true">Trains</button>
+                <button type="button" role="tab" id="vUpdates" aria-selected="false">Updates <span class="badge" id="vBadge" hidden></span></button>
+              </div>
+              <div class="tabs" id="tabs" role="tablist" aria-label="MRT lines"></div>
+              <div class="search">
+                <input id="find" list="stations" placeholder="Find a station, e.g. Bishan" autocomplete="off" aria-label="Find a station">
+                <datalist id="stations"></datalist>
+              </div>
+            </header>
+
+            <div id="alertBanner"></div>
+
+            <main id="viewTrains">
+            <section class="status" id="status"></section>
+            <section class="fleet" id="fleet"></section>
+            <div id="notice"></div>
+            <div id="trainInfo"><p class="hint">Tap a train to see where it's heading.</p></div>
+
+            <div class="legend"><span id="lgA">↓ Lane 1</span><span id="lgB">Lane 2 ↑</span></div>
+            <div class="board" id="board"></div>
+            </main>
+
+            <main id="viewUpdates" hidden>
+              <div class="upd">
+                <section class="card" id="officialCard"></section>
+                <section class="card">
+                  <h2>News reports</h2>
+                  <p class="muted" id="newsNote">Recent reports about MRT and LRT disruptions from Singapore news outlets.</p>
+                  <ul class="news" id="newsList" style="margin-top:10px"></ul>
+                </section>
+                <section class="card">
+                  <h2>Official channels</h2>
+                  <p class="muted" style="margin-bottom:10px">Operators post announcements here first. Opens in the app or your browser.</p>
+                  <div class="links">
+                    <a href="https://x.com/SMRT_Singapore" target="_blank" rel="noopener">SMRT on X<span>NSL, EWL, CCL, TEL, Bukit Panjang LRT</span></a>
+                    <a href="https://x.com/SBSTransit_Ltd" target="_blank" rel="noopener">SBS Transit on X<span>NEL, DTL, Sengkang–Punggol LRT</span></a>
+                    <a href="https://x.com/LTAsg" target="_blank" rel="noopener">LTA on X<span>Land Transport Authority</span></a>
+                    <a href="https://www.facebook.com/SMRTCorpSG" target="_blank" rel="noopener">SMRT on Facebook<span>Service updates and advisories</span></a>
+                    <a href="https://www.facebook.com/SBSTransit" target="_blank" rel="noopener">SBS Transit on Facebook<span>Service updates and advisories</span></a>
+                    <a href="https://www.smrt.com.sg/news-publications/newsroom/service-announcements/" target="_blank" rel="noopener">SMRT announcements<span>smrt.com.sg</span></a>
+                  </div>
+                </section>
+                <section class="card" id="settingsCard"></section>
+              </div>
+            </main>
+
+            <footer>
+              <p><b>How this works.</b> Train positions are estimated from typical timetables: first and last trains, peak and off-peak frequencies, and average travel time between stations. This is the same schedule-based method journey planners use when live positions aren't published. Train positions don't reflect delays. Live disruption notices come from LTA DataMall in the Android app.</p>
+              <p>Tap any station for the next three trains in each direction. Peak hours are 7–9.30am and 5–8pm on weekdays. LRT loops show one lane for each direction round the loop.</p>
+            </footer>
+          </div>
+
+          <script>
+          /* ---------- Network data (as of Nov 2026) ---------- */
+          const OPEN_TEL5 = "2026-12-26";
+          const LINES = {
+            NSL:{name:"North-South Line",peak:2.5,off:5,late:7,run:2.0,dwell:0.5,stations:[
+              ["NS1","Jurong East"],["NS2","Bukit Batok"],["NS3","Bukit Gombak"],["NS4","Choa Chu Kang"],["NS5","Yew Tee"],["NS7","Kranji"],["NS8","Marsiling"],["NS9","Woodlands"],["NS10","Admiralty"],["NS11","Sembawang"],["NS12","Canberra"],["NS13","Yishun"],["NS14","Khatib"],["NS15","Yio Chu Kang"],["NS16","Ang Mo Kio"],["NS17","Bishan"],["NS18","Braddell"],["NS19","Toa Payoh"],["NS20","Novena"],["NS21","Newton"],["NS22","Orchard"],["NS23","Somerset"],["NS24","Dhoby Ghaut"],["NS25","City Hall"],["NS26","Raffles Place"],["NS27","Marina Bay"],["NS28","Marina South Pier"]]},
+            EWL:{name:"East-West Line",peak:2.5,off:5,late:7,run:1.9,dwell:0.5,stations:[
+              ["EW1","Pasir Ris"],["EW2","Tampines"],["EW3","Simei"],["EW4","Tanah Merah"],["EW5","Bedok"],["EW6","Kembangan"],["EW7","Eunos"],["EW8","Paya Lebar"],["EW9","Aljunied"],["EW10","Kallang"],["EW11","Lavender"],["EW12","Bugis"],["EW13","City Hall"],["EW14","Raffles Place"],["EW15","Tanjong Pagar"],["EW16","Outram Park"],["EW17","Tiong Bahru"],["EW18","Redhill"],["EW19","Queenstown"],["EW20","Commonwealth"],["EW21","Buona Vista"],["EW22","Dover"],["EW23","Clementi"],["EW24","Jurong East"],["EW25","Chinese Garden"],["EW26","Lakeside"],["EW27","Boon Lay"],["EW28","Pioneer"],["EW29","Joo Koon"],["EW30","Gul Circle"],["EW31","Tuas Crescent"],["EW32","Tuas West Road"],["EW33","Tuas Link"]]},
+            CG:{name:"Changi Airport Branch",peak:6,off:8,late:10,run:3.2,dwell:0.6,stations:[
+              ["CG","Tanah Merah"],["CG1","Expo"],["CG2","Changi Airport"]]},
+            NEL:{name:"North East Line",peak:2.5,off:4.5,late:7,run:1.9,dwell:0.5,stations:[
+              ["NE1","HarbourFront"],["NE3","Outram Park"],["NE4","Chinatown"],["NE5","Clarke Quay"],["NE6","Dhoby Ghaut"],["NE7","Little India"],["NE8","Farrer Park"],["NE9","Boon Keng"],["NE10","Potong Pasir"],["NE11","Woodleigh"],["NE12","Serangoon"],["NE13","Kovan"],["NE14","Hougang"],["NE15","Buangkok"],["NE16","Sengkang"],["NE17","Punggol"],["NE18","Punggol Coast"]]},
+            CCL:{name:"Circle Line",peak:3,off:5,late:7,run:1.8,dwell:0.5,stations:[
+              ["CC1","Dhoby Ghaut"],["CC2","Bras Basah"],["CC3","Esplanade"],["CC4","Promenade"],["CC5","Nicoll Highway"],["CC6","Stadium"],["CC7","Mountbatten"],["CC8","Dakota"],["CC9","Paya Lebar"],["CC10","MacPherson"],["CC11","Tai Seng"],["CC12","Bartley"],["CC13","Serangoon"],["CC14","Lorong Chuan"],["CC15","Bishan"],["CC16","Marymount"],["CC17","Caldecott"],["CC19","Botanic Gardens"],["CC20","Farrer Road"],["CC21","Holland Village"],["CC22","Buona Vista"],["CC23","one-north"],["CC24","Kent Ridge"],["CC25","Haw Par Villa"],["CC26","Pasir Panjang"],["CC27","Labrador Park"],["CC28","Telok Blangah"],["CC29","HarbourFront"],["CC30","Keppel"],["CC31","Cantonment"],["CC32","Prince Edward Road"],["CC33","Marina Bay"],["CE1","Bayfront"]]},
+            DTL:{name:"Downtown Line",peak:2.5,off:4.5,late:7,run:1.6,dwell:0.45,stations:[
+              ["DT1","Bukit Panjang"],["DT2","Cashew"],["DT3","Hillview"],["DT4","Hume"],["DT5","Beauty World"],["DT6","King Albert Park"],["DT7","Sixth Avenue"],["DT8","Tan Kah Kee"],["DT9","Botanic Gardens"],["DT10","Stevens"],["DT11","Newton"],["DT12","Little India"],["DT13","Rochor"],["DT14","Bugis"],["DT15","Promenade"],["DT16","Bayfront"],["DT17","Downtown"],["DT18","Telok Ayer"],["DT19","Chinatown"],["DT20","Fort Canning"],["DT21","Bencoolen"],["DT22","Jalan Besar"],["DT23","Bendemeer"],["DT24","Geylang Bahru"],["DT25","Mattar"],["DT26","MacPherson"],["DT27","Ubi"],["DT28","Kaki Bukit"],["DT29","Bedok North"],["DT30","Bedok Reservoir"],["DT31","Tampines West"],["DT32","Tampines"],["DT33","Tampines East"],["DT34","Upper Changi"],["DT35","Expo"],["DT36","Xilin",OPEN_TEL5],["DT37","Sungei Bedok",OPEN_TEL5]]},
+            TEL:{name:"Thomson-East Coast Line",peak:3,off:5.5,late:7,run:1.8,dwell:0.5,stations:[
+              ["TE1","Woodlands North"],["TE2","Woodlands"],["TE3","Woodlands South"],["TE4","Springleaf"],["TE5","Lentor"],["TE6","Mayflower"],["TE7","Bright Hill"],["TE8","Upper Thomson"],["TE9","Caldecott"],["TE11","Stevens"],["TE12","Napier"],["TE13","Orchard Boulevard"],["TE14","Orchard"],["TE15","Great World"],["TE16","Havelock"],["TE17","Outram Park"],["TE18","Maxwell"],["TE19","Shenton Way"],["TE20","Marina Bay"],["TE21","Marina South"],["TE22","Gardens by the Bay"],["TE23","Tanjong Rhu"],["TE24","Katong Park"],["TE25","Tanjong Katong"],["TE26","Marine Parade"],["TE27","Marine Terrace"],["TE28","Siglap"],["TE29","Bayshore"],["TE30","Bedok South",OPEN_TEL5],["TE31","Sungei Bedok",OPEN_TEL5]]}
+          };
+          /* LRT: loops are listed hub → around → hub, so one lane runs each way round. */
+          Object.assign(LINES, {
+            BP:{name:"Bukit Panjang LRT",tab:"Bukit Panjang",lrt:true,via0:"Petir and Senja",peak:3.5,off:5,late:7,run:1.3,dwell:0.4,stations:[
+              ["BP1","Choa Chu Kang"],["BP2","South View"],["BP3","Keat Hong"],["BP4","Teck Whye"],["BP5","Phoenix"],["BP6","Bukit Panjang"],["BP7","Petir"],["BP8","Pending"],["BP9","Bangkit"],["BP10","Fajar"],["BP11","Segar"],["BP12","Jelapang"],["BP13","Senja"],["BP6","Bukit Panjang"]]},
+            SE:{name:"Sengkang LRT East Loop",tab:"Sengkang East",lrt:true,loop:true,peak:3.5,off:5,late:7,run:1.4,dwell:0.4,stations:[
+              ["STC","Sengkang"],["SE1","Compassvale"],["SE2","Rumbia"],["SE3","Bakau"],["SE4","Kangkar"],["SE5","Ranggung"],["STC","Sengkang"]]},
+            SW:{name:"Sengkang LRT West Loop",tab:"Sengkang West",lrt:true,loop:true,peak:4,off:6,late:8,run:1.4,dwell:0.4,stations:[
+              ["STC","Sengkang"],["SW1","Cheng Lim"],["SW2","Farmway"],["SW3","Kupang"],["SW4","Thanggam"],["SW5","Fernvale"],["SW6","Layar"],["SW7","Tongkang"],["SW8","Renjong"],["STC","Sengkang"]]},
+            PE:{name:"Punggol LRT East Loop",tab:"Punggol East",lrt:true,loop:true,peak:3.5,off:5,late:7,run:1.4,dwell:0.4,stations:[
+              ["PTC","Punggol"],["PE1","Cove"],["PE2","Meridian"],["PE3","Coral Edge"],["PE4","Riviera"],["PE5","Kadaloor"],["PE6","Oasis"],["PE7","Damai"],["PTC","Punggol"]]},
+            PW:{name:"Punggol LRT West Loop",tab:"Punggol West",lrt:true,loop:true,peak:4,off:6,late:8,run:1.4,dwell:0.4,stations:[
+              ["PTC","Punggol"],["PW1","Sam Kee"],["PW2","Teck Lee"],["PW3","Punggol Point"],["PW4","Samudera"],["PW5","Nibong"],["PW6","Sumang"],["PW7","Soo Teck"],["PTC","Punggol"]]}
+          });
+          /* Trains currently in passenger service on each line: [model, maker, cars per train, in service since, note] */
+          const NSEWL = [["R151","Alstom (Bombardier) Movia",6,2023,"new"],["C151A","Kawasaki–CSR Sifang",6,2011],["C151B","Kawasaki–CRRC Sifang",6,2017],["C151C","Kawasaki–CRRC Sifang",6,2018]];
+          const SPLRT = [["C810D","Mitsubishi Crystal Mover",2,2025,"new"],["C810","Mitsubishi Crystal Mover",1,2003],["C810A","Mitsubishi Crystal Mover",1,2016]];
+          const FLEET = {
+            NSL:NSEWL, EWL:NSEWL, CG:NSEWL,
+            NEL:[["C751A","Alstom Metropolis",6,2003],["C751C","Alstom Metropolis",6,2015]],
+            CCL:[["C851E","Alstom Metropolis",3,2026,"new"],["C830","Alstom Metropolis",3,2009],["C830C","Alstom Metropolis",3,2015]],
+            DTL:[["C951","Bombardier Movia",3,2013],["C951A","Alstom (Bombardier) Movia",3,null]],
+            TEL:[["CT251","Kawasaki–CRRC Sifang",4,2020]],
+            BP:[["C801","Bombardier Innovia APM 100",1,1999],["C801A","Bombardier Innovia APM 100",1,2014],["C801B","Alstom Innovia APM 100",1,null,"new"]],
+            SE:SPLRT, SW:SPLRT, PE:SPLRT, PW:SPLRT
+          };
+          function renderFleet(c){
+            const f = FLEET[c] || [];
+            $("fleet").hidden = !f.length;
+            $("fleet").innerHTML = `<h2>Trains on this line</h2><ul>${f.map(([m,mk,cars,yr,tag]) =>
+              `<li><span class="m">${m}${tag?`<i>${tag}</i>`:""}</span><span class="s">${mk} · ${cars} car${cars>1?"s":""}${yr?` · since ${yr}`:""}</span></li>`).join("")}</ul>`;
+          }
+          const ORDER = ["NSL","EWL","NEL","CCL","DTL","TEL","CG","BP","SE","SW","PE","PW"];
+          /* Where a train in this direction is headed, e.g. "Marina South Pier" or "Sengkang via Compassvale". */
+          function dest(L, dir, act){
+            if (L.loop) return `${act[0][1]} via ${dir ? act[act.length-2][1] : act[1][1]}`;
+            if (L.via0 && !dir) return `${act[act.length-1][1]} via ${L.via0}`;
+            return dir ? act[0][1] : act[act.length-1][1];
+          }
+
+          /* ---------- Time (always Singapore time) ---------- */
+          function sgNow(){
+            const d = new Date(Date.now() + 8*3600e3);           // shift to UTC+8, then read UTC fields
+            let mins = d.getUTCHours()*60 + d.getUTCMinutes() + d.getUTCSeconds()/60 + d.getUTCMilliseconds()/60000;
+            let day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+            if (mins < 180){ mins += 1440; day = new Date(day - 864e5); }  // before 3am belongs to yesterday's service day
+            const iso = day.toISOString().slice(0,10);
+            const dow = day.getUTCDay();
+            return {mins, iso, dow, clock:d.toISOString().slice(11,19), weekend: dow===0||dow===6};
+          }
+
+          /* ---------- Schedule model ---------- */
+          const FIRST = 5*60+30, LAST = 23*60+50;   // departures from each terminus
+          function headway(L, t, weekend){
+            if (t >= 23*60) return L.late;
+            if (!weekend && ((t >= 420 && t < 570) || (t >= 1020 && t < 1200))) return L.peak;
+            return L.off;
+          }
+          function activeStations(L, iso){ return L.stations.filter(s => !s[2] || iso >= s[2]); }
+          const depCache = {};
+          function departures(code, weekend){
+            const k = code + weekend; if (depCache[k]) return depCache[k];
+            const L = LINES[code], out = []; let t = FIRST + (weekend ? 15 : 0);
+            while (t <= LAST){ out.push(t); t += headway(L, t, weekend); }
+            return depCache[k] = out;
+          }
+          const leg = L => L.run + L.dwell;
+
+          function trainsOn(code, now){
+            const L = LINES[code], n = activeStations(L, now.iso).length, trip = (n-1)*leg(L), out = [];
+            for (const dir of [0,1]){
+              for (const dep of departures(code, now.weekend)){
+                const e = now.mins - dep;
+                if (e < 0 || e > trip) continue;
+                const seg = Math.min(Math.floor(e/leg(L)), n-2), within = e - seg*leg(L);
+                const pos = seg + Math.min(1, within / L.run);
+                const j = Math.min(Math.floor(e/leg(L)) + 1, n-1);          // next stop, counted from this train's origin
+                const eta = dep + j*leg(L) - L.dwell - now.mins;              // arrival = departure from previous stop + run time
+                out.push({id: code+dir+dep, dir, dep, idx: dir ? (n-1) - pos : pos,
+                  next: dir ? (n-1) - j : j, eta: Math.max(0, eta), atStation: within >= L.run});
+              }
+            }
+            return out;
+          }
+          function nextArrivals(code, s, dir, now, count){
+            const L = LINES[code], n = activeStations(L, now.iso).length, res = [];
+            const off = (dir ? (n-1-s) : s) * leg(L);
+            for (const dep of departures(code, now.weekend)){
+              const a = dep + off;
+              if (a >= now.mins - 0.15){ res.push(a - now.mins); if (res.length === count) break; }
+            }
+            return res;
+          }
+          const fmt = m => m < 0.75 ? "Now" : Math.round(m) + " min";
+
+          /* ---------- Interchange index ---------- */
+          const byName = {};
+          for (const c of ORDER) for (const s of LINES[c].stations){ const a = (byName[s[1]] ||= []); if (!a.some(x => x[0]===c)) a.push([c, s[0]]); }
+
+          /* ---------- UI ---------- */
+          let current = (location.hash.slice(1) || "nsl").toUpperCase();
+          if (!LINES[current]) current = "NSL";
+          let openIdx = -1;
+          const $ = id => document.getElementById(id);
+
+          function buildTabs(){
+            $("tabs").innerHTML = ORDER.map(c => (c==="BP" ? '<span class="tabsep">LRT</span>' : "") +
+              `<button class="tab" role="tab" id="tab-${c}" style="--c:var(--${c})" aria-selected="${c===current}" data-c="${c}">
+                 <span class="sw"></span>${c==="CG"?"Changi branch":(LINES[c].tab||c)}</button>`).join("");
+            window.afterTabs && afterTabs();
+            $("tabs").onclick = e => { const b = e.target.closest(".tab"); if (b) select(b.dataset.c); };
+            $("stations").innerHTML = Object.keys(byName).sort().map(n => `<option value="${n}">`).join("");
+          }
+          function select(c, stationName){
+            current = c; openIdx = -1;
+            try { history.replaceState(null, "", "#" + c.toLowerCase()); } catch(e){ location.hash = c.toLowerCase(); }
+            document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.c === c));
+            $("tab-"+c).scrollIntoView({inline:"nearest", block:"nearest"});
+            buildBoard();
+            if (stationName){
+              const i = LINES[c].stations.findIndex(s => s[1] === stationName);
+              if (i >= 0){ openIdx = i; tick(); const r = $("board").children[i+1]; r && r.scrollIntoView({block:"center", behavior:"smooth"}); }
+            }
+          }
+
+          function buildBoard(){
+            const L = LINES[current], now = sgNow(), act = activeStations(L, now.iso).length;
+            const color = `var(--${current})`;
+            document.documentElement.style.setProperty("--c", color);
+            $("board").style.setProperty("--c", color);
+            renderFleet(current);
+            const actList = L.stations.slice(0, act);
+            $("lgA").textContent = "↓ To " + dest(L, 0, actList);
+            $("lgB").textContent = "To " + dest(L, 1, actList) + " ↑";
+            const rows = L.stations.map((s, i) => {
+              const others = (byName[s[1]] || []).filter(x => x[0] !== current);
+              const fut = i >= act;
+              return `<div class="row${others.length?" ix":""}${fut?" future":""}" tabindex="0" data-i="${i}">
+                <span class="dot"></span>
+                <div class="st">
+                  <div class="name"><span class="code">${s[0]}</span>${s[1]}
+                    ${others.map(o => `<span class="code sm" style="background:var(--${o[0]})">${o[1]}</span>`).join("")}</div>
+                  <div class="next" id="nx${i}"></div>
+                  <div class="detail" id="dt${i}" hidden></div>
+                </div></div>`;
+            }).join("");
+            $("board").innerHTML = `<div class="lanes" id="lanes"><div class="spine" id="spine"></div><div class="spine future" id="spineF" hidden></div></div>` + rows;
+            $("board").onclick = e => { const r = e.target.closest(".row"); if (r) toggle(+r.dataset.i); };
+            $("board").onkeydown = e => { if ((e.key==="Enter"||e.key===" ") && e.target.classList.contains("row")){ e.preventDefault(); toggle(+e.target.dataset.i); } };
+            trainEls = {};
+            window.afterBoard && afterBoard();
+            layoutSpine();
+            tick();
+          }
+          function toggle(i){
+            const L = LINES[current];
+            if (i >= activeStations(L, sgNow().iso).length) return;
+            openIdx = openIdx === i ? -1 : i; tick();
+          }
+
+          let rowCenters = [];
+          function layoutSpine(){
+            const rows = [...$("board").querySelectorAll(".row")];
+            const top0 = $("lanes").getBoundingClientRect().top;
+            rowCenters = rows.map(r => { const b = r.getBoundingClientRect(); return b.top - top0 + Math.min(b.height, parseFloat(getComputedStyle(r).getPropertyValue("--rowh"))||54)/2; });
+            const act = activeStations(LINES[current], sgNow().iso).length;
+            const sp = $("spine"); sp.style.top = rowCenters[0]+"px"; sp.style.height = (rowCenters[act-1]-rowCenters[0])+"px";
+            const f = $("spineF");
+            if (act < rows.length){ f.hidden = false; f.style.top = rowCenters[act-1]+"px"; f.style.height = (rowCenters[rows.length-1]-rowCenters[act-1])+"px"; }
+            else f.hidden = true;
+          }
+          function yAt(idx){
+            const i = Math.floor(idx), f = idx - i;
+            const a = rowCenters[i], b = rowCenters[Math.min(i+1, rowCenters.length-1)];
+            return a + (b - a) * f - 11;
+          }
+
+          let trainEls = {}, selTrain = null;
+          /* Front view of a train; the small arrow shows its direction of travel. */
+          function trainSVG(dir){
+            const arrow = dir ? '<path class="arrow" d="M11 0 L15 3.5 H7 Z"/>' : '<path class="arrow" d="M11 26 L15 22.5 H7 Z"/>';
+            return `<svg class="tic" viewBox="0 0 22 26" aria-hidden="true">${arrow}
+              <rect class="body" x="2.5" y="4" width="17" height="18" rx="5"/>
+              <rect class="win" x="5.5" y="7" width="11" height="6" rx="1.5"/>
+              <circle class="lamp" cx="7" cy="17.5" r="1.5"/><circle class="lamp" cx="15" cy="17.5" r="1.5"/></svg>`;
+          }
+          function tick(){
+            const now = sgNow(), L = LINES[current], act = activeStations(L, now.iso);
+            $("clock").textContent = now.clock;
+
+            // status card
+            const running = trainsOn(current, now);
+            const t = now.mins, hw = headway(L, t, now.weekend);
+            const inService = t >= FIRST && t <= LAST + (act.length-1)*leg(L);
+            const peak = !now.weekend && hw === L.peak;
+            $("status").innerHTML = `<div class="bar" style="background:var(--${current})"></div>
+              <b>${L.name}</b>
+              <span>${inService ? `${running.length} trains running · every ${hw} min${peak?" (peak)":""}` : "Closed for the night · first trains from 5.30am"}</span>`;
+            const fut = L.stations.filter(s => s[2] && now.iso < s[2]);
+            $("notice").innerHTML = fut.length ? `<div class="notice">${fut.map(s=>s[1]).join(" and ")} open on 26 December 2026.</div>` : "";
+
+            // per-station next trains
+            const n = act.length;
+            for (let i = 0; i < L.stations.length; i++){
+              const nx = $("nx"+i), dt = $("dt"+i), row = nx.closest(".row");
+              if (i >= n){ nx.textContent = "Opens 26 Dec"; continue; }
+              const a = i < n-1 ? nextArrivals(current, i, 0, now, 3) : [];
+              const b = i > 0 ? nextArrivals(current, i, 1, now, 3) : [];
+              nx.innerHTML = `<span>${a.length ? "↓ <em>"+fmt(a[0])+"</em>" : "&nbsp;"}</span><span>${b.length ? "↑ <em>"+fmt(b[0])+"</em>" : "&nbsp;"}</span>`;
+              row.classList.toggle("open", i === openIdx);
+              if (i === openIdx){
+                dt.hidden = false;
+                const line = (dest, arr) => `<div><span>To ${dest}</span><span class="t">${arr.length ? arr.map(fmt).join(" · ") : "No more trains"}</span></div>`;
+                dt.innerHTML = (i < n-1 ? line(dest(L, 0, act), a) : "") + (i > 0 ? line(dest(L, 1, act), b) : "");
+              } else dt.hidden = true;
+            }
+
+            layoutSpine();
+            // trains
+            const seen = new Set();
+            for (const tr of running){
+              seen.add(tr.id);
+              let el = trainEls[tr.id];
+              if (!el){
+                el = document.createElement("button"); el.className = "train d" + tr.dir; el.type = "button";
+                el.innerHTML = trainSVG(tr.dir);
+                el.onclick = ev => { ev.stopPropagation(); selTrain = selTrain === tr.id ? null : tr.id; tick(); };
+                el._dep = tr.dep; el._dir = tr.dir;
+                el.style.setProperty("--d", (-(tr.dep * 7.3) % 2).toFixed(2) + "s");   // stagger the pulses
+                $("lanes").appendChild(el); trainEls[tr.id] = el;
+                el.style.transform = `translateY(${yAt(tr.idx)}px)`;
+              }
+              el.classList.toggle("moving", !tr.atStation);
+              el.classList.toggle("dwell", tr.atStation);
+            }
+            for (const id in trainEls) if (!seen.has(id)){ trainEls[id].remove(); delete trainEls[id]; }
+
+            // labels and the selected-train card
+            const terminus = d => dest(L, d, act);
+            for (const tr of running){
+              const el = trainEls[tr.id], stop = act[tr.next][1];
+              el.setAttribute("aria-label", `Train to ${terminus(tr.dir)}, ${tr.atStation ? "at" : "next stop"} ${stop}`);
+              el.classList.toggle("sel", tr.id === selTrain);
+            }
+            const s = running.find(tr => tr.id === selTrain);
+            if (!s){
+              if (selTrain) selTrain = null;
+              $("trainInfo").innerHTML = `<p class="hint">${running.length ? "Tap a train to see where it's heading." : "No trains running right now."}</p>`;
+            } else {
+              const stop = act[s.next][1];
+              const where = s.atStation ? `Now at <b>${stop}</b>` : `Next stop <b>${stop}</b>`;
+              $("trainInfo").innerHTML = `<div class="tinfo">
+                <div>${trainSVG(s.dir)}</div>
+                <div>Train to <b>${terminus(s.dir)}</b><br>${where}</div>
+                <span class="eta">${s.atStation ? "Boarding" : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min"}</span>
+                <button type="button" aria-label="Close" id="tclose">×</button></div>`;
+              $("tclose").onclick = () => { selTrain = null; tick(); };
+            }
+            window.afterTick && afterTick();
+          }
+
+          $("find").addEventListener("change", e => {
+            const name = Object.keys(byName).find(n => n.toLowerCase() === e.target.value.trim().toLowerCase());
+            if (!name) return;
+            const lines = byName[name].map(x => x[0]);
+            select(lines.includes(current) ? current : lines[0], name);
+            e.target.blur();
+          });
+          window.addEventListener("hashchange", () => { const c = location.hash.slice(1).toUpperCase(); if (LINES[c] && c !== current) select(c); });
+          window.addEventListener("resize", () => { layoutSpine(); tick(); });
+          document.fonts && document.fonts.ready.then(() => { layoutSpine(); tick(); });
+
+          buildTabs(); buildBoard();
+          setInterval(tick, 1000);
+
+          /* Smooth motion: reposition every train on every frame from the timetable. */
+          function trainIdx(L, n, dep, dir, mins){
+            const e = Math.max(0, Math.min(mins - dep, (n-1)*leg(L)));
+            const seg = Math.min(Math.floor(e/leg(L)), n-2), within = e - seg*leg(L);
+            const pos = seg + Math.min(1, within / L.run);
+            return dir ? (n-1) - pos : pos;
+          }
+          (function frame(){
+            const L = LINES[current], now = sgNow(), n = activeStations(L, now.iso).length;
+            for (const id in trainEls){
+              const el = trainEls[id];
+              el.style.transform = `translateY(${yAt(trainIdx(L, n, el._dep, el._dir, now.mins)).toFixed(2)}px)`;
+            }
+            requestAnimationFrame(frame);
+          })();
+
+          /* ---------- Live disruption alerts, news and settings ----------
+             In the Android app, a native bridge (window.MrtApp) fetches LTA DataMall and news feeds,
+             because a web page can't call those sites directly. In a browser, the Updates tab shows
+             a clearly labelled sample instead. */
+          const APP = window.MrtApp || null;
+          const DATAMALL = "https://datamall2.mytransport.sg/ltaodataservice/TrainServiceAlerts";
+          const NEWS = "https://news.google.com/rss/search?q=" +
+            encodeURIComponent('(MRT OR LRT) (disruption OR delay OR breakdown OR fault) Singapore when:7d') + "&hl=en-SG&gl=SG&ceid=SG:en";
+          const KEY_PAGE = "https://datamall.lta.gov.sg/content/datamall/en/request-for-api.html";
+          /* LTA line codes (API guide v6.11, section 2.11) → this tracker's lines.
+             EWL includes the Changi Airport branch, CCL includes Bayfront, and each LRT system is one code. */
+          const LINES_FROM_LTA = {NSL:["NSL"],EWL:["EWL","CG"],NEL:["NEL"],CCL:["CCL"],DTL:["DTL"],TEL:["TEL"],BPL:["BP"],STL:["SE","SW"],PTL:["PE","PW"],
+            CGL:["CG"],CEL:["CCL"],SEL:["SE"],SWL:["SW"],PEL:["PE"],PWL:["PW"]};
+          const LINE_NAME_LTA = {NSL:"North-South Line",EWL:"East-West Line",NEL:"North East Line",CCL:"Circle Line",DTL:"Downtown Line",TEL:"Thomson-East Coast Line",BPL:"Bukit Panjang LRT",STL:"Sengkang LRT",PTL:"Punggol LRT"};
+          const NAME_OF = {};
+          for (const c of ORDER) for (const st of LINES[c].stations) NAME_OF[st[0]] = st[1];
+
+          const esc = t => String(t ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+          const store = {
+            get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+            set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+          };
+          const hhmm = d => d ? new Date(d).toLocaleTimeString("en-SG", {hour:"numeric", minute:"2-digit", timeZone:"Asia/Singapore"}) : "";
+
+          /* state */
+          let alertState = store.get("mrt.alerts", null);  // {status, segments, messages, at}
+          let alertError = "";
+          let newsState = store.get("mrt.news", null);      // {items, at}
+          let loading = false;
+          let autoRefresh = store.get("mrt.auto", true);
+
+          /* --- native bridge --- */
+          const pending = {};
+          let reqId = 0;
+          window.__native = (id, code, body) => { const cb = pending[id]; delete pending[id]; cb && cb(code, body); };
+          function nativeGet(url, withKey){
+            return new Promise(res => { const id = "r" + (++reqId); pending[id] = (code, body) => res({code, body}); APP.fetch(id, url, !!withKey); });
+          }
+          const hasKey = () => { try { return !!(APP && APP.hasKey()); } catch(e){ return false; } };
+
+          /* --- parsing --- */
+          function parseAlerts(body){
+            const j = JSON.parse(body);
+            let v = j.value ?? j;
+            if (Array.isArray(v)) v = v[0] || {};
+            const segs = (v.AffectedSegments || []).map(sg => {
+              const codes = String(sg.Stations || "").split(",").map(x => x.trim()).filter(Boolean);
+              // Lists use "," between stations, "|" between codes of one interchange and ";" between shuttle areas.
+              const list = s => String(s || "").split(/[,;]/).map(x => x.trim().split("|")[0].trim()).filter(Boolean);
+              const lta = String(sg.Line || "").toUpperCase();
+              const family = LINES_FROM_LTA[lta] || [];
+              let lines = family.filter(c => LINES[c].stations.some(st => codes.includes(st[0])));
+              if (!lines.length) lines = family.slice(0, 1);
+              return {
+                lines, line: lines[0] || null,
+                ltaLine: lta,
+                direction: sg.Direction || "",
+                codes,
+                bus: list(sg.FreePublicBus),
+                shuttle: list(sg.FreeMRTShuttle || sg.FreeMrtShuttle),
+                shuttleDir: sg.MRTShuttleDirection || ""
+              };
+            });
+            const msgs = (v.Message || []).filter(m => m && m.Content)
+              .map(m => ({text: m.Content, at: m.CreatedDate || ""}))
+              .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+            return {status: Number(v.Status) === 2 ? 2 : 1, segments: segs, messages: msgs, at: Date.now()};
+          }
+          function parseNews(xml){
+            const doc = new DOMParser().parseFromString(xml, "text/xml");
+            return [...doc.querySelectorAll("item")].slice(0, 12).map(it => {
+              const t = it.querySelector("title")?.textContent || "";
+              const src = it.querySelector("source")?.textContent || "";
+              return {
+                title: src && t.endsWith(" - " + src) ? t.slice(0, -(src.length + 3)) : t,
+                link: it.querySelector("link")?.textContent || "",
+                source: src,
+                date: it.querySelector("pubDate")?.textContent || ""
+              };
+            }).filter(n => /^https?:\/\//.test(n.link));
+          }
+
+          /* --- refresh --- */
+          async function refreshAll(){
+            if (!APP || loading) return;
+            loading = true; renderUpdates();
+            const jobs = [];
+            if (hasKey()){
+              jobs.push(nativeGet(DATAMALL, true).then(({code, body}) => {
+                if (code === 200){ try { alertState = parseAlerts(body); store.set("mrt.alerts", alertState); alertError = ""; } catch(e){ alertError = "LTA sent something this app couldn't read."; } }
+                else if (code === 401 || code === 403) alertError = "LTA didn't accept your key. Check it in Settings below.";
+                else alertError = code === 0 ? "Couldn't reach LTA. Check your internet connection." : `LTA's service returned an error (${code}).`;
+              }));
+            }
+            jobs.push(nativeGet(NEWS, false).then(({code, body}) => {
+              if (code === 200){ try { newsState = {items: parseNews(body), at: Date.now()}; store.set("mrt.news", newsState); } catch(e){} }
+            }));
+            await Promise.all(jobs);
+            loading = false;
+            renderAll();
+          }
+          window.appResume = () => refreshAll();     // called by the app every time it is opened
+          setInterval(() => { if (APP && autoRefresh && !document.hidden) refreshAll(); }, 60000);
+
+          /* --- rendering --- */
+          const disruptedLines = () => alertState && alertState.status === 2 ? new Set(alertState.segments.flatMap(s => s.lines || [s.line]).filter(Boolean)) : new Set();
+          const lineLabel = sg => LINE_NAME_LTA[sg.ltaLine] || (sg.line ? LINES[sg.line].name : sg.ltaLine);
+          function segTitle(sg){
+            const names = sg.codes.map(c => NAME_OF[c] || c);
+            const span = names.length > 1 ? `${names[0]} to ${names[names.length-1]}` : (names[0] || "Stations not listed");
+            return span;
+          }
+          function segHTML(sg){
+            const c = sg.line;
+            const pill = `<span class="code" style="background:var(--${c || "muted"})">${esc(sg.ltaLine || c)}</span>`;
+            const dir = sg.direction && !/^both$/i.test(sg.direction) ? `Towards ${esc(NAME_OF[sg.direction] || sg.direction)}` : "Both directions";
+            const extra = [];
+            if (sg.bus.length) extra.push(sg.bus.some(x => /island/i.test(x)) ? "Free bus rides island-wide" : `Free regular buses at ${esc(sg.bus.map(x => NAME_OF[x] || x).join(", "))}`);
+            if (sg.shuttle.length) extra.push(`Free bridging buses at ${esc(sg.shuttle.map(x => NAME_OF[x] || x).join(", "))}${sg.shuttleDir ? ` (${esc(sg.shuttleDir)})` : ""}`);
+            return `<div class="seg"><div class="h">${pill}${esc(segTitle(sg))}</div>
+              <span class="sub">${dir} · ${sg.codes.length} station${sg.codes.length === 1 ? "" : "s"} affected</span>
+              ${extra.map(x => `<span class="sub">${x}</span>`).join("")}</div>`;
+          }
+          function msgsHTML(msgs){
+            return msgs.length ? `<ul class="msgs">${msgs.map(m => `<li><span>${esc(m.text)}</span>${m.at ? `<span class="muted">${esc(m.at)}</span>` : ""}</li>`).join("")}</ul>` : "";
+          }
+
+          function renderBanner(){
+            const b = $("alertBanner");
+            if (!APP){ b.innerHTML = ""; return; }
+            if (!hasKey()){
+              b.innerHTML = `<button class="alert off" type="button" id="bnGo"><b>Turn on live disruption alerts</b><span class="sub">Add your free LTA key in Updates → Settings.</span></button>`;
+            } else if (alertState && alertState.status === 2){
+              const n = alertState.segments.length;
+              const first = alertState.segments[0];
+              const head = first ? `${lineLabel(first)}: ${segTitle(first)}` : "Train service disruption";
+              b.innerHTML = `<button class="alert bad" type="button" id="bnGo"><b>⚠ ${esc(head)}</b>
+                <span class="sub">${n > 1 ? `${n - 1} more affected stretch${n > 2 ? "es" : ""} · ` : ""}Tap for details · updated ${hhmm(alertState.at)}</span></button>`;
+            } else if (alertState && alertState.segments.length){
+              b.innerHTML = `<button class="alert warn" type="button" id="bnGo"><b>Train service has resumed on the ${esc(lineLabel(alertState.segments[0]))}</b>
+                <span class="sub">Free bus rides are still available · tap for details · updated ${hhmm(alertState.at)}</span></button>`;
+            } else if (alertState){
+              b.innerHTML = `<div class="alert ok"><b>All train services running normally</b><span class="sub">LTA status · updated ${hhmm(alertState.at)}${loading ? " · refreshing…" : ""}</span></div>`;
+            } else {
+              b.innerHTML = `<div class="alert off"><b>${loading ? "Checking train service status…" : "Train service status not loaded yet"}</b>${alertError ? `<span class="sub">${esc(alertError)}</span>` : ""}</div>`;
+            }
+            const go = $("bnGo"); if (go) go.onclick = () => showView("updates", hasKey() ? "officialCard" : "settingsCard");
+          }
+
+          function renderOfficial(){
+            const el = $("officialCard"), refreshBtn = `<button class="btn ghost" type="button" id="refreshBtn"${loading ? " disabled" : ""}>${loading ? "Refreshing…" : "Refresh now"}</button>`;
+            let body;
+            if (!APP){
+              const sample = {segments:[{lines:["NSL"],line:"NSL",ltaLine:"NSL",direction:"Both",codes:["NS1","NS2","NS3","NS4"],bus:["NS1","NS2","NS3","NS4"],shuttle:[],shuttleDir:""}],
+                messages:[{text:"0712hrs: NSL – No train service between Jurong East and Choa Chu Kang due to a track fault. Free regular bus services are available at designated bus stops near the affected stations.", at:"Example"}]};
+              body = `<p class="muted">Live alerts come from LTA and appear in the Android app. Here's how a disruption looks:</p>
+                <div class="alert bad" style="cursor:default"><span><span class="chip sample">Sample</span></span>${sample.segments.map(segHTML).join("")}</div>${msgsHTML(sample.messages)}`;
+            } else if (!hasKey()){
+              body = `<p class="muted">Add your free LTA DataMall key in Settings to see official disruption notices here.</p>`;
+            } else if (alertState && alertState.status === 2){
+              body = `<div style="display:grid;gap:10px">${alertState.segments.map(segHTML).join("")}</div>
+                ${alertState.messages.length ? `<h2 style="font-size:16px;margin-top:6px">Announcements</h2>${msgsHTML(alertState.messages)}` : ""}`;
+            } else if (alertState && alertState.segments.length){
+              body = `<p><b style="color:var(--good)">Train service has resumed.</b> Free rides are still available on these stretches:</p>
+                <div style="display:grid;gap:10px">${alertState.segments.map(segHTML).join("")}</div>${msgsHTML(alertState.messages)}`;
+            } else if (alertState){
+              body = `<p><b style="color:var(--good)">All train services are running normally.</b></p>${msgsHTML(alertState.messages)}`;
+            } else body = `<p class="muted">${loading ? "Loading…" : "No status yet."}</p>`;
+            const meta = APP && hasKey() ? `<p class="muted">${alertState ? `Updated ${hhmm(alertState.at)}` : ""}${alertError ? ` · ${esc(alertError)}` : ""}</p>` : "";
+            el.innerHTML = `<h2>LTA service status</h2><div style="display:grid;gap:10px">${body}${meta}${APP && hasKey() ? `<div>${refreshBtn}</div>` : ""}</div>`;
+            const r = $("refreshBtn"); if (r) r.onclick = refreshAll;
+          }
+
+          function renderNews(){
+            const list = $("newsList"), note = $("newsNote");
+            if (!APP){ note.textContent = "Recent news reports about MRT and LRT disruptions appear here in the Android app."; list.innerHTML = ""; return; }
+            if (!newsState || !newsState.items.length){
+              note.textContent = loading ? "Loading recent reports…" : "No disruption reports from the past week.";
+              list.innerHTML = ""; return;
+            }
+            note.textContent = `Headlines from the past week, via Google News · updated ${hhmm(newsState.at)}`;
+            list.innerHTML = newsState.items.map(n => {
+              const d = n.date ? new Date(n.date) : null;
+              const when = d && !isNaN(d) ? d.toLocaleDateString("en-SG", {day:"numeric", month:"short", timeZone:"Asia/Singapore"}) + ", " + hhmm(d) : "";
+              return `<li><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a><span class="muted">${esc(n.source)}${n.source && when ? " · " : ""}${esc(when)}</span></li>`;
+            }).join("");
+          }
+
+          function renderSettings(){
+            const el = $("settingsCard");
+            if (!APP){ el.hidden = true; return; }
+            const k = hasKey();
+            el.innerHTML = `<h2>Settings</h2><div class="set">
+              <label for="keyIn">LTA DataMall key</label>
+              <p class="muted">${k ? "Your key is saved on this phone." : `Live alerts need a free key from LTA. <a href="${KEY_PAGE}" target="_blank" rel="noopener" style="color:var(--fg)">Request one here</a>; LTA emails it to you.`}</p>
+              <div class="rowi"><input type="password" id="keyIn" placeholder="${k ? "••••••••  (saved)" : "Paste your key"}" autocomplete="off" spellcheck="false">
+                <button class="btn" type="button" id="keySave">Save</button></div>
+              ${k ? `<div><button class="btn ghost" type="button" id="keyClear">Remove key</button></div>` : ""}
+              <label class="toggle"><input type="checkbox" id="autoIn"${autoRefresh ? " checked" : ""}> Refresh every minute while the app is open</label>
+              ${k && APP.downloadTimetable ? `<label>Official train timetable</label>
+              <p class="muted">Downloads LTA's timetable file (GTFS Schedule) to your Downloads folder, so you can send it to Claude.</p>
+              <div><button class="btn ghost" type="button" id="ttBtn">Download LTA timetable</button></div>
+              <div id="ttOut" class="muted"></div>` : ""}
+              <p class="muted" id="setMsg"></p></div>`;
+            $("keySave").onclick = () => {
+              const v = $("keyIn").value.trim();
+              if (!v){ $("setMsg").textContent = "Paste your key first."; return; }
+              APP.setKey(v); alertState = null; alertError = ""; store.set("mrt.alerts", null);
+              renderAll(); $("setMsg").textContent = "Key saved. Checking with LTA…"; refreshAll();
+            };
+            const clr = $("keyClear"); if (clr) clr.onclick = () => { APP.setKey(""); alertState = null; store.set("mrt.alerts", null); renderAll(); };
+            $("autoIn").onchange = e => { autoRefresh = e.target.checked; store.set("mrt.auto", autoRefresh); };
+            const tt = $("ttBtn");
+            if (tt) tt.onclick = () => {
+              tt.disabled = true; tt.textContent = "Downloading…";
+              $("ttOut").textContent = "Asking LTA for the timetable. This can take up to a minute.";
+              const id = "t" + (++reqId);
+              pending[id] = (code, body) => {
+                tt.disabled = false; tt.textContent = "Download LTA timetable";
+                let r = {}; try { r = JSON.parse(body); } catch(e){}
+                if (r.error || code !== 200){
+                  $("ttOut").innerHTML = `<b style="color:var(--bad)">Download failed.</b> ${code === 401 || code === 403 ? "LTA didn't accept your key." : esc(r.error || "Couldn't reach LTA.")}`;
+                  return;
+                }
+                const mb = (r.size / 1048576).toFixed(1);
+                $("ttOut").innerHTML = `<b style="color:var(--good)">Done.</b> ${r.saved ? `Saved to <b>${esc(r.saved)}</b> (${mb} MB). Attach that file in your chat with Claude.` : `Downloaded ${mb} MB, but saving to Downloads needs Android 10 or newer. Screenshot the summary below instead.`}
+                  <pre style="font:12px/1.45 var(--mono);white-space:pre-wrap;word-break:break-all;background:var(--soft);color:var(--fg);padding:10px;border-radius:8px;margin-top:8px;max-height:340px;overflow:auto">${esc((r.files || []).map(f => `${f.name} · ${f.lines} lines\n  ${f.head.join("\n  ")}`).join("\n\n"))}</pre>`;
+              };
+              APP.downloadTimetable(id);
+            };
+          }
+
+          function renderAll(){
+            renderBanner(); renderOfficial(); renderNews(); renderSettings();
+            const dl = disruptedLines();
+            const badge = $("vBadge");
+            badge.hidden = !dl.size; badge.textContent = alertState ? alertState.segments.length : "";
+            window.afterTabs();
+          }
+          function renderUpdates(){ renderBanner(); renderOfficial(); renderNews(); }
+
+          /* marks on line tabs and station rows */
+          window.afterTabs = () => {
+            const dl = disruptedLines();
+            document.querySelectorAll(".tab").forEach(t => t.classList.toggle("dis", dl.has(t.dataset.c)));
+          };
+          window.afterTick = () => {
+            const hit = new Set();
+            if (alertState && alertState.status === 2) for (const sg of alertState.segments) if ((sg.lines || [sg.line]).includes(current)) sg.codes.forEach(c => hit.add(c));
+            const L = LINES[current];
+            document.querySelectorAll("#board .row").forEach(r => r.classList.toggle("dis", hit.has(L.stations[+r.dataset.i][0])));
+          };
+
+          /* --- view switching --- */
+          function showView(v, scrollTo){
+            const up = v === "updates";
+            $("viewTrains").hidden = up; $("viewUpdates").hidden = !up;
+            $("tabs").hidden = up; document.querySelector(".search").hidden = up;
+            $("vTrains").setAttribute("aria-selected", !up); $("vUpdates").setAttribute("aria-selected", up);
+            if (up){ renderUpdates(); if (scrollTo) $(scrollTo).scrollIntoView({block:"start", behavior:"smooth"}); else window.scrollTo(0, 0); }
+            else { layoutSpine(); tick(); }
+          }
+          $("vTrains").onclick = () => showView("trains");
+          $("vUpdates").onclick = () => showView("updates");
+
+          renderAll();
+          refreshAll();
+          </script>
+
+          </html>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/MainActivity.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          import org.json.JSONObject;
+
+          import java.io.ByteArrayOutputStream;
+          import java.io.InputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.nio.charset.StandardCharsets;
+          import java.util.Arrays;
+          import java.util.HashSet;
+          import java.util.Set;
+
+          public class MainActivity extends Activity {
+
+              /** The only sites the tracker page may ask the app to fetch. */
+              private static final Set<String> ALLOWED_HOSTS = new HashSet<>(Arrays.asList(
+                      "datamall2.mytransport.sg",
+                      "news.google.com"));
+
+              private WebView web;
+              private SharedPreferences prefs;
+              private boolean pageLoaded = false;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  prefs = getSharedPreferences("settings", MODE_PRIVATE);
+
+                  web = new WebView(this);
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(true);
+                  web.addJavascriptInterface(new Bridge(), "MrtApp");
+
+                  // Keep the tracker inside the app; open any outside links in the browser or the X/Facebook app.
+                  web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                          Uri uri = request.getUrl();
+                          if ("file".equals(uri.getScheme())) return false;
+                          try {
+                              startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                          } catch (Exception ignored) {
+                          }
+                          return true;
+                      }
+
+                      @Override
+                      public void onPageFinished(WebView view, String url) {
+                          pageLoaded = true;
+                      }
+                  });
+
+                  setContentView(web);
+                  web.loadUrl("file:///android_asset/index.html");
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  web.onResume();
+                  // Fresh status every time the app is opened or brought back to the front.
+                  if (pageLoaded) {
+                      web.evaluateJavascript("window.appResume && window.appResume()", null);
+                  }
+              }
+
+              @Override
+              protected void onPause() {
+                  web.onPause();
+                  super.onPause();
+              }
+
+              /** Methods the tracker page can call as window.MrtApp.*. */
+              private class Bridge {
+
+                  @JavascriptInterface
+                  public boolean hasKey() {
+                      return !prefs.getString("lta_key", "").isEmpty();
+                  }
+
+                  @JavascriptInterface
+                  public void setKey(String key) {
+                      prefs.edit().putString("lta_key", key == null ? "" : key.trim()).apply();
+                  }
+
+                  @JavascriptInterface
+                  public void fetch(final String id, final String url, final boolean withKey) {
+                      new Thread(() -> {
+                          int code = 0;
+                          String body = "";
+                          HttpURLConnection conn = null;
+                          try {
+                              URL u = new URL(url);
+                              if (!"https".equals(u.getProtocol()) || !ALLOWED_HOSTS.contains(u.getHost())) {
+                                  throw new SecurityException("Host not allowed");
+                              }
+                              conn = (HttpURLConnection) u.openConnection();
+                              conn.setConnectTimeout(10000);
+                              conn.setReadTimeout(15000);
+                              conn.setRequestProperty("User-Agent", "MRTTracker/1.0 (Android)");
+                              conn.setRequestProperty("Accept", "application/json, application/rss+xml, text/xml");
+                              if (withKey) conn.setRequestProperty("AccountKey", prefs.getString("lta_key", ""));
+                              code = conn.getResponseCode();
+                              InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+                              body = in == null ? "" : readAll(in);
+                          } catch (Exception e) {
+                              code = 0;
+                              body = "";
+                          } finally {
+                              if (conn != null) conn.disconnect();
+                          }
+                          final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
+                          runOnUiThread(() -> web.evaluateJavascript(js, null));
+                      }).start();
+                  }
+
+                  /**
+                   * Asks LTA for a fresh timetable link, downloads gtfs_schedule.zip, saves a copy to
+                   * Downloads, and returns a short summary of the files inside (as JSON) to the page.
+                   */
+                  @JavascriptInterface
+                  public void downloadTimetable(final String id) {
+                      new Thread(() -> {
+                          int code = 200;
+                          JSONObject out = new JSONObject();
+                          try {
+                              // 1. Ask LTA for the temporary link.
+                              HttpURLConnection c = open("https://datamall2.mytransport.sg/ltaodataservice/GTFSScheduleTrain", true);
+                              int status = c.getResponseCode();
+                              if (status != 200) {
+                                  code = status;
+                                  throw new java.io.IOException("LTA returned " + status);
+                              }
+                              String json = readAll(c.getInputStream());
+                              c.disconnect();
+                              JSONObject root = new JSONObject(json);
+                              Object v = root.opt("value");
+                              JSONObject item = v instanceof org.json.JSONArray ? ((org.json.JSONArray) v).getJSONObject(0)
+                                      : v instanceof JSONObject ? (JSONObject) v : root;
+                              String link = item.optString("link", item.optString("Link", ""));
+                              URL lu = new URL(link);
+                              if (!"https".equals(lu.getProtocol()) || !lu.getHost().endsWith(".amazonaws.com")) {
+                                  throw new java.io.IOException("Unexpected download link");
+                              }
+
+                              // 2. Download the zip to the app's cache.
+                              java.io.File zip = new java.io.File(getCacheDir(), "gtfs_schedule.zip");
+                              HttpURLConnection d = (HttpURLConnection) lu.openConnection();
+                              d.setConnectTimeout(15000);
+                              d.setReadTimeout(60000);
+                              try (InputStream in = d.getInputStream();
+                                   java.io.OutputStream fo = new java.io.FileOutputStream(zip)) {
+                                  copy(in, fo);
+                              }
+                              d.disconnect();
+                              out.put("size", zip.length());
+
+                              // 3. Save a copy to Downloads (Android 10 and newer).
+                              String name = "lta_gtfs_schedule_" + new java.text.SimpleDateFormat("yyyy-MM-dd_HHmm", java.util.Locale.US).format(new java.util.Date()) + ".zip";
+                              if (android.os.Build.VERSION.SDK_INT >= 29) {
+                                  android.content.ContentValues cv = new android.content.ContentValues();
+                                  cv.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                                  cv.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/zip");
+                                  cv.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Download");
+                                  Uri dest = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                                  try (InputStream in = new java.io.FileInputStream(zip);
+                                       java.io.OutputStream os = getContentResolver().openOutputStream(dest)) {
+                                      copy(in, os);
+                                  }
+                                  out.put("saved", "Download/" + name);
+                              } else {
+                                  out.put("saved", "");
+                              }
+
+                              // 4. Summarise: each file, its size, line count and first lines.
+                              org.json.JSONArray files = new org.json.JSONArray();
+                              try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(zip)) {
+                                  java.util.Enumeration<? extends java.util.zip.ZipEntry> en = zf.entries();
+                                  while (en.hasMoreElements()) {
+                                      java.util.zip.ZipEntry e = en.nextElement();
+                                      if (e.isDirectory()) continue;
+                                      JSONObject f = new JSONObject();
+                                      f.put("name", e.getName());
+                                      f.put("size", e.getSize());
+                                      org.json.JSONArray head = new org.json.JSONArray();
+                                      int lines = 0;
+                                      try (java.io.BufferedReader r = new java.io.BufferedReader(
+                                              new java.io.InputStreamReader(zf.getInputStream(e), StandardCharsets.UTF_8))) {
+                                          String line;
+                                          while ((line = r.readLine()) != null) {
+                                              if (lines < 4) head.put(line.length() > 200 ? line.substring(0, 200) : line);
+                                              lines++;
+                                          }
+                                      }
+                                      f.put("lines", lines);
+                                      f.put("head", head);
+                                      files.put(f);
+                                  }
+                              }
+                              out.put("files", files);
+                          } catch (Exception e) {
+                              if (code == 200) code = 0;
+                              try {
+                                  out.put("error", e.getMessage() == null ? e.toString() : e.getMessage());
+                              } catch (Exception ignored) {
+                              }
+                          }
+                          final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(out.toString()) + ")";
+                          runOnUiThread(() -> web.evaluateJavascript(js, null));
+                      }).start();
+                  }
+              }
+
+              private HttpURLConnection open(String url, boolean withKey) throws java.io.IOException {
+                  HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+                  conn.setConnectTimeout(10000);
+                  conn.setReadTimeout(20000);
+                  conn.setRequestProperty("User-Agent", "MRTTracker/1.0 (Android)");
+                  conn.setRequestProperty("Accept", "application/json");
+                  if (withKey) conn.setRequestProperty("AccountKey", prefs.getString("lta_key", ""));
+                  return conn;
+              }
+
+              private static void copy(InputStream in, java.io.OutputStream out) throws java.io.IOException {
+                  byte[] buf = new byte[16384];
+                  int n;
+                  while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+              }
+
+              private static String readAll(InputStream in) throws java.io.IOException {
+                  ByteArrayOutputStream out = new ByteArrayOutputStream();
+                  byte[] buf = new byte[8192];
+                  int n;
+                  while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                  in.close();
+                  return out.toString(StandardCharsets.UTF_8.name());
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/drawable'
+          cat > 'mrt-tracker-app/app/src/main/res/drawable/ic_launcher_foreground.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#D42E12" android:pathData="M38,30h32a8,8 0,0 1,8 8v30a8,8 0,0 1,-8 8h-32a8,8 0,0 1,-8 -8v-30a8,8 0,0 1,8 -8z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M38,37h32a2,2 0,0 1,2 2v12a2,2 0,0 1,-2 2h-32a2,2 0,0 1,-2 -2v-12a2,2 0,0 1,2 -2z"/>
+              <path android:fillColor="#FFF6C2" android:pathData="M42,64m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
+              <path android:fillColor="#FFF6C2" android:pathData="M66,64m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M40,78h6l-4,6h-6z M62,78h6l4,6h-6z"/>
+          </vector>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/drawable'
+          cat > 'mrt-tracker-app/app/src/main/res/drawable/ic_launcher_legacy.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="48dp" android:height="48dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#14181D" android:pathData="M24,6h60a18,18 0,0 1,18 18v60a18,18 0,0 1,-18 18h-60a18,18 0,0 1,-18 -18v-60a18,18 0,0 1,18 -18z"/>
+              <path android:fillColor="#D42E12" android:pathData="M38,30h32a8,8 0,0 1,8 8v30a8,8 0,0 1,-8 8h-32a8,8 0,0 1,-8 -8v-30a8,8 0,0 1,8 -8z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M38,37h32a2,2 0,0 1,2 2v12a2,2 0,0 1,-2 2h-32a2,2 0,0 1,-2 -2v-12a2,2 0,0 1,2 -2z"/>
+              <path android:fillColor="#FFF6C2" android:pathData="M42,64m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
+              <path android:fillColor="#FFF6C2" android:pathData="M66,64m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M40,78h6l-4,6h-6z M62,78h6l4,6h-6z"/>
+          </vector>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/mipmap-anydpi-v26'
+          cat > 'mrt-tracker-app/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/icon_bg" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/mipmap'
+          cat > 'mrt-tracker-app/app/src/main/res/mipmap/ic_launcher.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <inset xmlns:android="http://schemas.android.com/apk/res/android"
+              android:drawable="@drawable/ic_launcher_legacy" />
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values-night'
+          cat > 'mrt-tracker-app/app/src/main/res/values-night/colors.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="bg">#0F1317</color>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values-night'
+          cat > 'mrt-tracker-app/app/src/main/res/values-night/themes.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+                  <item name="android:windowBackground">@color/bg</item>
+                  <item name="android:statusBarColor">@color/bg</item>
+                  <item name="android:navigationBarColor">@color/bg</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:windowLightNavigationBar">false</item>
+              </style>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values'
+          cat > 'mrt-tracker-app/app/src/main/res/values/colors.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="bg">#EEF1F4</color>
+              <color name="icon_bg">#14181D</color>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values'
+          cat > 'mrt-tracker-app/app/src/main/res/values/strings.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">MRT Tracker</string>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values'
+          cat > 'mrt-tracker-app/app/src/main/res/values/themes.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+                  <item name="android:windowBackground">@color/bg</item>
+                  <item name="android:statusBarColor">@color/bg</item>
+                  <item name="android:navigationBarColor">@color/bg</item>
+                  <item name="android:windowLightStatusBar">true</item>
+                  <item name="android:windowLightNavigationBar">true</item>
+              </style>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/build.gradle' <<'MRTAPP_EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/gradle.properties' <<'MRTAPP_EOF'
+          org.gradle.jvmargs=-Xmx2g
+          android.useAndroidX=false
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/settings.gradle' <<'MRTAPP_EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "MRT Tracker"
+          include ':app'
+          MRTAPP_EOF
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Create a signing key on the first run
+        run: |
+          mkdir -p signing
+          if [ ! -f signing/mrt-tracker.jks ]; then
+            keytool -genkeypair -v -keystore signing/mrt-tracker.jks -alias mrttracker \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass mrttracker -keypass mrttracker -dname "CN=MRT Tracker"
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add signing/mrt-tracker.jks
+            git commit -m "Add app signing key [skip ci]"
+            git push
+          fi
+
+      - name: Build the app
+        run: |
+          gradle -p mrt-tracker-app assembleRelease -Pvc=${{ github.run_number }} -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks"
+          cp mrt-tracker-app/app/build/outputs/apk/release/app-release.apk mrt-tracker.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mrt-tracker-apk
+          path: mrt-tracker.apk
+
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest mrt-tracker.apk --title "MRT Tracker (build ${{ github.run_number }})" \
+            --notes "Download mrt-tracker.apk on your Android phone and open it to install."
