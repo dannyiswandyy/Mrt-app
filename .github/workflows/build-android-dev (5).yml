@@ -220,7 +220,7 @@ jobs:
           <html lang="en">
           <head>
           <meta charset="utf-8">
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qizVg1gA7qg1xUpDuuS2fP23FFHPIeZnRR6Wc2o3OJI='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://server.arcgisonline.com; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-h6p7OQtEGVmSEEvSzxIvrTUZVgVdcje6sYF1ArF5huM='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://server.arcgisonline.com; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
           <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
           <meta name="referrer" content="no-referrer">
           <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -394,6 +394,28 @@ jobs:
           .maplayer{position:absolute;left:10px;bottom:10px;display:flex;gap:2px;background:var(--panel);border:1px solid var(--rule);border-radius:9px;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
           .maplayer button{border:0;background:none;color:var(--muted);font:600 12.5px var(--body);padding:6px 11px;border-radius:7px;cursor:pointer}
           .maplayer button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+          /* TEST MODE (MRT Dev) */
+          button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+          .devtag svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+          .simbar{background:#c2410c;color:#fff;border-radius:10px;padding:7px 8px 7px 12px;margin:0 0 8px;display:flex;align-items:center;gap:6px;font-size:13px;line-height:1.35;flex-wrap:wrap}
+          .simbar span{flex:1;min-width:170px}
+          .simbar button{border:1px solid rgba(255,255,255,.65);background:transparent;color:#fff;border-radius:8px;padding:5px 10px;font:600 12.5px var(--body);cursor:pointer}
+          .simbar[hidden],.simsheet[hidden],.simsheet-bg[hidden]{display:none}
+          .simsheet-bg{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45)}
+          .simsheet{position:fixed;left:0;right:0;bottom:0;z-index:81;max-height:86vh;overflow-y:auto;overscroll-behavior:contain;background:var(--panel);color:var(--fg);border-radius:16px 16px 0 0;border-top:6px solid #c2410c;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:14px;align-content:start;box-shadow:0 -8px 30px rgba(0,0,0,.3);outline:none}
+          .simsheet .sim-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+          .simsheet h2{font:700 22px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em;margin:0}
+          .simsheet .sim-h button{width:40px;height:40px;border-radius:20px;border:0;background:var(--soft);color:var(--fg);font-size:20px;cursor:pointer}
+          .simsheet h3{font:600 12px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+          .simsheet p{margin:0;font-size:13px;color:var(--muted);line-height:1.45}
+          .simsheet section{min-width:0}
+          .sim-row{display:flex;flex-wrap:wrap;gap:6px}
+          .sim-row .hchip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+          .sim-row .hchip small{font-weight:500;opacity:.7}
+          .sim-at{display:flex;gap:6px;margin-top:8px}
+          .sim-at input{flex:1;min-width:0;font:500 15px var(--body);padding:8px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--fg)}
+          .simsheet > .btn{justify-self:start}
+          @media (min-width:1024px){ .simsheet{left:auto;top:0;bottom:0;width:440px;max-height:none;border-radius:0;border-top:0;border-left:6px solid #c2410c} }
           /* WEATHER (map chip, card and station line) */
           .mapwx{position:absolute;left:10px;bottom:52px;display:flex;align-items:center;gap:6px;max-width:calc(100% - 20px);border:1px solid var(--rule);background:var(--panel);color:var(--fg);border-radius:9px;padding:5px 10px;font:600 12.5px var(--body);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12)}
           .mapwx[hidden],.wxcard[hidden]{display:none}
@@ -641,7 +663,7 @@ jobs:
               <div class="top">
                 <div class="brand-wrap">
                   <h1>MRT Train Tracker</h1>
-                  <span class="devtag" id="devTag" hidden>Dev</span>
+                  <button type="button" class="devtag" id="devTag" hidden aria-haspopup="dialog" title="Test mode">Dev<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 14h9"/></svg></button>
                 </div>
                 <div class="top-right">
                   <div class="views" role="tablist" aria-label="Views">
@@ -670,7 +692,10 @@ jobs:
             </header>
 
             <div id="updBanner" hidden></div>
+            <div class="simbar" id="simBar" hidden></div>
             <div id="alertBanner"></div>
+            <div class="simsheet-bg" id="simBg" hidden></div>
+            <div class="simsheet" id="simSheet" role="dialog" aria-modal="true" aria-labelledby="simTitle" tabindex="-1" hidden></div>
 
             <main id="viewTrains">
               <section id="mapView">
@@ -939,8 +964,13 @@ jobs:
               PE: [["PTC", 25*60+9], ["PTC", 25*60+9]], PW: [["PTC", 25*60+9], ["PTC", 25*60+9]]    // Punggol, both loops 1.09am
             }
           };
+          /* Test mode (MRT Dev): a pretend clock and fake data, for trying features at any time. Never saved. */
+          const realNow = Date.now.bind(Date);
+          const SIM = {time: false, base: 0, realBase: 0, speed: 1, est: false, crowd: null, alert: null, weather: null};
+          const simNow = () => SIM.time ? SIM.base + (realNow() - SIM.realBase) * SIM.speed : realNow();
+          const simOn = () => SIM.time || SIM.est || !!(SIM.crowd || SIM.alert || SIM.weather);
           function sgNow(){
-            const d = new Date(Date.now() + 8*3600e3);           // shift to UTC+8, then read UTC fields
+            const d = new Date(simNow() + 8*3600e3);           // shift to UTC+8, then read UTC fields
             let mins = d.getUTCHours()*60 + d.getUTCMinutes() + d.getUTCSeconds()/60 + d.getUTCMilliseconds()/60000;
             let day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
             if (mins < 180){ mins += 1440; day = new Date(day - 864e5); }  // before 3am belongs to yesterday's service day
@@ -1102,7 +1132,7 @@ jobs:
           }
           /* Today's runs on a line: [{s: start in seconds, p: pattern}], sorted by start. */
           function ttTrips(code, iso){
-            if (!TT || !TT.lines[code]) return null;
+            if (SIM.est || !TT || !TT.lines[code]) return null;      // test mode can switch to estimates
             const k = code + iso;
             if (ttDayCache[k]) return ttDayCache[k];
             const on = ttServices(iso), Ln = TT.lines[code];
@@ -1564,6 +1594,7 @@ jobs:
             const jobs = [];
             if (hasKey()){
               jobs.push(nativeGet(DATAMALL, true).then(({code, body}) => {
+                if (SIM.alert) return;                               // test mode is showing a fake disruption
                 if (code === 200){ try { alertState = parseAlerts(body); store.set("mrt.alerts", alertState); alertError = ""; } catch(e){ alertError = "LTA sent something this app couldn't read."; } }
                 else if (code === 401 || code === 403) alertError = "LTA turned down the request. Live alerts are unavailable for now.";
                 else alertError = code === 0 ? "Couldn't reach LTA. Check your internet connection." : `LTA's service returned an error (${code}).`;
@@ -1625,8 +1656,8 @@ jobs:
 
           function renderBanner(){
             const b = $("alertBanner");
-            if (!APP){ b.innerHTML = ""; return; }
-            if (!hasKey()){
+            if (!APP && !SIM.alert){ b.innerHTML = ""; return; }
+            if (!hasKey() && !SIM.alert){
               b.innerHTML = `<div class="alert off"><b>Live disruption alerts aren't included in this version of the app</b></div>`;
             } else if (alertState && alertState.status === 2){
               const n = alertState.segments.length;
@@ -2207,7 +2238,7 @@ jobs:
             }
             wxActive = drawWeather(ctx);
             if (performance.now() - (mapDraw.wxPaint || 0) > 600){ mapDraw.wxPaint = performance.now(); paintWx(); }
-            $("mapCount").textContent = total ? `${total} trains running · ${TT ? "LTA timetable" : "estimated"} · ${dayText(sgNow()).split(" · ")[0]}` : "No trains running right now";
+            $("mapCount").textContent = total ? `${total} trains running · ${TT && !SIM.est ? "LTA timetable" : "estimated"} · ${dayText(sgNow()).split(" · ")[0]}` : "No trains running right now";
             mDirty = false;
           }
 
@@ -2478,6 +2509,7 @@ jobs:
             } catch(e){ return null; }
           }
           async function refreshWeather(force){
+            if (SIM.weather) return;                                 // test mode is showing fake weather
             if (wxBusy || (!force && Date.now() - wxLast < WX_EVERY)) return;
             wxBusy = true; wxLast = Date.now();
             const paths = ["two-hr-forecast", "rainfall", "air-temperature", "wind-direction", "wind-speed", "weather?api=lightning"], res = {};
@@ -2655,7 +2687,7 @@ jobs:
             const visible = (!$("mapView").hidden || isDesktop()) && !$("viewTrains").hidden && !document.hidden;
             if (visible && view){
               if (mAnim) mAnim(t);
-              if (mDirty || t - mLast > (wxActive ? 33 : 250)){ mapDraw(); mLast = t; }   // ~30 frames a second while weather moves
+              if (mDirty || t - mLast > (wxActive || (SIM.time && SIM.speed > 1) ? 33 : 250)){ mapDraw(); mLast = t; }   // ~30 frames a second while weather moves
             }
             requestAnimationFrame(mapLoop);
           })(0);
@@ -3225,6 +3257,7 @@ jobs:
             if (mSel && mSel.type === "station") mapInfo();
           }
           async function refreshCrowd(force){
+            if (SIM.crowd) return;                                   // test mode is showing fake crowds
             if (!APP || !hasKey() || crowdBusy) return;
             if (!force && crowd && crowd.at && Date.now() - crowd.at < 5 * 60e3) return;
             crowdBusy = true;
@@ -3520,7 +3553,7 @@ jobs:
             return {from: a.name, to: b.name, mins, changes: Math.max(0, legs.filter(l => l.line).length - 1), legs};
           }
           function aStatus(k){
-            if (!APP) return {known: false, note: "Disruption alerts come from LTA through the MRT Tracker phone app, so this web version doesn't get them. Check SMRT or SBS Transit on X for updates."};
+            if (!APP && !SIM.alert) return {known: false, note: "Disruption alerts come from LTA through the MRT Tracker phone app, so this web version doesn't get them. Check SMRT or SBS Transit on X for updates."};
             if (!alertState) return {known: false, note: "There's no word from LTA yet. Open Updates to check again."};
             const codes = k ? aCodesOf(k) : null;
             const segs = alertState.status === 2 ? alertState.segments.filter(sg => !codes || (sg.lines || [sg.line]).some(c => codes.includes(c))) : [];
@@ -3784,7 +3817,7 @@ jobs:
           ];
           const aRunTool = (name, input) => { const t = A_TOOLS.find(x => x.name === name); if (!t) throw new Error("Unknown tool"); return t.run(input || {}); };
           function aRules(){
-            const n = sgNow(), d = new Date(Date.now() + 8 * 3600e3);
+            const n = sgNow(), d = new Date(simNow() + 8 * 3600e3);
             const day = d.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC"});
             return `You're the helper inside MRT Tracker, an app about Singapore's MRT and LRT lines, the Sentosa Express and the RTS Link (not open yet). It's ${day}, ${clockText(n.mins)} in Singapore.
           Answer the person's question about stations, lines, trains, train models, history, crowds, disruptions or getting around by train.
@@ -3793,7 +3826,7 @@ jobs:
           - For things the app doesn't have (fares, exits, facilities, buses), you may answer from general knowledge, but say it may be out of date and point to SMRT, SBS Transit or LTA.
           - If the question isn't about getting around Singapore, answer in one line and offer to help with trains.
           - Write for a phone screen: usually 1 to 4 short sentences, or a few "- " bullet points. Plain text; **bold** is fine; no headings, tables or links. Don't mention your tools or say you're checking.
-          - Use the app's names, like North-South Line and Circle Line, and station codes like NS17 where they help.`;
+          - Use the app's names, like North-South Line and Circle Line, and station codes like NS17 where they help.${simOn() ? "\n- The app is in test mode: the time and some data (crowds, disruptions, weather) may be pretend. Answer from the tools as usual." : ""}`;
           }
           /* The conversation so far, as plain turns (newest last), without the question being asked now.
              Starts on a question, and back-to-back turns from the same side are joined. */
@@ -3982,6 +4015,186 @@ jobs:
             else if (t === "hmd") histOpen("model", v);
           });
           window.addEventListener("online", aPaintMode); window.addEventListener("offline", aPaintMode);
+          /* ---------- Test mode (MRT Dev only) ----------
+             A pretend clock (any date and time, at up to 60 times speed), and fake platform crowds, a fake
+             disruption and fake weather, for trying features without waiting for them to happen. A banner
+             shows whenever it's on, fake alerts say TEST, nothing is saved, and Stop brings back the real data. */
+          const SIM_DEV = APP_CHANNEL === "dev";
+          let simOpen = false;
+          const sgDate = ms => new Date(ms + 8 * 3600e3);
+          const sgIso = ms => sgDate(ms).toISOString().slice(0, 10);
+          function simAddDays(iso, n){ const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+          const isoDow = iso => new Date(iso + "T00:00:00Z").getUTCDay();
+          function simFind(test, from){ let iso = from; for (let i = 0; i < 400; i++){ if (test(iso)) return iso; iso = simAddDays(iso, 1); } return from; }
+          const simLabel = iso => { const d = new Date(iso + "T00:00:00Z"); return `${SHORT_DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${LONG_MONTHS[d.getUTCMonth()].slice(0, 3)}`; };
+          /* Handy moments to jump to: [label, date, time, note]. */
+          function simPresets(){
+            const today = sgIso(realNow());
+            const wd = simFind(i => isoDow(i) >= 1 && isoDow(i) <= 5 && !PH_DAYS[i] && !EXT_DAYS[i], simAddDays(today, 1));
+            const sat = simFind(i => isoDow(i) === 6 && !PH_DAYS[i] && !EXT_DAYS[i], simAddDays(today, 1));
+            const sun = simFind(i => isoDow(i) === 0 && !PH_DAYS[i], simAddDays(today, 1));
+            const ph = simFind(i => !!PH_DAYS[i], today);
+            const exts = Object.keys(EXT_LAST).sort(), ext = exts.filter(k => k >= today)[0] || exts[exts.length - 1];
+            return [
+              ["Weekday 8am peak", wd, "08:00", simLabel(wd)], ["Weekday 2pm", wd, "14:00", simLabel(wd)], ["Weekday 6pm peak", wd, "18:00", simLabel(wd)],
+              ["Last trains 11.45pm", wd, "23:45", simLabel(wd)], ["Before first train 5.20am", wd, "05:20", simLabel(wd)],
+              ["Saturday 2pm", sat, "14:00", simLabel(sat)], ["Sunday 9am", sun, "09:00", simLabel(sun)],
+              ["Public holiday 11am", ph, "11:00", `${simLabel(ph)}, ${(PH_DAYS[ph] || "").replace(" (observed)", "")}`],
+              ...(ext ? [["Extended night 12.15am", simAddDays(ext, 1), "00:15", `after ${simLabel(ext)}, ${EXT_DAYS[ext] || "extended service"}`]] : [])
+            ];
+          }
+          function simTimeAt(iso, hhmm){ SIM.time = true; SIM.base = Date.parse(`${iso}T${hhmm}:00+08:00`); SIM.realBase = realNow(); simChanged(); }
+          function simSpeed(x){
+            if (!SIM.time){ SIM.time = true; SIM.base = realNow(); }
+            else SIM.base = simNow();
+            SIM.realBase = realNow(); SIM.speed = x; simChanged();
+          }
+          function simRealTime(){ SIM.time = false; SIM.speed = 1; simChanged(); }
+          function simEst(on){ SIM.est = !!on; simChanged(); }
+
+          /* Fake platform crowds: random, rush hour (busy in the city and at interchanges), or busy everywhere. */
+          function simCrowd(kind){
+            SIM.crowd = kind || null;
+            if (!kind){ crowd = store.get("mrt.crowd", null); simChanged(); refreshCrowd(true); return; }
+            const levels = {}, rp = MSTN.find(e => e.name === "Raffles Place");
+            for (const e of MSTN) for (const x of e.codes){
+              if (levels[x.code]) continue;
+              const r = Math.random(), d = rp ? Math.hypot(e.x - rp.x, e.y - rp.y) : 9e9;
+              levels[x.code] = kind === "high" ? "h"
+                : kind === "rush" ? (d < 3500 || e.codes.length > 1 ? "h" : d < 9000 ? (r < 0.6 ? "m" : "h") : (r < 0.5 ? "l" : "m"))
+                : (r < 0.5 ? "l" : r < 0.8 ? "m" : "h");
+            }
+            const t = realNow();
+            crowd = {at: t, start: new Date(t - 5 * 60e3).toISOString(), end: new Date(t + 5 * 60e3).toISOString(), levels, test: true};
+            simChanged();
+          }
+          /* A fake disruption on part of a line, in LTA's own format, so it goes through the same code as a real one. */
+          const SIM_ALERTS = ["NSL", "EWL", "NEL", "CCL", "DTL", "TEL"];
+          function simAlert(code){
+            SIM.alert = code || null;
+            if (!code){ alertState = store.get("mrt.alerts", null); simChanged(); if (APP) refreshAll(); return; }
+            const L = LINES[code], act = activeStations(L, sgNow().iso), i = Math.max(1, Math.floor(act.length * 0.35)), seg = act.slice(i, i + 4);
+            const codes = seg.map(s => s[0]).join(","), a = seg[0][1], b = seg[seg.length - 1][1], d = sgDate(simNow());
+            const body = JSON.stringify({value: {Status: 2,
+              AffectedSegments: [{Line: code, Direction: "Both", Stations: codes, FreePublicBus: codes, FreeMRTShuttle: "", MRTShuttleDirection: ""}],
+              Message: [{Content: `TEST ONLY, not a real alert. ${L.name}: no train service between ${a} and ${b} due to a track fault. Free regular bus services are available between ${a} and ${b}.`,
+                CreatedDate: d.toISOString().slice(0, 19).replace("T", " ")}]}});
+            alertState = parseAlerts(body); alertState.test = true; alertState.at = simNow();
+            simChanged();
+          }
+          /* Fake weather, built in data.gov.sg's format and read by the same code as the real thing. */
+          const SIM_AREAS = [["Ang Mo Kio", 1.375, 103.839], ["Bedok", 1.321, 103.924], ["Bishan", 1.3508, 103.839], ["Boon Lay", 1.304, 103.701], ["Bukit Batok", 1.353, 103.754],
+            ["Bukit Merah", 1.277, 103.819], ["Bukit Panjang", 1.362, 103.772], ["Changi", 1.357, 103.987], ["Choa Chu Kang", 1.384, 103.747], ["City", 1.292, 103.844],
+            ["Clementi", 1.315, 103.76], ["Geylang", 1.318, 103.884], ["Hougang", 1.3612, 103.886], ["Jurong East", 1.326, 103.737], ["Jurong West", 1.3404, 103.705],
+            ["Kallang", 1.312, 103.862], ["Marine Parade", 1.297, 103.891], ["Novena", 1.327, 103.826], ["Pasir Ris", 1.37, 103.949], ["Punggol", 1.401, 103.904],
+            ["Queenstown", 1.291, 103.78], ["Sembawang", 1.445, 103.818], ["Sengkang", 1.384, 103.891], ["Serangoon", 1.357, 103.865], ["Tampines", 1.345, 103.944],
+            ["Toa Payoh", 1.3343, 103.8563], ["Woodlands", 1.432, 103.786], ["Yishun", 1.418, 103.839], ["Sentosa", 1.243, 103.832], ["Mandai", 1.41, 103.778]];
+          const SIM_WEATHER = [["storm", "Storm in the north"], ["rain", "Rain everywhere"], ["west", "Showers in the west"], ["haze", "Haze"], ["clear", "Clear"]];
+          function simWeather(kind){
+            SIM.weather = kind || null;
+            if (!kind){ wx = null; wxClouds = null; wxLast = 0; simChanged(); refreshWeather(true); return; }
+            const m = sgNow().mins % 1440, night = m < 420 || m >= 1140;
+            const fair = night ? "Fair (Night)" : "Fair (Day)", partly = night ? "Partly Cloudy (Night)" : "Partly Cloudy (Day)";
+            const pick = (la, lo) => kind === "storm" ? (la > 1.365 ? ["Heavy Thundery Showers with Gusty Winds", 2.8] : la > 1.335 ? ["Thundery Showers", 0.7] : ["Cloudy", 0])
+              : kind === "rain" ? ["Heavy Rain", 1.2 + Math.random() * 2]
+              : kind === "west" ? (lo < 103.78 ? ["Showers", 0.4 + Math.random() * 0.8] : [partly, 0])
+              : kind === "haze" ? ["Hazy", 0] : [fair, 0];
+            const t = realNow(), iso = new Date(t).toISOString(), areas = SIM_AREAS.map(([name, la, lo]) => { const [fc, mm] = pick(la, lo); return {name, la, lo, fc, mm: Math.round(mm * 10) / 10}; });
+            const feed = val => ({data: {stations: areas.map(a => ({id: "T-" + a.name, name: a.name + " (test)", location: {latitude: a.la, longitude: a.lo}})),
+              readings: [{timestamp: iso, data: areas.map(a => ({stationId: "T-" + a.name, value: val(a)}))}]}});
+            const fc = wxForecast({data: {area_metadata: areas.map(a => ({name: a.name, label_location: {latitude: a.la, longitude: a.lo}})),
+              items: [{update_timestamp: iso, valid_period: {text: "next 2 hours, test"}, forecasts: areas.map(a => ({area: a.name, forecast: a.fc}))}]}});
+            const rain = wxReadings(feed(a => a.mm)), wet = kind === "storm" || kind === "rain";
+            const temp = wxReadings(feed(() => Math.round((wet ? 24.5 + Math.random() : 29 + Math.random() * 2) * 10) / 10));
+            const lightning = kind === "storm" ? areas.filter(a => a.la > 1.38).slice(0, 4).map(a => { const [x, y] = wxXY(a.la, a.lo); return {x, y}; }) : [];
+            wx = {got: t, fc, rain, temp, lightning, grid: wxGrid(rain), at: iso, test: true,
+              wind: {from: kind === "storm" ? 45 : kind === "haze" ? 225 : 30, knots: kind === "storm" ? 14 : kind === "haze" ? 3 : 7}};
+            wxClouds = null; simChanged();
+          }
+          function simStop(){
+            SIM.time = false; SIM.speed = 1; SIM.est = false;
+            if (SIM.crowd) simCrowd(null);
+            if (SIM.alert) simAlert(null);
+            if (SIM.weather) simWeather(null);
+            simChanged();
+          }
+          function simChanged(){
+            renderAll(); mDirty = true;
+            try { tick(); } catch(e){}
+            if (typeof paintCrowd === "function") paintCrowd();
+            paintWx(); aPaintMode();
+            if (mSel) mapInfo();
+            simPaint();
+          }
+
+          /* --- the banner and the panel --- */
+          function simBarText(){
+            const parts = [];
+            if (SIM.time){ const n = sgNow(); parts.push(`pretend time ${dayText(n).split(" · ")[0]} ${clockText(n.mins)}${SIM.speed > 1 ? ` (${SIM.speed}× speed)` : ""}`); }
+            if (SIM.est) parts.push("estimated times only");
+            if (SIM.crowd) parts.push("fake crowds");
+            if (SIM.alert) parts.push(`fake ${LINES[SIM.alert].name} disruption`);
+            if (SIM.weather) parts.push("fake weather");
+            return parts.join(" · ");
+          }
+          function simPaint(sheetToo = true){
+            const bar = $("simBar"); if (!bar) return;
+            const on = SIM_DEV && simOn();
+            bar.hidden = !on;
+            if (on) setHTML(bar, `<span><b>Test mode:</b> ${esc(simBarText())}</span><button type="button" data-sim="open">Change</button><button type="button" data-sim="stop">Stop</button>`);
+            $("liveLabel").textContent = SIM.time ? (SIM.speed > 1 ? `Test ${SIM.speed}×` : "Test") : "Live";
+            if (simOpen && sheetToo) simPaintSheet();
+          }
+          function simPaintSheet(){
+            const chip = (attrs, label, on, sub) => `<button type="button" class="hchip" ${attrs} aria-pressed="${!!on}">${esc(label)}${sub ? ` <small>${esc(sub)}</small>` : ""}</button>`;
+            const at = (() => { const d = sgDate(simNow()); return d.toISOString().slice(0, 16); })();
+            const atKey = SIM.time ? sgDate(SIM.base).toISOString().slice(0, 16) : "";
+            setHTML($("simSheet"), `
+              <div class="sim-h"><h2 id="simTitle">Test mode</h2><button type="button" data-sim="close" aria-label="Close">×</button></div>
+              <p>Fake time and data for trying features. None of it is real, and none of it is saved: closing the app ends it.</p>
+              <section><h3>Time</h3>
+                <div class="sim-row">${chip('data-sim="real"', "Real time", !SIM.time)}${simPresets().map(([l, iso, t, note]) => chip(`data-sim="time" data-iso="${iso}" data-t="${t}"`, l, atKey === `${iso}T${t}`, note)).join("")}</div>
+                <div class="sim-at"><input type="datetime-local" id="simAt" step="60" value="${at}" aria-label="Pretend date and time (Singapore)"><button type="button" class="btn ghost" data-sim="go">Go</button></div>
+                <h3 style="margin-top:10px">Speed</h3>
+                <div class="sim-row">${[1, 10, 60].map(x => chip(`data-sim="speed" data-x="${x}"`, `${x}×`, SIM.speed === x)).join("")}</div>
+              </section>
+              ${TT ? `<section><h3>Train times</h3><div class="sim-row">${chip('data-sim="est" data-v="0"', "LTA timetable", !SIM.est)}${chip('data-sim="est" data-v="1"', "Estimates only", SIM.est)}</div></section>` : ""}
+              <section><h3>Platform crowds</h3><div class="sim-row">${chip('data-sim="crowd" data-v=""', "Real", !SIM.crowd)}${[["random", "Random"], ["rush", "Rush hour"], ["high", "All high"]].map(([k, l]) => chip(`data-sim="crowd" data-v="${k}"`, l, SIM.crowd === k)).join("")}</div></section>
+              <section><h3>Disruption</h3><div class="sim-row">${chip('data-sim="alert" data-v=""', "Real", !SIM.alert)}${SIM_ALERTS.map(c => chip(`data-sim="alert" data-v="${c}"`, LINES[c].name, SIM.alert === c)).join("")}</div></section>
+              <section><h3>Weather</h3><div class="sim-row">${chip('data-sim="weather" data-v=""', "Real", !SIM.weather)}${SIM_WEATHER.map(([k, l]) => chip(`data-sim="weather" data-v="${k}"`, l, SIM.weather === k)).join("")}</div></section>
+              <button type="button" class="btn" data-sim="stop" ${simOn() ? "" : "disabled"}>Stop test mode</button>`);
+          }
+          function simShow(open){
+            simOpen = open;
+            $("simSheet").hidden = $("simBg").hidden = !open;
+            document.body.classList.toggle("sheet-open", open);
+            if (open){ simPaintSheet(); $("simSheet").focus(); }
+          }
+          function simClick(ev){
+            const b = ev.target.closest("[data-sim]"); if (!b) return;
+            const k = b.dataset.sim, v = b.dataset.v;
+            if (k === "open") simShow(true);
+            else if (k === "close") simShow(false);
+            else if (k === "stop"){ simStop(); simShow(false); }
+            else if (k === "real") simRealTime();
+            else if (k === "time") simTimeAt(b.dataset.iso, b.dataset.t);
+            else if (k === "go"){ const val = $("simAt").value; if (/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(val)) simTimeAt(val.slice(0, 10), val.slice(11, 16)); }
+            else if (k === "speed") simSpeed(+b.dataset.x);
+            else if (k === "est") simEst(v === "1");
+            else if (k === "crowd") simCrowd(v);
+            else if (k === "alert") simAlert(v);
+            else if (k === "weather") simWeather(v);
+          }
+          if (SIM_DEV){
+            $("devTag").onclick = () => simShow(!simOpen);
+            $("simBar").addEventListener("click", simClick);
+            $("simSheet").addEventListener("click", simClick);
+            $("simBg").onclick = () => simShow(false);
+            setInterval(() => { if (simOn()) simPaint(false); }, 1000);
+            const prevBack = window.appBack;
+            window.appBack = () => simOpen ? (simShow(false), true) : prevBack();
+          }
+
           /* Which app this is: "dev" (MRT Dev, for trying new features) or "beta" (MRT Tracker). */
           if (APP_CHANNEL === "dev"){ $("devTag").hidden = false; document.title = "MRT Dev"; }
           renderAll();
