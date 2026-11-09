@@ -4246,3 +4246,4 @@ jobs:
             gh release create latest "$APK" version.json --repo "$PUB_REPO" --title "MRT Tracker $VN" \
               --notes "Open MRT Tracker and tap Update, or download mrt-tracker.apk to install."
           fi
+concurrency: 
