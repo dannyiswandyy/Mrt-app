@@ -1,4 +1,4 @@
-# Singapore MRT Tracker — Android Dev App
+# Singapore MRT Tracker
 
 A Singapore MRT/LRT tracking app focused on live train information, route/map visualisation, train model information, and Google travel-time comparison.
 
