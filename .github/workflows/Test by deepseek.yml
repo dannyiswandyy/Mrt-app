@@ -1,6 +1,5 @@
 /* Layout: a station-signage board. One line at a time, drawn as a vertical track
-   with two lanes (one per direction); trains slide down/up the lanes in real time. */
-:root{
+   with two lanes (one per direction); trains slide down/up the lanes in real time.
   --bg:#eef1f4; --panel:#ffffff; --fg:#14181d; --muted:#5b6672; --rule:#d6dce3;
   --track:#c7cfd8; --soft:#e3e8ee; --chip:#14181d; --chipfg:#ffffff; --warn:#a35c00; --warnbg:#fff2dc;
   --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
