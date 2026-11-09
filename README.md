@@ -13,8 +13,6 @@ The whole app lives in a single GitHub Actions workflow file. Saving that file b
 | Release | **latest** | **dev** (pre-release) |
 | App file | `mrt-tracker.apk` | `mrt-dev.apk` |
 
-Both apps can be installed on the same phone. MRT Dev shows a **DEV** badge and has a test mode. New features go into MRT Dev first, and move into MRT Tracker once they've been tried.
-
 ## What the app does
 
 - **Map:** every line laid out by real station locations, with moving trains, satellite photos, and 3D buildings when you zoom in on a station.
