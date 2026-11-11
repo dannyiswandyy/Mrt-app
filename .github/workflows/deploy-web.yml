@@ -34,9 +34,9 @@ jobs:
           rm -rf _site/tools
           mkdir -p _site/data
 
-      # The timetable and buildings are made the same way the normal app build makes them, from the tools in
-      # build-android.yml (read only; that workflow isn't changed or run). If either can't be made, the site
-      # still works: estimated train times, and no buildings on the map.
+      # The timetable, buildings and RTS Link / Sentosa Express tracks are made the same way the normal app
+      # build makes them, from the tools in build-android.yml (read only; that workflow isn't changed or run).
+      # If any can't be made, the site still works: estimated train times, no buildings, and those two lines stay straight.
       - name: Get the app's data tools
         id: tools
         continue-on-error: true
@@ -73,6 +73,15 @@ jobs:
           python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache
           if [ -f mrt-tracker-app/app/src/main/assets/buildings.json ]; then cp mrt-tracker-app/app/src/main/assets/buildings.json _site/data/buildings.json; fi
 
+      - name: RTS Link and Sentosa Express tracks (OpenStreetMap)
+        if: steps.tools.outcome == 'success'
+        continue-on-error: true
+        run: |
+          if [ -f mrt-tracker-app/tools/build_tracks.py ]; then
+            python3 mrt-tracker-app/tools/build_tracks.py mrt-tracker-app osm-cache
+            if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
+          fi
+
       - name: Save buildings for next time
         if: hashFiles('osm-fresh') != ''
         uses: actions/cache/save@v4
@@ -83,7 +92,7 @@ jobs:
       - name: Check the site
         run: |
           # an empty file when there's no data: the site then uses estimates / no buildings, without a "not found"
-          for f in timetable buildings; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
+          for f in timetable buildings tracks; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
           ls -la _site _site/data
           if grep -rlE 'sha256[-]|integ[r]ity=' _site --include='*.html' --include='*.js'; then echo "::error::fingerprints found"; exit 1; fi
           grep -q "script-src 'self' 'unsafe-inline'" _site/index.html

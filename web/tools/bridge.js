@@ -1,14 +1,17 @@
 /* ---------- MRT Tracker website: stand-in for the Android app's bridge ----------
-   The phone app gives this page window.MrtApp (LTA data with the app's key, news, the timetable and buildings
-   packed into the app). On the website:
-   * the timetable and buildings come from data/ next to this page (made when the site is deployed);
+   The phone app gives this page window.MrtApp (LTA data with the app's key, news, the timetable, buildings
+   and track shapes packed into the app). On the website:
+   * the timetable, buildings and RTS Link / Sentosa Express tracks come from data/ next to this page
+     (made when the site is deployed);
    * LTA alerts and crowds, rail news and the Live cam lookup go through the data relay set in config.js
      (a Cloudflare Worker that holds the LTA key; the key is never in this site). Without it, train times
      are estimates from the timetable and the page says live data is unavailable;
    * NEA weather goes through the relay too when there is one (shared and cached), otherwise straight to
      data.gov.sg, which allows it;
-   * what only the phone app can do (in-app updates, saving LTA's timetable file, train spotting) is left out,
-     so the page hides those buttons. */
+   * what only the phone app can do (in-app updates, saving LTA's timetable file, the home-screen widget,
+     Android notifications and trip alarms) is left out, so the page hides those buttons;
+   * sharing the spotter's log uses the browser's share sheet when it has one; otherwise the page copies
+     the text itself. Online/offline follows the browser. */
 (() => {
   const C = window.MRT_WEB_CONFIG || {}, PROXY = String(C.proxy || "").trim().replace(/\/+$/, "");
   const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "__BUILD__"};
@@ -29,14 +32,17 @@
     return null;
   }
 
-  let tt = "", bld = "";
+  let tt = "", bld = "", trk = "";
   const bridge = {
     getChannel: () => "beta",                      // the normal MRT Tracker, not MRT Dev
+    getVersion: () => W.build,
     getTimetable: () => tt,
     getBuildings: () => bld,
+    getTracks: () => trk,                          // "" if this deploy has none; the page then draws those two lines straight
     hasKey: () => W.live,
     builtInKey: () => W.live,
     hasAi: () => W.ai,
+    isOnline: () => navigator.onLine !== false,
     fetch(id, url){
       const to = route(url);
       if (!to){ reply(id, 0, ""); return; }
@@ -47,10 +53,17 @@
       send(id, PROXY + "/ai", {method: "POST", headers: {"content-type": "application/json"}, body: request});
     }
   };
+  if (navigator.share){
+    bridge.share = (text) => {
+      if (text == null) return;
+      navigator.share({title: "My MRT Spotter's log", text: String(text)}).catch(() => {});
+    };
+  }
 
   const health = PROXY ? within(fetch(PROXY + "/health", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null), 4000) : Promise.resolve(null);
-  Promise.all([getText("data/timetable.json", 8000), health]).then(([t, h]) => {
+  Promise.all([getText("data/timetable.json", 8000), getText("data/tracks.json", 8000), health]).then(([t, tr, h]) => {
     tt = t && t.trim().startsWith("{") && t.includes('"lines"') ? t : "";
+    trk = tr && tr.trim().startsWith("{") && tr.includes('"paths"') ? tr : "";
     if (h && h.ok){ W.relay = true; W.live = !!h.lta; W.ai = !!h.ai; W.yt = !!h.yt; }
     if (W.yt) bridge.liveLookup = (id, handle) => send(id, PROXY + "/yt?handle=" + encodeURIComponent(handle));
     window.MrtApp = bridge;
