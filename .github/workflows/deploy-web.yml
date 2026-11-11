@@ -1,0 +1,97 @@
+# MRT Tracker website: publishes the web/ folder to GitHub Pages.
+# One-time setup: repository Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# The site's LTA data goes through the relay in worker/ (see worker/README.md); no key is ever put in the site.
+name: Deploy MRT Tracker website
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare the site
+        run: |
+          mkdir -p _site
+          cp -R web/. _site/
+          rm -rf _site/tools
+          mkdir -p _site/data
+
+      # The timetable and buildings are made the same way the normal app build makes them, from the tools in
+      # build-android.yml (read only; that workflow isn't changed or run). If either can't be made, the site
+      # still works: estimated train times, and no buildings on the map.
+      - name: Get the app's data tools
+        id: tools
+        continue-on-error: true
+        run: |
+          python3 -c "import yaml" 2>/dev/null || pip install --quiet pyyaml
+          python3 - <<'PY'
+          import yaml
+          wf = yaml.safe_load(open(".github/workflows/build-android.yml"))
+          steps = next(iter(wf["jobs"].values()))["steps"]
+          run = next(s["run"] for s in steps if s.get("name") == "Write the app project")
+          open("/tmp/write_app.sh", "w").write(run)
+          PY
+          bash -e /tmp/write_app.sh
+
+      - name: Train timetable (LTA GTFS)
+        if: steps.tools.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python3 mrt-tracker-app/tools/build_timetable.py mrt-tracker-app data/lta-timetable.json
+          if [ -f mrt-tracker-app/app/src/main/assets/timetable.json ]; then cp mrt-tracker-app/app/src/main/assets/timetable.json _site/data/timetable.json; fi
+
+      - name: Restore saved buildings
+        if: steps.tools.outcome == 'success'
+        uses: actions/cache/restore@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+          restore-keys: osm-buildings-v1-
+
+      - name: Buildings (OpenStreetMap)
+        if: steps.tools.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache
+          if [ -f mrt-tracker-app/app/src/main/assets/buildings.json ]; then cp mrt-tracker-app/app/src/main/assets/buildings.json _site/data/buildings.json; fi
+
+      - name: Save buildings for next time
+        if: hashFiles('osm-fresh') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+
+      - name: Check the site
+        run: |
+          # an empty file when there's no data: the site then uses estimates / no buildings, without a "not found"
+          for f in timetable buildings; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
+          ls -la _site _site/data
+          if grep -rlE 'sha256[-]|integ[r]ity=' _site --include='*.html' --include='*.js'; then echo "::error::fingerprints found"; exit 1; fi
+          grep -q "script-src 'self' 'unsafe-inline'" _site/index.html
+          grep -q 'id="mrt-main"' _site/index.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

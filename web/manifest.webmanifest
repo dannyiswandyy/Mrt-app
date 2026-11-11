@@ -1,0 +1,15 @@
+{
+  "name": "MRT Train Tracker",
+  "short_name": "MRT Tracker",
+  "description": "Live map of Singapore's MRT and LRT trains, next trains, disruptions and crowds.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14181d",
+  "theme_color": "#14181d",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

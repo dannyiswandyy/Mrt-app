@@ -1,0 +1,12 @@
+# MRT Tracker website: data relay. See README.md for setup.
+name = "mrt-relay"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# The website's address (scheme + host, no path, no "/" at the end). Several: separate with commas.
+ALLOWED_ORIGINS = "https://dannyiswandyy.github.io"
+
+# Secrets are NOT written here. Set them with:
+#   npx wrangler secret put LTA_KEY
+#   npx wrangler secret put ANTHROPIC_API_KEY   (optional, for the Ask tab)
