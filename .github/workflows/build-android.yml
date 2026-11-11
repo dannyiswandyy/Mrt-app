@@ -3967,7 +3967,7 @@ jobs:
               }
           
               /** Keys are stored scrambled with a mask made from the app's original package name (the same for MRT Tracker). */
-              private String unscramble(String hx) {
+              static String unscramble(String hx) {
                   try {
                       if (hx == null || hx.isEmpty()) return "";
                       byte[] mask = java.security.MessageDigest.getInstance("SHA-256").digest("sg.mrttracker.app".getBytes(StandardCharsets.UTF_8));
@@ -4896,7 +4896,9 @@ jobs:
               "https://overpass.private.coffee/api/interpreter"]
           RADIUS = 400          # metres around each station
           Q = 0.5               # metres per stored unit
-          BATCH = 12            # stations per Overpass request
+          BATCH = 8             # stations per Overpass request (smaller parts answer faster and fail less)
+          TRY_SECONDS = 90      # longest wait for one server, so one stuck server can't use up the whole time
+          PART_SECONDS = 150    # longest time spent on one part before moving on to the next
           MAX_AGE_DAYS = 30
           DEADLINE = time.time() + float(os.environ.get("BUILDINGS_MAX_SECONDS", 8 * 60))   # stop asking after 8 minutes, so a slow day can't hold up the build
           LEVEL_M = 3.2
@@ -4952,25 +4954,38 @@ jobs:
                   lat, lon = to_latlon(x, y)
                   a = f"(around:{RADIUS},{lat:.6f},{lon:.6f})"
                   parts.append(f'way["building"]{a};relation["building"]["type"="multipolygon"]{a};')
-              query = f"[out:json][timeout:180];({''.join(parts)});out tags geom qt;"
+              query = f"[out:json][timeout:{TRY_SECONDS}];({''.join(parts)});out tags geom qt;"
               data = urllib.parse.urlencode({"data": query}).encode()
               last = None
+              stop = min(DEADLINE, time.time() + PART_SECONDS)
               for attempt in range(2):
-                  for url in ENDPOINTS:
-                      left = DEADLINE - time.time()
+                  # start with the server that answered last time, then try the other mirrors
+                  for k in range(len(ENDPOINTS)):
+                      url = ENDPOINTS[(GOOD[0] + k) % len(ENDPOINTS)]
+                      left = stop - time.time()
                       if left < 5:
-                          raise RuntimeError("out of time")
+                          raise RuntimeError(("out of time" if stop >= DEADLINE else "no answer in time") + (f"; last problem: {last}" if last else ""))
                       try:
                           req = urllib.request.Request(url, data=data, headers={"User-Agent": "MRTTracker-build/1.0 (GitHub Actions; 3D station buildings)"})
-                          with urllib.request.urlopen(req, timeout=min(200, left)) as r:
+                          with urllib.request.urlopen(req, timeout=min(TRY_SECONDS + 15, left)) as r:
                               j = json.loads(r.read().decode("utf-8"))
                           if "elements" in j and not j.get("remark", "").lower().startswith("runtime error"):
+                              GOOD[0] = ENDPOINTS.index(url)
                               return j["elements"]
-                          last = j.get("remark", "no elements")
+                          last = urllib.parse.urlsplit(url).netloc + ": " + str(j.get("remark", "no elements"))[:120]
                       except Exception as e:
-                          last = f"{type(e).__name__}: {e}"
-                      time.sleep(3 + attempt * 7)
+                          last = urllib.parse.urlsplit(url).netloc + f": {type(e).__name__}: {e}"
+                      time.sleep(2 + attempt * 5)
               raise RuntimeError(last)
+          
+          
+          GOOD = [0]            # index of the server that answered last
+          
+          
+          def part_file(points):
+              """Where one part's buildings are kept between builds, so a part that downloaded isn't asked for again."""
+              k = hashlib.sha1(json.dumps([RADIUS, Q, [(round(x, -1), round(y, -1)) for x, y in points]]).encode()).hexdigest()[:12]
+              return os.path.join(CACHE, "parts", k + ".json") if CACHE else None
           
           
           def num(v):
@@ -5056,7 +5071,8 @@ jobs:
               return out
           
           
-          def pack(elements):
+          def pack(elements, rows=False):
+              """Packed outlines; with rows=True, [id, y, outline] rows so parts can be joined without repeats."""
               seen, out = set(), []
               for el in elements:
                   k = (el.get("type"), el.get("id"))
@@ -5080,9 +5096,11 @@ jobs:
                       flat = [int(round(min(h, 400)))] + list(u[0])
                       for (ax, ay), (bx, by) in zip(u, u[1:]):
                           flat += [bx - ax, by - ay]
-                      out.append((sum(p[1] for p in pts) / len(pts), flat))
+                      out.append((sum(p[1] for p in pts) / len(pts), flat, f"{k[0][0]}{k[1]}"))
+              if rows:
+                  return [[i, round(y, 1), f] for y, f, i in out]
               out.sort(key=lambda t: t[0])
-              return [f for _, f in out]
+              return [f for _, f, _ in out]
           
           
           def use(path, why):
@@ -5108,25 +5126,47 @@ jobs:
                       use(cached, "✅ Using the saved copy")
                       return
               say(f"Downloading buildings within {RADIUS} m of {len(pts)} station areas from OpenStreetMap…")
-              elements, failed, in_a_row = [], 0, 0
+              rows, failed, fetched, reused = {}, 0, 0, 0
               parts = math.ceil(len(pts) / BATCH)
               for n, i in enumerate(range(0, len(pts), BATCH)):
-                  if in_a_row >= 2 or time.time() > DEADLINE:
-                      failed += parts - n
-                      say("⚠️ OpenStreetMap isn't answering, so the rest was skipped.")
-                      break
+                  chunk = pts[i:i + BATCH]
+                  pf = part_file(chunk)
                   try:
-                      elements += overpass(pts[i:i + BATCH])
-                      in_a_row = 0
+                      saved = json.load(open(pf)) if pf and os.path.exists(pf) else None
+                      if saved and (time.time() - time.mktime(time.strptime(saved["at"], "%Y-%m-%d"))) / 86400 < MAX_AGE_DAYS:
+                          for r in saved["rows"]:
+                              rows[r[0]] = r
+                          reused += 1
+                          continue
+                  except Exception:
+                      pass
+                  if time.time() > DEADLINE - 5:      # out of time: skip the download, but still use any saved parts
+                      failed += 1
+                      continue
+                  try:                                # one part failing doesn't stop the others
+                      got = pack(overpass(chunk), rows=True)
+                      for r in got:
+                          rows[r[0]] = r
+                      fetched += 1
+                      if pf:
+                          os.makedirs(os.path.dirname(pf), exist_ok=True)
+                          with open(pf, "w") as f:
+                              json.dump({"at": time.strftime("%Y-%m-%d"), "rows": got}, f, separators=(",", ":"))
                   except Exception as e:
                       failed += 1
-                      in_a_row += 1
                       say(f"⚠️ Part {n + 1} of {parts} didn't download ({e}).")
-                  time.sleep(2)
+                  time.sleep(1)
+              if reused:
+                  say(f"♻️ {reused} of {parts} parts came from the copy saved by an earlier build.")
+              if failed:
+                  say(f"⚠️ {failed} of {parts} parts didn't download this time; the next build asks only for those.")
+              if fetched and CACHE:
+                  # tells the workflow there are new parts worth saving, so the next build carries on from here
+                  open(os.path.join(os.path.dirname(os.path.abspath(CACHE)), "osm-fresh"), "w").write(time.strftime("%Y-%m-%d"))
               if failed and old:
                   use(cached, f"⚠️ {failed} of {parts} parts didn't download, so the app keeps the saved copy")
                   return
-              b = pack(elements)
+              b = [r[2] for r in sorted(rows.values(), key=lambda r: r[1])]
               if not b and old:
                   use(cached, "⚠️ No buildings came back, so the app keeps the saved copy")
                   return
@@ -5393,15 +5433,21 @@ jobs:
               if not key:
                   say("⚠️ No LTA key found in the app, so the timetable was skipped.")
                   finish(False)
+              stage = "asking LTA DataMall (GTFSScheduleTrain) for the download link"
               try:
                   meta = http(API, {"AccountKey": key, "accept": "application/json"})
                   link = find_link(json.loads(meta))
                   if not link:
                       raise ValueError("LTA's reply had no download link: " + meta[:200].decode("utf-8", "replace"))
+                  stage = "downloading the timetable file from LTA's link"
                   data = http(link)
                   z = zipfile.ZipFile(io.BytesIO(data))
               except Exception as e:
-                  say(f"⚠️ Couldn't download the timetable from LTA ({e}).")
+                  hint = ""
+                  if "404" in str(e):
+                      hint = (" LTA's server doesn't have the file right now." if "file" in stage else
+                              " DataMall didn't find this API for the key; check the key is current and has access to the GTFS train APIs.")
+                  say(f"⚠️ Couldn't download the timetable from LTA while {stage} ({e}).{hint}")
                   finish(False)
 
               return process(z, data)

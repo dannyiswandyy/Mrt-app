@@ -2,7 +2,7 @@
 
 A Singapore MRT/LRT tracker for Android, plus a website at [dannyiswandyy.github.io/Mrt-app](https://dannyiswandyy.github.io/Mrt-app/). It shows the network map (2D and 3D), trains and timings, station and train-model information, weather, news, disruptions, and a trip planner.
 
-**MRT Tracker** (the public / beta app you use day to day) is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` under Releases.
+**MRT Tracker** (the public / beta app you use day to day) is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` under Releases. 3D buildings are downloaded in smaller parts with retries and cached between builds, so when OpenStreetMap is slow the missing station areas fill in over the next few builds. If the LTA timetable can't be downloaded, the build summary says whether the key was refused or the file link failed, and the app falls back to estimates.
 
 A separate private dev build exists for the maintainer's own testing.
 
