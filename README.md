@@ -39,7 +39,7 @@ The website is a full web version of the **normal** (public) app, not MRT Dev, a
 
 **[https://dannyiswandyy.github.io/Mrt-app/](https://dannyiswandyy.github.io/Mrt-app/)**
 
-It is published by GitHub Pages (the `web/` folder, workflow `.github/workflows/deploy-web.yml`). Anyone can open it; no GitHub account is needed.
+It is published by GitHub Pages (the `web/` folder, workflow `.github/workflows/deploy-web.yml`). Anyone can open it; no GitHub account is needed. The deploy also packs LTA's timetable, 3D buildings and RTS Link / Sentosa Express tracks the same way the Android app build does. Without the tracks file, those two lines stay straight on the map.
 
 Live disruptions, crowds, news and LTA data go through an optional **Cloudflare Worker** relay so the LTA key is not exposed in the browser:
 

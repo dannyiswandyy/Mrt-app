@@ -9,7 +9,8 @@ and makes the few changes a browser needs:
     YouTube's player, with script-src 'unsafe-inline' (no fingerprints);
   * a small stand-in for the app's Android bridge (window.MrtApp) is added. It loads the timetable and
     buildings from web/data/, sends LTA, news and YouTube requests through the relay set in config.js,
-    and leaves out what only the phone app can do (in-app updates, timetable download, train spotting);
+    and leaves out what only the phone app can do (in-app updates, timetable download, the home widget,
+    Android notifications and trip alarms);
   * the Live cam uses web/livecam.html on this site instead of the app's built-in player address;
   * a few messages say "unavailable on this website" instead of talking about the phone app;
   * the web app manifest and service worker (offline start) are linked.
