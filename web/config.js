@@ -5,5 +5,5 @@
    unavailable. If the relay isn't on *.workers.dev, also add its address to connect-src in index.html
    (web/tools/make_web.py, CSP). */
 window.MRT_WEB_CONFIG = {
-  proxy: ""          // e.g. "https://mrt-relay.YOUR-NAME.workers.dev"
+  proxy: "https://mrt-relay.dannyiswandyy.workers.dev"
 };
