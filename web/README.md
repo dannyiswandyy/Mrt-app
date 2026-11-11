@@ -26,3 +26,5 @@ The normal MRT Tracker app (from `.github/workflows/build-android.yml`, not MRT 
 | Rail news | "unavailable on this website" | ✓ |
 | Ask tab | built-in answers | built-in, or Claude if `ANTHROPIC_API_KEY` is set on the relay |
 | In-app updates, LTA timetable download, train spotting | hidden (phone app only) | hidden |
+
+Deployed via GitHub Pages: https://dannyiswandyy.github.io/Mrt-app/
