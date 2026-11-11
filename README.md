@@ -2,10 +2,9 @@
 
 A Singapore MRT/LRT tracker for Android, plus a website at [dannyiswandyy.github.io/Mrt-app](https://dannyiswandyy.github.io/Mrt-app/). It shows the network map (2D and 3D), trains and timings, station and train-model information, weather, news, disruptions, and a trip planner.
 
-There are two Android apps, built from two workflow files in this repository. They can be installed side by side and keep their own settings:
+**MRT Tracker** (the public / beta app you use day to day) is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` under Releases.
 
-- **MRT Tracker** (the public / beta app you use day to day) is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` under Releases.
-- **MRT Dev** (a separate app for trying new features first) is built from `.github/workflows/build-android-dev.yml`. It has an orange icon and a DEV badge. Each build publishes `mrt-dev.apk` as a pre-release.
+A separate private dev build exists for the maintainer's own testing.
 
 ## Current features (MRT Tracker)
 
@@ -23,15 +22,6 @@ There are two Android apps, built from two workflow files in this repository. Th
 - Share the spotter's log, in-app update checking, and API timeout/failure handling with cached-data fallback
 - 3D buildings near stations (OpenStreetMap, packed at build time) and real track shapes for the **RTS Link** and **Sentosa Express** (also from OpenStreetMap at build time)
 - Tuned for typical phones: the map caches static layers and skips extra redraws, timers pause when the tab is in the background, 3D and the Live cam start only when you open them, search is debounced, and a few caches are capped. The arrows, shadows and direction of travel are unchanged.
-
-## Dev-only features (MRT Dev)
-
-These stay in MRT Dev until they are ready for the public app:
-
-- The **DEV** badge and **test mode** (sandbox): a pretend clock and fake crowds, disruptions and weather, for trying features at any time. They are never saved.
-- **Drive a train**: a driving game on the app's routes, with optional packed OpenBVE train sounds. Still in testing.
-- The Live cam **Train spotting [Test]** panel: watches the RailCam video for North-South Line trains and can correct NSL times. The public app's Live cam tab keeps the stream, Sound off, Check for live, Open in YouTube and the credit, but not this panel.
-- **Google Maps timing match**: compares the next LTA timetable departure with Google Maps transit routing (Routes API). It is only built into MRT Dev, and only when the `GOOGLE_MAPS_API_KEY` GitHub Actions secret is set.
 
 ## Website
 
@@ -60,7 +50,6 @@ Set these under **Settings → Secrets and variables → Actions**. Do not commi
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | Both Android apps (optional) | Lets the Ask tab use Claude. Without it, the Ask tab gives built-in answers. |
 | `RELEASES_TOKEN` | MRT Tracker only | Publishes the public update feed to the `mrt-tracker-releases` repo. |
-| `GOOGLE_MAPS_API_KEY` | **MRT Dev only** | Google Routes API key for the timing-match button. Restrict the key to the Routes API. It is not packed into the public app. |
 
 The LTA DataMall key used by the website belongs in the Cloudflare Worker secret `LTA_KEY`, not in this repository.
 
