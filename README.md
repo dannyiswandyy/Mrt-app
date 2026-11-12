@@ -45,6 +45,10 @@ When LTA's timetable isn't available for a line, the app estimates trains from h
 - **Updating counts:** the counts and short trips live in `NSL_TRAINS`, `EWL_TRAINS`, `CG_TRAINS`, `NEL_TRAINS`, `TEL_TRAINS`, `CCL_TRAINS` and `SHORT_PEAK` in the app page.
 - **Extended-service nights:** these are in `EXT_DAYS` and `EXT_LAST`. Add the date and each line's later last trains.
 
+## Timetable checks
+
+`.github/workflows/timetable-check.yml` runs on every push and pull request. It checks, in Node, how many trains are in service and the gap between them in `web/index.html`, for the North-South, East-West (including the Changi Airport branch), North East, Circle, Downtown and Thomson-East Coast lines, on weekdays, Saturdays, Sundays, public holidays and holiday eves, across the day's time bands. The Downtown Line keeps its usual gaps: 2.5 minutes in the weekday peaks, 4.5 minutes off-peak, and 7 minutes late. The same checks are run on the page packed inside `build-android.yml`, and those results have to match the website.
+
 ## Website
 
 The website is a full web version of the **normal** (public) app, not MRT Dev, at:
