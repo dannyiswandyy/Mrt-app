@@ -22,6 +22,7 @@ A separate private dev build exists for the maintainer's own testing.
 - Share the spotter's log, in-app update checking, and API timeout/failure handling with cached-data fallback
 - 3D buildings near stations (OpenStreetMap, packed at build time) and real track shapes for the **RTS Link** and **Sentosa Express** (also from OpenStreetMap at build time)
 - Tuned for typical phones: the map caches static layers and skips extra redraws, timers pause when the tab is in the background, 3D and the Live cam start only when you open them, search is debounced, and a few caches are capped. The arrows, shadows and direction of travel are unchanged.
+- App icon: Danny's train-front design (white train with a red and green stripe, yellow headlights and rails) on a dark rounded square, drawn as vector shapes that fit inside Android's adaptive-icon safe zone
 
 ## Train counts and timetable estimates
 
