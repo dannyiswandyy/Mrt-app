@@ -15,6 +15,7 @@ A separate private dev build exists for the maintainer's own testing.
 - Trip planner: the fastest way by train, with the next departures, changes, duration, arrival time, fare, and the route drawn on the map
 - Live weather (NEA via data.gov.sg), disruptions, crowds and news
 - Live cam tab (RailCam Singapore on YouTube): the stream, Sound off, Check for live, Open in YouTube, and credit
+- Live cam detection uses YouTube's mobile page, and if the canonical link is missing it reads the video id from videoDetails, so a live RailCam stream is not reported as not live
 - Home-screen widget for the next trains at your first saved station
 - Trip reminders from a planned trip, and disruption alerts for your saved lines (including while the app is closed)
 - Offline mode: saved map tiles and fonts still show when the connection drops
