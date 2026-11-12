@@ -1153,7 +1153,7 @@ body.on-map .hx-sheet{max-height:58vh}
 
   <footer>
     <p><b>How this works.</b> In the MRT Tracker phone app, trains and next-train times follow LTA's official train timetable, the same published schedule journey planners use, including public holidays. Where the timetable isn't available, they're estimated from typical frequencies and the operators' own station-to-station travel times. Either way, they show the schedule, so delays don't appear on the map; disruption notices from LTA appear under Updates.</p>
-    <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and Wikipedia (North-South Line) for the peak trips from Yishun. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. 3D buildings (phone app): © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
+    <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and SMRT for the off-peak trips ending at Joo Koon. How many North-South, East-West, Changi Airport branch, North East, Circle and Thomson-East Coast line trains are out, and the morning-peak trips from Yishun: SMRT's and SBS Transit's train duty rosters (Oct–Nov 2026) and a train run number roster sheet. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. 3D buildings (phone app): © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
   </footer>
 </div>
 
@@ -1218,7 +1218,7 @@ body.on-map .hx-sheet{max-height:58vh}
      the text itself. Online/offline follows the browser. */
 (() => {
   const C = window.MRT_WEB_CONFIG || {}, PROXY = String(C.proxy || "").trim().replace(/\/+$/, "");
-  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "2026.11.11-2037"};
+  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "2026.11.12-1013"};
   const within = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
   const getText = (u, ms) => within(fetch(u, {cache: "no-cache"}).then(r => r.ok ? r.text() : null).catch(() => null), ms);
   const reply = (id, code, body) => setTimeout(() => { if (window.__native) window.__native(id, code, body || ""); }, 0);
@@ -1314,34 +1314,87 @@ body.on-map .hx-sheet{max-height:58vh}
 
 /* ---------- Network data (as of Nov 2026) ---------- */
 const OPEN_TEL5 = "2026-12-26";
-/* How many North-South Line trains are out, from the line's train duty lists
-   (weekdays: 6 Nov 2026; extended service: 7 Nov 2026, a Saturday; Sundays: 1 Nov 2026; public holidays and
-   off-in-lieu days: 9 Nov 2026). [from minute of the day, trains].
-   The public holiday counts apply on PH_DAYS, and the extended-service counts on EXT_DAYS.
-   Normal Saturdays use the extended-service list until a normal Saturday list arrives.
-   Full-day trains run all day, (AM) ones join for the 7–9:30am peak, (PM) ones for the 5–8pm peak,
-   LN ones stay out late at night, and HD (half-day) ones are taken as running until 2pm. */
+/* How many North-South and East-West line trains are out: [from minute of the day, trains], counted run by run
+   from SMRT's train duty rosters for each kind of day:
+     weekdays 12 Nov 2026, Saturdays 31 Oct 2026, Sundays 1 Nov 2026, public holidays 9 Nov 2026 (Deepavali,
+     off-in-lieu day); extended-service nights keep their own list (7 Nov 2026).
+   Duties: FD (full day) runs from the morning until the evening peak ends (8pm), HD (half day) from the morning
+   until 2pm, (AM) only in the 7–9.30am peak, (PM) only in the 5–8pm peak, (OP) only between the peaks
+   (9.30am–5pm), and LN stays out late at night, so after 8pm the trains out are the LN ones. A train run number
+   roster sheet (Google Sheets, "NSL/EWL TRNs") gives the same weekday counts (NSL 69 in the morning peak, 67 in
+   the evening peak, 29 between them, 37 late; EWL 73, 68, 31, 44). Depot transfers (DNB TRF) aren't counted.
+   The public holiday counts apply on PH_DAYS, and the extended-service counts on EXT_DAYS. */
 const NSL_TRAINS = {
-  wd:  [[0, 31], [420, 69], [570, 31], [840, 29], [1020, 67], [1200, 46], [1380, 37]],
-  ext: [[0, 35], [420, 37], [570, 35], [840, 28], [1020, 39], [1200, 37], [1380, 36]],
-  sun: [[0, 35], [420, 39], [570, 35], [840, 28], [1020, 38], [1200, 38], [1380, 35]],
-  // public holidays: 25 full day and late night, 3 full day, 7 half day, 4 (AM), 10 (PM) and late night;
-  // it comes out the same as Sundays at every time of day
-  ph:  [[0, 35], [420, 39], [570, 35], [840, 28], [1020, 38], [1200, 38], [1380, 35]]
+  // weekdays: 38 (AM), 20 FD LN, 9 FD, 2 HD, 21 (PM), 17 (PM) LN
+  wd:  [[0, 31], [420, 69], [570, 31], [840, 29], [1020, 67], [1200, 37]],
+  // Saturdays: 27 FD LN, 1 FD, 7 HD, 2 (AM), 2 (PM), 9 (PM) LN
+  sat: [[0, 35], [420, 37], [570, 35], [840, 28], [1020, 39], [1200, 36]],
+  // Sundays: 25 FD LN, 3 FD, 7 HD, 4 (AM), 10 (PM) LN
+  sun: [[0, 35], [420, 39], [570, 35], [840, 28], [1020, 38], [1200, 35]],
+  // public holidays: the same mix as Sundays
+  ph:  [[0, 35], [420, 39], [570, 35], [840, 28], [1020, 38], [1200, 35]],
+  ext: [[0, 35], [420, 37], [570, 35], [840, 28], [1020, 39], [1200, 37], [1380, 36]]
 };
-NSL_TRAINS.sat = NSL_TRAINS.ext;      // until a normal Saturday list arrives
-/* The same for the East-West Line, from its duty lists (the Saturday one is the extended-service list).
-   (OP) trains are taken as running between the peaks, 9:30am to 5pm. The Sunday list matches the weekday one run for run. */
 const EWL_TRAINS = {
-  wd:  [[0, 32], [420, 73], [570, 32], [840, 31], [1020, 68], [1200, 49], [1380, 42]],
-  ext: [[0, 40], [420, 44], [570, 41], [840, 32], [1020, 46], [1200, 45], [1380, 41]],
-  sun: [[0, 32], [420, 73], [570, 32], [840, 31], [1020, 68], [1200, 49], [1380, 42]]
+  // weekdays: 41 (AM), 24 FD LN, 7 FD, 1 HD, 19 (PM), 18 (PM) LN
+  wd:  [[0, 32], [420, 73], [570, 32], [840, 31], [1020, 68], [1200, 42]],
+  // Saturdays: 30 FD LN, 1 FD, 1 (AM), 1 (OP), 12 (PM) LN
+  sat: [[0, 31], [420, 32], [570, 32], [1020, 43], [1200, 42]],
+  // Sundays and public holidays (same mix): 27 FD LN, 4 FD, 9 HD, 4 (AM), 1 (OP), 1 (PM), 14 (PM) LN
+  sun: [[0, 40], [420, 44], [570, 41], [840, 32], [1020, 46], [1200, 41]],
+  ph:  [[0, 40], [420, 44], [570, 41], [840, 32], [1020, 46], [1200, 41]],
+  ext: [[0, 40], [420, 44], [570, 41], [840, 32], [1020, 46], [1200, 45], [1380, 41]]
 };
-EWL_TRAINS.sat = EWL_TRAINS.ext;      // until a normal Saturday list arrives
-/* The Changi Airport branch, from its duty list (the same every day): 101 runs full day, 102 full day
-   and late night, and 103 joins for the 5–8pm peak (PM) and stays out late at night (LN).
-   As on the other lines, full-day-only trains are taken as running until 11pm. */
-const CG_TRAINS = [[0, 2], [1020, 3], [1380, 2]];
+/* The Changi Airport branch, from its duty roster (the same every day): 101 runs full day, 102 full day and late
+   night, and 103 joins for the 5–8pm peak and stays out late at night, so 2 trains, 3 in the evening peak, then 2. */
+const CG_TRAINS = [[0, 2], [1020, 3], [1200, 2]];
+/* North East Line weekdays, from SBS Transit's duty roster of 12 Nov 2026 (runs 301-362): 26 (AM), 12 FD LN, 2 FD,
+   19 (PM), 3 (PM) LN. Saturdays (31 Oct 2026), Sundays (1 Nov 2026) and public holidays (9 Nov 2026) all have
+   runs 301-319: 15 FD LN, 4 (PM) LN (305, 309, 313, 317). A train stabled at HarbourFront (DNB) isn't counted. */
+const NEL_TRAINS = {
+  wd:  [[0, 14], [420, 40], [570, 14], [1020, 36], [1200, 15]],
+  sat: [[0, 15], [1020, 19]],
+  sun: [[0, 15], [1020, 19]],
+  ph:  [[0, 15], [1020, 19]],
+  ext: [[0, 15], [1020, 19]]        // extended-service nights: the same mix (roster of 7 Nov 2026, Deepavali eve)
+};
+/* Thomson-East Coast Line weekdays, from SMRT's duty roster of 12 Nov 2026 (69 runs: T101-T191 and T211, T273-T279):
+   24 (AM), 20 FD, 2 FD LN, 2 (PM), 21 (PM) LN. The T2xx runs are counted like the rest. Public holidays, from its
+   roster of 9 Nov 2026 (8 Nov matched it): 23 FD and 23 (PM), with no LN marks; the FD trains run until the last
+   trains and the (PM) ones stop around 8pm. Sundays, from the roster of 1 Nov 2026: 23 FD and 6 (PM), the same way. Saturdays, from the
+   roster of 31 Oct 2026: 18 FD LN, 5 FD, 22 (PM) LN, 1 (PM).
+   Extended-service nights, from the roster of 7 Nov 2026 (Deepavali eve, 44 runs): 18 FD LN, 4 FD, 21 (PM) LN, 1 (PM). */
+const TEL_TRAINS = {
+  wd:  [[0, 22], [420, 46], [570, 22], [1020, 45], [1200, 23]],
+  sat: [[0, 23], [1020, 46], [1200, 40]],
+  sun: [[0, 23], [1020, 29], [1200, 23]],
+  ph:  [[0, 23], [1020, 46], [1200, 23]],
+  ext: [[0, 22], [1020, 44], [1200, 39]]
+};
+/* Circle Line weekdays, from SMRT's duty roster of 12 Nov 2026 (runs T001-T113): clockwise loop 13 FD LN, 4 (AM),
+   4 (PM) LN; anticlockwise loop 15 FD LN, 4 (AM), 4 (PM) LN; the Dhoby Ghaut <> Stadium/Prince Edward Road service
+   5 FD (1 of them LN), 32 (AM), 25 (PM), 7 (PM) LN. The app draws the Circle Line as one line from Dhoby Ghaut round to
+   Bayfront, so all three services are counted as trains running along it. Extended-service nights, from the roster of
+   7 Nov 2026: loops 35 FD and 5 (AM), all running until the last trains; that night's Dhoby Ghaut-Stadium (5) and
+   Paya Lebar-Caldecott (3) shuttles only cover a short stretch, so they aren't counted. Saturdays, from the roster of
+   31 Oct 2026: the same, loops 35 FD (20 clockwise, 15 anticlockwise) and 5 (AM), with the same two shuttles not
+   counted. Sundays, from the roster of 1 Nov 2026: loops 28 FD (8 of them LN) and 5 (PM) (3 of them LN), so 28, then
+   33 in the evening peak and 11 after 8pm; the Dhoby Ghaut-Stadium (6) and Paya Lebar-Caldecott (4) shuttles aren't
+   counted. Public holidays, from the roster of 9 Nov 2026: loops 18 FD and 1 (PM), with no LN marks, so all run
+   until the last trains; the Dhoby Ghaut-Stadium shuttle (6) isn't counted. */
+const CCL_TRAINS = {
+  wd:  [[0, 33], [420, 73], [570, 33], [1020, 73], [1200, 44]],
+  sat: [[0, 35], [420, 40], [570, 35]],
+  sun: [[0, 28], [1020, 33], [1200, 11]],
+  ph:  [[0, 18], [1020, 19]],
+  ext: [[0, 35], [420, 40], [570, 35]]
+};
+/* Downtown Line: no full duty roster yet, so it keeps its usual gaps (peak/off/late below). Its weekday run numbers
+   (10 Nov 2026, spotted only, with gaps): 1xx full day (highest seen 125), 2xx morning peak (206 seen), 3xx evening
+   peak (highest seen 328); on non-weekdays (9 Nov 2026, a public holiday) 1xx full day (highest seen 126) and
+   2xx evening peak (highest seen 209), with no morning-peak runs; weekends (1 Nov 2026, Saturdays and Sundays alike)
+   1xx full day (highest seen 126) and 2xx evening (highest seen 210). Sets 9017-9092 (C951/C951A) aren't tied to runs. A full list would go in a DTL_TRAINS
+   like the ones above. */
 const LINES = {
   NSL:{name:"North-South Line",peak:2.5,off:5,late:7,run:2.0,dwell:0.5,trains:NSL_TRAINS,stations:[
     ["NS1","Jurong East"],["NS2","Bukit Batok"],["NS3","Bukit Gombak"],["NS4","Choa Chu Kang"],["NS5","Yew Tee"],["NS7","Kranji"],["NS8","Marsiling"],["NS9","Woodlands"],["NS10","Admiralty"],["NS11","Sembawang"],["NS12","Canberra"],["NS13","Yishun"],["NS14","Khatib"],["NS15","Yio Chu Kang"],["NS16","Ang Mo Kio"],["NS17","Bishan"],["NS18","Braddell"],["NS19","Toa Payoh"],["NS20","Novena"],["NS21","Newton"],["NS22","Orchard"],["NS23","Somerset"],["NS24","Dhoby Ghaut"],["NS25","City Hall"],["NS26","Raffles Place"],["NS27","Marina Bay"],["NS28","Marina South Pier"]]},
@@ -1349,13 +1402,13 @@ const LINES = {
     ["EW1","Pasir Ris"],["EW2","Tampines"],["EW3","Simei"],["EW4","Tanah Merah"],["EW5","Bedok"],["EW6","Kembangan"],["EW7","Eunos"],["EW8","Paya Lebar"],["EW9","Aljunied"],["EW10","Kallang"],["EW11","Lavender"],["EW12","Bugis"],["EW13","City Hall"],["EW14","Raffles Place"],["EW15","Tanjong Pagar"],["EW16","Outram Park"],["EW17","Tiong Bahru"],["EW18","Redhill"],["EW19","Queenstown"],["EW20","Commonwealth"],["EW21","Buona Vista"],["EW22","Dover"],["EW23","Clementi"],["EW24","Jurong East"],["EW25","Chinese Garden"],["EW26","Lakeside"],["EW27","Boon Lay"],["EW28","Pioneer"],["EW29","Joo Koon"],["EW30","Gul Circle"],["EW31","Tuas Crescent"],["EW32","Tuas West Road"],["EW33","Tuas Link"]]},
   CG:{name:"Changi Airport Branch",shuttle:{turn:1.5,trains:CG_TRAINS},run:3.2,dwell:0.6,stations:[
     ["CG","Tanah Merah"],["CG1","Expo"],["CG2","Changi Airport"]]},
-  NEL:{name:"North East Line",peak:2.5,off:4.5,late:7,run:1.9,dwell:0.5,stations:[
+  NEL:{name:"North East Line",peak:2.5,off:4.5,late:7,run:1.9,dwell:0.5,trains:NEL_TRAINS,stations:[
     ["NE1","HarbourFront"],["NE3","Outram Park"],["NE4","Chinatown"],["NE5","Clarke Quay"],["NE6","Dhoby Ghaut"],["NE7","Little India"],["NE8","Farrer Park"],["NE9","Boon Keng"],["NE10","Potong Pasir"],["NE11","Woodleigh"],["NE12","Serangoon"],["NE13","Kovan"],["NE14","Hougang"],["NE15","Buangkok"],["NE16","Sengkang"],["NE17","Punggol"],["NE18","Punggol Coast"]]},
-  CCL:{name:"Circle Line",peak:3,off:5,late:7,run:1.8,dwell:0.5,stations:[
+  CCL:{name:"Circle Line",peak:3,off:5,late:7,run:1.8,dwell:0.5,trains:CCL_TRAINS,stations:[
     ["CC1","Dhoby Ghaut"],["CC2","Bras Basah"],["CC3","Esplanade"],["CC4","Promenade"],["CC5","Nicoll Highway"],["CC6","Stadium"],["CC7","Mountbatten"],["CC8","Dakota"],["CC9","Paya Lebar"],["CC10","MacPherson"],["CC11","Tai Seng"],["CC12","Bartley"],["CC13","Serangoon"],["CC14","Lorong Chuan"],["CC15","Bishan"],["CC16","Marymount"],["CC17","Caldecott"],["CC19","Botanic Gardens"],["CC20","Farrer Road"],["CC21","Holland Village"],["CC22","Buona Vista"],["CC23","one-north"],["CC24","Kent Ridge"],["CC25","Haw Par Villa"],["CC26","Pasir Panjang"],["CC27","Labrador Park"],["CC28","Telok Blangah"],["CC29","HarbourFront"],["CC30","Keppel"],["CC31","Cantonment"],["CC32","Prince Edward Road"],["CC33","Marina Bay"],["CC34","Bayfront"]]},
   DTL:{name:"Downtown Line",peak:2.5,off:4.5,late:7,run:1.6,dwell:0.45,stations:[
     ["DT1","Bukit Panjang"],["DT2","Cashew"],["DT3","Hillview"],["DT4","Hume"],["DT5","Beauty World"],["DT6","King Albert Park"],["DT7","Sixth Avenue"],["DT8","Tan Kah Kee"],["DT9","Botanic Gardens"],["DT10","Stevens"],["DT11","Newton"],["DT12","Little India"],["DT13","Rochor"],["DT14","Bugis"],["DT15","Promenade"],["DT16","Bayfront"],["DT17","Downtown"],["DT18","Telok Ayer"],["DT19","Chinatown"],["DT20","Fort Canning"],["DT21","Bencoolen"],["DT22","Jalan Besar"],["DT23","Bendemeer"],["DT24","Geylang Bahru"],["DT25","Mattar"],["DT26","MacPherson"],["DT27","Ubi"],["DT28","Kaki Bukit"],["DT29","Bedok North"],["DT30","Bedok Reservoir"],["DT31","Tampines West"],["DT32","Tampines"],["DT33","Tampines East"],["DT34","Upper Changi"],["DT35","Expo"],["DT36","Xilin",OPEN_TEL5],["DT37","Sungei Bedok",OPEN_TEL5]]},
-  TEL:{name:"Thomson-East Coast Line",peak:3,off:5.5,late:7,run:1.8,dwell:0.5,stations:[
+  TEL:{name:"Thomson-East Coast Line",peak:3,off:5.5,late:7,run:1.8,dwell:0.5,trains:TEL_TRAINS,stations:[
     ["TE1","Woodlands North"],["TE2","Woodlands"],["TE3","Woodlands South"],["TE4","Springleaf"],["TE5","Lentor"],["TE6","Mayflower"],["TE7","Bright Hill"],["TE8","Upper Thomson"],["TE9","Caldecott"],["TE11","Stevens"],["TE12","Napier"],["TE13","Orchard Boulevard"],["TE14","Orchard"],["TE15","Great World"],["TE16","Havelock"],["TE17","Outram Park"],["TE18","Maxwell"],["TE19","Shenton Way"],["TE20","Marina Bay"],["TE22","Gardens by the Bay"],["TE23","Tanjong Rhu"],["TE24","Katong Park"],["TE25","Tanjong Katong"],["TE26","Marine Parade"],["TE27","Marine Terrace"],["TE28","Siglap"],["TE29","Bayshore"],["TE30","Bedok South",OPEN_TEL5],["TE31","Sungei Bedok",OPEN_TEL5]]},
   RTS:{name:"RTS Link",tab:"RTS Link",peak:3.6,off:5,late:5,run:4.5,dwell:0.5,expect:"February 2027",stations:[["JB","Bukit Chagar","TBA"],["SG","Woodlands North","TBA"]]},
   SEN:{name:"Sentosa Express",tab:"Sentosa Express",lrt:true,peak:3,off:3,late:3,run:2.1,dwell:0.55,hours:[420,1440],firstText:"7am",stations:[["S1","VivoCity"],["S2","Resorts World"],["S3","Imbiah"],["S4","Beach"]]}
@@ -1473,10 +1526,23 @@ const SHORT_END = {
         [["TE4", "TE29", 23*60+48], ["TE9", "TE29", 23*60+54], ["TE14", "TE29", 24*60], ["TE22", "TE29", 24*60+6]]]
         // from Bayshore: to Springleaf 11.48pm, Caldecott 11.54pm, Orchard 12.00am, Gardens by the Bay 12.06am
 };
-/* Weekday peak short trips that only run between Yishun and Marina South Pier (Wikipedia, North-South Line).
-   How many isn't published, so every third peak train is taken to be one. */
-const SHORT_PEAK = {NSL: {at: "NS13", every: 3}};
-/* Extended-service nights, from SMRT's service announcement and SBS Transit's notice for each one.
+/* Short trips on the busy part of a line. every: one train in that many is a short one; when: "am" (weekday
+   7–9.30am peak), "peak" (both weekday peaks) or "off" (outside the peaks, 9.30am to 11pm); weekend: on weekends too.
+   North-South Line: the train run number roster sheet marks about 10 Yishun turnarounds in the weekday morning peak
+   and none in the evening peak, out of about 70 trains each way in that peak, so one in 7 runs only between
+   Yishun and Marina South Pier. East-West Line: outside the peaks every other train towards Tuas Link ends at
+   Joo Koon and turns back there (SMRT, since the Tuas West Extension opened; the roster sheet marks the
+   "Tuas Link bound during off-peak" runs). */
+const SHORT_PEAK = {
+  NSL: {at: "NS13", every: 7, when: "am", text: "some weekday morning-peak trains run only between Yishun and Marina South Pier"},
+  EWL: {at: "EW29", every: 2, when: "off", weekend: true, text: "outside the peaks, every other train towards Tuas Link ends at Joo Koon"}
+};
+const shortWhen = (pk, at, weekend) => pk.when === "am" ? !weekend && at >= 420 && at < 570
+  : pk.when === "off" ? at >= 570 && at < 1380 && !isPeak(at, weekend) : isPeak(at, weekend);
+/* Extended-service nights (eves of Deepavali, Christmas, New Year, Chinese New Year, Hari Raya and the like), from
+   SMRT's service announcement and SBS Transit's notice for each one. To add one: its date and name in EXT_DAYS, and
+   here [station, last train leaves at] for each direction of each line that runs later; lines not listed keep their
+   usual last trains.
    No extension on the Bukit Panjang LRT or the Changi Airport branch. */
 const EXT_LAST = {
   "2026-11-07": {                                    // Deepavali eve (announced 27 Oct 2026)
@@ -1485,6 +1551,9 @@ const EXT_LAST = {
     NEL: [["NE1", 24*60+30], ["NE18", 24*60]],       // HarbourFront 12.30am; Punggol Coast 12.00am
     CCL: [["CC1", 24*60+17], ["CC33", 24*60+21]],    // Dhoby Ghaut 12.17am; Marina Bay (anticlockwise) 12.21am
     DTL: [["DT1", 24*60+3], ["DT35", 24*60+4]],      // Bukit Panjang 12.03am; Expo 12.04am
+    // (DTL's own list for that night also gives Botanic Gardens 12.18am to Expo / 12.56am to Bukit Panjang, Chinatown
+    // 12.38am / 12.37am, MacPherson 12.52am / 12.23am; the app's travel times put the same last trains within 2 minutes
+    // of each. Runs seen: 1xx full day up to 124, 2xx evening 210; stabled at Bukit Panjang, not in service: 673 (set 9073).)
     TEL: [["TE1", 24*60], ["TE29", 24*60+12]],       // Woodlands North 12.00am; Bayshore 12.12am
     SE: [["STC", 25*60+6], ["STC", 25*60+6]], SW: [["STC", 25*60+6], ["STC", 25*60+6]],   // Sengkang, both loops 1.06am
     PE: [["PTC", 25*60+9], ["PTC", 25*60+9]], PW: [["PTC", 25*60+9], ["PTC", 25*60+9]]    // Punggol, both loops 1.09am
@@ -1682,9 +1751,11 @@ function runsFor(code, day, dir = 0){
   const end = lastDepFor(code, day, dir) ?? LAST, shift = end - (lastDepFor(code, base, dir) ?? LAST);
   const stages = ((SHORT_END[code] || [])[dir] || []).map(([to, at, T]) => ({b: pos(to), r: pos(at), v: T + shift - (O[pos(at)] || 0)}))
     .filter(s => s.r >= 0 && s.b > 0 && s.b < n - 1 && s.v > end + 0.5).sort((x, y) => x.v - y.v);
-  // weekday peak short trips: every so often a train only runs on the busy part of the line
-  const pk = !weekend && SHORT_PEAK[code], pp = pk ? pos(pk.at) : -1;
-  const shortLen = dir ? pp : n - 1 - pp, keep = pp > 0 ? 1 - (1 - shortLen / (n - 1)) / pk.every : 1;
+  // short trips: every so often a train only runs on the busy part of the line (SHORT_PEAK says when and where)
+  const pk = SHORT_PEAK[code] && (!weekend || SHORT_PEAK[code].weekend) ? SHORT_PEAK[code] : null, pp = pk ? pos(pk.at) : -1;
+  // short trips start at that station (cutA) when the busy part is on the far side of it from where trains in this direction start
+  const cutA = pk ? (L.stations.findIndex(s => s[0] === pk.at) < (n - 1) / 2) !== !!dir : false;
+  const shortLen = cutA ? n - 1 - pp : pp, keep = pp > 0 && pp < n - 1 ? 1 - (1 - shortLen / (n - 1)) / pk.every : 1;
   const marks = [...starts.map(s => s.v), end, ...stages.map(s => s.v)].sort((x, y) => x - y);
   const last = stages.length ? stages[stages.length - 1].v : end, out = [];
   let t = starts[0].v, si = 0, pn = 0;
@@ -1692,9 +1763,9 @@ function runsFor(code, day, dir = 0){
     let a = startAt(t), b = n - 1;
     if (t > end + 1e-6){ while (si < stages.length && t > stages[si].v + 1e-6) si++; if (si >= stages.length) break; b = stages[si].b; }
     let h = headway(L, t, weekend, code, dir, day);
-    if (pp > 0 && isPeak(t + O[pp], false) && t <= end){
+    if (pp > 0 && pp < n - 1 && shortWhen(pk, t + O[pp], weekend) && t <= end){
       h *= keep;                                     // shorter trips free up trains, so they come more often
-      if (pn++ % pk.every === pk.every - 1){ if (dir) b = Math.min(b, pp); else a = Math.max(a, pp); }
+      if (pn++ % pk.every === pk.every - 1){ if (cutA) a = Math.max(a, pp); else b = Math.min(b, pp); }
     }
     if (a < b) out.push({t, a, b});
     let nt = t + h;
@@ -4375,7 +4446,7 @@ function aShortText(k){
     const late = (SHORT_END[c] || []).filter(list => list.length)
       .map(list => `trains from ${nm(c, list[0][1])} end at ${list.map(([to, , T]) => `${nm(c, to)} (until ${clock(T)})`).join(", then ")}`);
     if (late.length) parts.push(`after the last trains going all the way, ${late.join("; and ")}`);
-    if (SHORT_PEAK[c]) parts.push(`some weekday peak trains run only between ${nm(c, SHORT_PEAK[c].at)} and ${dest(L, 0, act)}`);
+    if (SHORT_PEAK[c]) parts.push(SHORT_PEAK[c].text || `some weekday peak trains run only between ${nm(c, SHORT_PEAK[c].at)} and ${dest(L, 0, act)}`);
     const mid = (FIRST_AT[c] || []).flatMap(list => list.map(([s]) => L.stations.findIndex(x => x[0] === s)).filter(i => i > 0 && i < act.length - 1).map(i => L.stations[i][1]));
     if (mid.length) parts.push(`the first trains of the day start partway, at ${[...new Set(mid)].join(", ")}`);
     if (SHORT_NOTE[c]) parts.push(SHORT_NOTE[c]);

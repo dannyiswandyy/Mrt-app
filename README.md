@@ -9,7 +9,7 @@ A separate private dev build exists for the maintainer's own testing.
 ## Current features (MRT Tracker)
 
 - Singapore MRT/LRT network map, with interchange **code pills** and a 3D map you can move, turn and tilt
-- Train positions and arrival times from LTA's packed timetable, with a fallback to estimates
+- Train positions and arrival times from LTA's packed timetable, with a fallback to estimates built from the operators' train duty rosters (weekday, Saturday, Sunday and public holiday)
 - When you **log a sighting** from a train's sheet, a small tag (model, Spotted or Rode) stays on that train's arrow on the 2D and 3D maps for the rest of that service day, and the train is **moved to the station and time you logged** so the map, Line Board and next-train times follow
 - Station search, station sheets, favourites, and train-model information and photos (with source attribution)
 - Trip planner: the fastest way by train, with the next departures, changes, duration, arrival time, fare, and the route drawn on the map
@@ -22,6 +22,27 @@ A separate private dev build exists for the maintainer's own testing.
 - Share the spotter's log, in-app update checking, and API timeout/failure handling with cached-data fallback
 - 3D buildings near stations (OpenStreetMap, packed at build time) and real track shapes for the **RTS Link** and **Sentosa Express** (also from OpenStreetMap at build time)
 - Tuned for typical phones: the map caches static layers and skips extra redraws, timers pause when the tab is in the background, 3D and the Live cam start only when you open them, search is debounced, and a few caches are capped. The arrows, shadows and direction of travel are unchanged.
+
+## Train counts and timetable estimates
+
+When LTA's timetable isn't available for a line, the app estimates trains from how many are out at each time of day. These counts come from the operators' **train duty rosters**. Each run is counted by its duty: FD = full day (morning to 8pm), HD = half day (to 2pm), (AM) = 7–9.30am peak, (PM) = 5–8pm peak, (OP) = between the peaks, and LN = late night. Depot transfers aren't counted.
+
+| Line | Weekday | Saturday | Sunday | Public holiday |
+| --- | --- | --- | --- | --- |
+| North-South | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 |
+| East-West | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 |
+| Changi Airport branch | same every day: 2 trains, 3 in the 5–8pm peak | | | |
+| North East | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 (also extended-service nights, 7 Nov 2026) |
+| Thomson-East Coast | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 (extended-service nights: 7 Nov 2026) |
+| Circle | 12 Nov 2026 (both loops and the Dhoby Ghaut service, counted along the whole line) | 31 Oct 2026 loops (short shuttles not counted) | 1 Nov 2026 loops | 9 Nov 2026 loops; extended-service nights: 7 Nov 2026 loops |
+
+- **Train run number roster sheet:** the [NSEWL roster sheet](https://docs.google.com/spreadsheets/d/1O65RS9SMggfmGiQh7gCNQU-1l7l1sV0q85euH3gIAwQ/edit) gives the same weekday totals. It also supplies the short trips:
+  - About one in 7 North-South Line trains in the weekday morning peak turn back at Yishun.
+  - Outside the peaks, every other East-West Line train towards Tuas Link ends at Joo Koon.
+- **Downtown Line:** only partial run lists so far, so it keeps its usual gaps.
+- **Thomson-East Coast Sundays and public holidays:** those rosters have no late-night marks. Full-day trains run until the last trains, and PM trains stop around 8pm.
+- **Updating counts:** the counts and short trips live in `NSL_TRAINS`, `EWL_TRAINS`, `CG_TRAINS`, `NEL_TRAINS`, `TEL_TRAINS`, `CCL_TRAINS` and `SHORT_PEAK` in the app page.
+- **Extended-service nights:** these are in `EXT_DAYS` and `EXT_LAST`. Add the date and each line's later last trains.
 
 ## Website
 
@@ -74,8 +95,8 @@ This project may use information and imagery from Singapore transport and mappin
 - Land Transport Authority (LTA) — DataMall timetable, alerts and related APIs
 - National Environment Agency (NEA) via data.gov.sg — live weather
 - OpenStreetMap contributors — 3D building outlines and RTS Link / Sentosa Express tracks
-- SMRT
-- SBS Transit
+- SMRT (including train duty rosters)
+- SBS Transit (including train duty rosters)
 - SGTrains
 - Land Transport Guru
 - RailCam Singapore (@railcamsg) — the Live cam stream
