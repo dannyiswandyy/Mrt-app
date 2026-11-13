@@ -100,6 +100,13 @@ function cors(origin, extra = {}) {
 function withCors(res, origin) {
   const h = new Headers(res.headers);
   for (const [k, v] of Object.entries(cors(origin))) h.set(k, v);
+  // Defense-in-depth headers for every relay response.
+  h.set("X-Content-Type-Options", "nosniff");
+  h.set("Referrer-Policy", "no-referrer");
+  h.set("X-Frame-Options", "DENY");
+  h.set("Cross-Origin-Resource-Policy", "same-origin");
+  h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+  h.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   h.delete("set-cookie");
   return new Response(res.body, {status: res.status, headers: h});
 }
