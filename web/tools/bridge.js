@@ -1,7 +1,7 @@
 /* ---------- MRT Tracker website: stand-in for the Android app's bridge ----------
    The phone app gives this page window.MrtApp (LTA data with the app's key, news, the timetable, buildings
    and track shapes packed into the app). On the website:
-   * the timetable, buildings and RTS Link / Sentosa Express tracks come from data/ next to this page
+   * the timetable, buildings, RTS Link / Sentosa Express tracks and station exits come from data/ next to this page
      (made when the site is deployed);
    * LTA alerts and crowds, rail news and the Live cam lookup go through the data relay set in config.js
      (a Cloudflare Worker that holds the LTA key; the key is never in this site). Without it, train times
@@ -32,13 +32,14 @@
     return null;
   }
 
-  let tt = "", bld = "", trk = "";
+  let tt = "", bld = "", trk = "", ex = "";
   const bridge = {
     getChannel: () => "beta",                      // the normal MRT Tracker, not MRT Dev
     getVersion: () => W.build,
     getTimetable: () => tt,
     getBuildings: () => bld,
     getTracks: () => trk,                          // "" if this deploy has none; the page then draws those two lines straight
+    getExits: () => ex,                            // "" if this deploy has none; station pages then list no exits
     hasKey: () => W.live,
     builtInKey: () => W.live,
     hasAi: () => W.ai,
@@ -61,9 +62,10 @@
   }
 
   const health = PROXY ? within(fetch(PROXY + "/health", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null), 4000) : Promise.resolve(null);
-  Promise.all([getText("data/timetable.json", 8000), getText("data/tracks.json", 8000), health]).then(([t, tr, h]) => {
+  Promise.all([getText("data/timetable.json", 8000), getText("data/tracks.json", 8000), getText("data/exits.json", 8000), health]).then(([t, tr, x, h]) => {
     tt = t && t.trim().startsWith("{") && t.includes('"lines"') ? t : "";
     trk = tr && tr.trim().startsWith("{") && tr.includes('"paths"') ? tr : "";
+    ex = x && x.trim().startsWith("{") ? x : "";
     if (h && h.ok){ W.relay = true; W.live = !!h.lta; W.ai = !!h.ai; W.yt = !!h.yt; }
     if (W.yt) bridge.liveLookup = (id, handle) => send(id, PROXY + "/yt?handle=" + encodeURIComponent(handle));
     window.MrtApp = bridge;

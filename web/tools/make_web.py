@@ -50,7 +50,7 @@ CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe
        "font-src https://fonts.gstatic.com; img-src 'self' data: https://server.arcgisonline.com https://i.ytimg.com; "
        "connect-src 'self' https://api-open.data.gov.sg https://*.workers.dev; media-src 'none'; object-src 'none'; "
        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; "
-       "base-uri 'none'; form-action 'none'")
+       "base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests")
 sub(r'<meta http-equiv="Content-Security-Policy" content="[^"]*">', f'<meta http-equiv="Content-Security-Policy" content="{CSP}">', regex=True)
 
 # 2. Web app basics.

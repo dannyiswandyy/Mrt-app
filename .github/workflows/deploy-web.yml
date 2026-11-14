@@ -6,7 +6,7 @@ name: Deploy MRT Tracker website
 on:
   push:
     branches: [main]
-    paths: ['web/**']
+    paths: ['web/**', 'tools/**']
   workflow_dispatch:
 
 permissions:
@@ -84,6 +84,17 @@ jobs:
             if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
           fi
 
+      - name: Station exits (LTA) and nearby places (OpenStreetMap)
+        if: steps.tools.outcome == 'success'
+        continue-on-error: true
+        env:
+          DATA_GOV_SG_API_KEY: ${{ secrets.DATA_GOV_SG_API_KEY }}
+        run: |
+          if [ -f mrt-tracker-app/tools/build_exits.py ]; then
+            python3 mrt-tracker-app/tools/build_exits.py mrt-tracker-app osm-cache
+            if [ -f mrt-tracker-app/app/src/main/assets/exits.json ]; then cp mrt-tracker-app/app/src/main/assets/exits.json _site/data/exits.json; fi
+          fi
+
       - name: Save buildings for next time
         if: hashFiles('osm-fresh') != ''
         uses: actions/cache/save@v4
@@ -94,7 +105,7 @@ jobs:
       - name: Check the site
         run: |
           # an empty file when there's no data: the site then uses estimates / no buildings, without a "not found"
-          for f in timetable buildings tracks; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
+          for f in timetable buildings tracks exits; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
           ls -la _site _site/data
           if grep -rlE 'sha256[-]|integ[r]ity=' _site --include='*.html' --include='*.js'; then echo "::error::fingerprints found"; exit 1; fi
           grep -q "script-src 'self' 'unsafe-inline'" _site/index.html
