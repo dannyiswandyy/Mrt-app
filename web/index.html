@@ -2538,10 +2538,6 @@ function renderSettings(){
     <label>Live disruption alerts</label>
     <p class="muted">${k ? `<b style="color:var(--good)">✓ Included.</b> Alerts come straight from LTA.` : ((window.MRT_WEB && !MRT_WEB.live) ? "Unavailable on this website right now." : "Not included in this version of the app.")}</p>
     <label class="toggle"><input type="checkbox" id="autoIn"${autoRefresh ? " checked" : ""}> Refresh every minute while the app is open</label>
-    ${k && APP.downloadTimetable ? `<label>Official train timetable</label>
-    <p class="muted">Downloads LTA's timetable file (GTFS Schedule) to your Downloads folder, so you can send it to Claude.</p>
-    <div><button class="btn ghost" type="button" id="ttBtn">Download LTA timetable</button></div>
-    <div id="ttOut" class="muted"></div>` : ""}
     <p class="muted" id="setMsg"></p>
     
     <label>Train times</label>
@@ -2566,24 +2562,6 @@ function renderSettings(){
     APP.checkUpdateNow(id);
   };
   $("autoIn").onchange = e => { autoRefresh = e.target.checked; store.set("mrt.auto", autoRefresh); };
-  const tt = $("ttBtn");
-  if (tt) tt.onclick = () => {
-    tt.disabled = true; tt.textContent = "Downloading…";
-    $("ttOut").textContent = "Asking LTA for the timetable. This can take up to a minute.";
-    const id = "t" + (++reqId);
-    pending[id] = (code, body) => {
-      tt.disabled = false; tt.textContent = "Download LTA timetable";
-      let r = {}; try { r = JSON.parse(body); } catch(e){}
-      if (r.error || code !== 200){
-        $("ttOut").innerHTML = `<b style="color:var(--bad)">Download failed.</b> ${code === 401 || code === 403 ? "LTA turned down the request." : esc(r.error || "Couldn't reach LTA.")}`;
-        return;
-      }
-      const mb = (r.size / 1048576).toFixed(1);
-      $("ttOut").innerHTML = `<b style="color:var(--good)">Done.</b> ${r.saved ? `Saved to <b>${esc(r.saved)}</b> (${mb} MB). Attach that file in your chat with Claude.` : `Downloaded ${mb} MB, but saving to Downloads needs Android 10 or newer. Screenshot the summary below instead.`}
-        <pre style="font:12px/1.45 var(--mono);white-space:pre-wrap;word-break:break-all;background:var(--soft);color:var(--fg);padding:10px;border-radius:8px;margin-top:8px;max-height:340px;overflow:auto">${esc((r.files || []).map(f => `${f.name} · ${f.lines} lines\n  ${f.head.join("\n  ")}`).join("\n\n"))}</pre>`;
-    };
-    APP.downloadTimetable(id);
-  };
   
 }
 
