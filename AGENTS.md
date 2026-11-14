@@ -17,7 +17,7 @@ This is the **public** MRT Tracker app and website. Danny works on it with more 
 | The website | `web/index.html` (the same page, made for browsers), published by `deploy-web.yml` |
 | Data relay for the website | `worker/` (Cloudflare Worker; the LTA key is a Cloudflare secret, not in this repo) |
 | Tests | `tests/timetable-check.js`, run by `timetable-check.yml` |
-| Files at the top level (`index.html`, `MainActivity.java`, …) | left over from the first build. The app isn't built from them |
+| App signing key | `signing/mrt-tracker.jks` (made by the first build; keep it, or updates won't install over the old app) |
 
 ## Changing the app page
 
