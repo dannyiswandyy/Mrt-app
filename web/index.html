@@ -3104,7 +3104,7 @@ function mapDraw(){
       const sb = isShortTo(Lc, t.dir, actC, t.to);            // special-bound trains are drawn hollow
       const [x, y, dx, dy] = posOn(c, t.idx);
       const len = Math.hypot(dx, dy) || 1, ux = (t.dir ? -dx : dx) / len, uy = (t.dir ? -dy : dy) / len;
-      const nx = -uy, ny = ux, side = lw * 0.55 + tr * 0.6;
+      const nx = uy, ny = -ux, side = lw * 0.55 + tr * 0.6;      // trains in Singapore keep left, so each arrow sits on the left of the line as it travels
       const X = sx(x) + nx * side, Y = sy(y) + ny * side;
       if (X < -20 || X > mW + 20 || Y < -20 || Y > mH + 20) continue;
       const sel = mSel && mSel.type === "train" && mSel.id === t.id, k = sel ? 1.5 : 1;
@@ -6034,7 +6034,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
       for (const t of tr){
         const [x, z, dx, dz] = posOn(code, t.idx), l = Math.hypot(dx, dz) || 1;
         const ux = (t.dir ? -dx : dx) / l, uz = (t.dir ? -dz : dz) / l, side = lineW(code) * 0.5 + S * 0.95;
-        list.push({code, t, x: x - uz * side, z: z + ux * side, ux, uz, sb: isShortTo(L, t.dir, act, t.to)});
+        list.push({code, t, x: x + uz * side, z: z - ux * side, ux, uz, sb: isShortTo(L, t.dir, act, t.to)});   // keep left, as in 2D
       }
     }
     // shadows first, flat on the ground
