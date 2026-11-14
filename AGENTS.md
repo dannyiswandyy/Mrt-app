@@ -41,6 +41,7 @@ This is the **public** MRT Tracker app and website. Danny works on it with more 
 
 - No keys or tokens in files. Use GitHub Actions secrets (and Cloudflare secrets for the relay).
 - Nothing about MRT Dev's test features goes in this repo, the README or the public releases.
+- No way for users to download LTA's raw data with the app's key (like the old "Download LTA timetable" button): Danny removed it because it can be misused. The app packs LTA's timetable at build time instead.
 
 ## Commit messages
 
