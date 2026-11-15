@@ -75,7 +75,8 @@ Set these under **Settings → Secrets and variables → Actions**. Do not commi
 | Secret | Used by | Purpose |
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | Both Android apps (optional) | Lets the Ask tab use Claude. Without it, the Ask tab gives built-in answers. |
-| `RELEASES_TOKEN` | MRT Tracker only | Publishes the public update feed to the `mrt-tracker-releases` repo. |
+
+In-app updates need no secret: each build puts `mrt-tracker.apk` and `version.json` in this repo's **latest** release, and the app checks that, then downloads and installs new versions itself.
 
 The LTA DataMall key used by the website belongs in the Cloudflare Worker secret `LTA_KEY`, not in this repository.
 

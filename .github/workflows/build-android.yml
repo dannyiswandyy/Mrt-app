@@ -133,7 +133,7 @@ jobs:
                   // LTA DataMall key built into the app, so live alerts work for everyone with no setup.
                   // Stored scrambled (the app unscrambles it in memory), so it can't be read from this file
                   // or found by searching the app's contents.
-                  // Public GitHub repo the app checks for updates, e.g. yourname/mrt-tracker-releases (empty = off).
+                  // Public GitHub repo whose "latest" release the app checks for updates (empty = off).
                   buildConfigField 'String', 'UPDATE_REPO', '"' + (project.findProperty('updateRepo') ?: '').toString().replaceAll('[^A-Za-z0-9._/-]', '') + '"'
                   buildConfigField 'String', 'LTA_KEY_X', '"ac482e340c45fb8ce3d416f40eeba0afa7c59acac8579667"'
                   // Claude API key for the Ask tab, from the ANTHROPIC_API_KEY GitHub secret (none = built-in answers only).
@@ -1783,8 +1783,8 @@ jobs:
           /**
            * In-app updates.
            *
-           * Every build publishes the app and a small version.json to a public "releases" repo on GitHub
-           * (BuildConfig.UPDATE_REPO, e.g. yourname/mrt-tracker-releases). The app checks that file when it
+           * Every build publishes the app and a small version.json to this project's public "latest" release
+           * on GitHub (BuildConfig.UPDATE_REPO). The app checks that file when it
            * opens and every few hours in the background, shows a notification when a newer version exists,
            * and installs it in one tap.
            *
@@ -2528,9 +2528,9 @@ jobs:
           if [ "$CHANNEL" = "dev" ]; then VN="$VN-dev"; APK=mrt-tracker.apk; fi
           echo "VN=$VN" >> "$GITHUB_ENV"
           echo "APK=$APK" >> "$GITHUB_ENV"
-          # The public repo the app checks for updates. MRT Tracker is private, so it isn't put there and
-          # doesn't check for updates: each new build is installed from this repo's Releases.
-          UPDATE_REPO="${{ github.repository_owner }}/mrt-tracker-releases"
+          # The app checks this repo's own "latest" release for updates (version.json next to the app),
+          # and downloads and installs a newer one itself. This repo is public, so no token is needed.
+          UPDATE_REPO="${{ github.repository }}"
           if [ "$CHANNEL" = "dev" ]; then UPDATE_REPO=""; fi
           gradle -p mrt-tracker-app assembleRelease -Pvc=$VC -Pvn=$VN -Pchannel="$CHANNEL" -PupdateRepo="$UPDATE_REPO" -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks"
           cp mrt-tracker-app/app/build/outputs/apk/release/app-release.apk "$APK"
@@ -2553,27 +2553,7 @@ jobs:
               --notes "MRT Tracker, the developer app for trying new features. Download mrt-tracker.apk on your Android phone and open it to install. It installs next to MRT Tracker and doesn't change it."
           else
             gh release delete latest --yes --cleanup-tag || true
-            gh release create latest "$APK" --title "MRT Tracker $VN" \
-              --notes "Download mrt-tracker.apk on your Android phone and open it to install."
+            gh release create latest "$APK" version.json --title "MRT Tracker $VN" \
+              --notes "Download mrt-tracker.apk on your Android phone and open it to install. Once installed, the app updates itself: it tells you when there's a new version and installs it in one tap."
           fi
 
-      # Publishes MRT Tracker to your public "mrt-tracker-releases" repo, where the app looks for
-      # updates. Needs the RELEASES_TOKEN secret; skipped if it isn't set. MRT Tracker is never published
-      # there (it's only for you); a dev build removes any copy an older build put there.
-      - name: Publish update for the app
-        env:
-          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          PUB_REPO: ${{ github.repository_owner }}/mrt-tracker-releases
-        run: |
-          if [ -z "$RELEASES_TOKEN" ]; then
-            [ "$CHANNEL" = "dev" ] || echo "::warning::RELEASES_TOKEN isn't set, so the app won't be told about this update."
-            exit 0
-          fi
-          export GH_TOKEN="$RELEASES_TOKEN"
-          if [ "$CHANNEL" = "dev" ]; then
-            gh release delete dev --repo "$PUB_REPO" --yes --cleanup-tag || true
-            exit 0
-          fi
-          gh release delete latest --repo "$PUB_REPO" --yes --cleanup-tag || true
-          gh release create latest "$APK" version.json --repo "$PUB_REPO" --title "MRT Tracker $VN" \
-            --notes "Open MRT Tracker and tap Update, or download mrt-tracker.apk to install."
