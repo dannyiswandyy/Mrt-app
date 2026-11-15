@@ -1387,7 +1387,7 @@ body.on-map .hx-sheet{max-height:58vh}
      the text itself. Online/offline follows the browser. */
 (() => {
   const C = window.MRT_WEB_CONFIG || {}, PROXY = String(C.proxy || "").trim().replace(/\/+$/, "");
-  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "2026.11.15-0349"};
+  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "2026.11.15-1246"};
   const within = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
   const getText = (u, ms) => within(fetch(u, {cache: "no-cache"}).then(r => r.ok ? r.text() : null).catch(() => null), ms);
   const reply = (id, code, body) => setTimeout(() => { if (window.__native) window.__native(id, code, body || ""); }, 0);
@@ -2087,6 +2087,7 @@ function lineCuts(code, iso){
   const act = activeStations(L, iso), out = [];
   for (const sg of al.segments || []){
     if (!(sg.lines || [sg.line]).includes(code)) continue;
+    if (sg.running || (!sg.noService && rtSaysRunning(code))) continue;   // LTA says trains still run there (with delays): no turn-back
     const ix = act.map((s, i) => sg.codes.includes(s[0]) ? i : -1).filter(i => i >= 0);
     if (ix.length < 2) continue;
     const lo = Math.min(...ix), hi = Math.max(...ix);
@@ -2099,6 +2100,14 @@ function lineCuts(code, iso){
     out.push({lo, hi, dirs, both: dirs.length === 2, loop: !!(L.loop || L.lrt), turn: CUT_TURN_MIN / Math.max(0.5, perStop)});
   }
   return out;
+}
+/* LTA's live service alerts (GTFS Realtime) for this line say "reduced service" or "significant delays", and none
+   says "no service": trains still run. */
+function rtSaysRunning(code){
+  let st = null; try { st = rtState; } catch(e){ return false; }
+  const lta = {CG: "CGL"}[code] || code;
+  const mine = ((st && st.alerts) || []).filter(a => a.effect && (a.routes || []).some(r => String(r).toUpperCase().startsWith(lta)));
+  return mine.length > 0 && mine.every(a => a.effect === 2 || a.effect === 3) ;
 }
 const cutNext = (p, dir) => dir ? Math.ceil(p - 1e-6) - 1 : Math.floor(p + 1e-6) + 1;
 function cutTrain(t, c, n){
@@ -2736,6 +2745,25 @@ function nativeGet(url, withKey){
 const hasKey = () => { try { return !!(APP && APP.hasKey()); } catch(e){ return false; } };
 
 /* --- parsing --- */
+/* Does LTA say trains still run through an affected stretch (slower, with delays or more travel time)? Then
+   they aren't turned back there. Decided from LTA's newest message about that line (or about the stretch's
+   stations): "no train service", "not available" or "suspended" means they don't; "additional travel time",
+   "delays", "still running/operating/available", "slower", "resumed" or "reduced frequency" means they do. When a message
+   says neither, trains are turned back, as before. */
+const NO_SERVICE_RE = /\bno (?:train )?services?\b|\b(?:not available|unavailable|suspended|not (?:running|operating|in service))\b/i;
+// "running / operating / available" only counts when it's about trains, so "free bus services are (still) available" doesn't
+const STILL_RUN_RE = /additional (?:travel(?:l)?ing )?time|\bdelay(?:s|ed)?\b|\btrain(?:s| services?)\b[^.]*?\b(?:still|are|is|remain)\b[^.]*?\b(?:running|operating|available|in operation|in service)\b|\bslower\b|\bresum(?:ed|ing|es)\b|reduced (?:frequency|speed|service)|longer (?:waiting|travel(?:l)?ing) time/i;
+function segRunning(sg, msgs){
+  const names = sg.codes.map(c => (typeof NAME_OF !== "undefined" && NAME_OF[c]) || c).filter(Boolean);
+  const about = m => (sg.ltaLine && new RegExp("\\b" + sg.ltaLine + "\\b", "i").test(m.text)) || names.some(n => n && m.text.toLowerCase().includes(String(n).toLowerCase()));
+  const m = msgs.find(about) || msgs[0];
+  if (!m) return false;
+  // LTA's sentences about free buses and shuttles, shown on the disruption card
+  sg.busText = String(m.text).split(/(?<=[.!?])\s+/).filter(s => /\b(?:bus(?:es)?|shuttles?|bridging)\b/i.test(s)).map(s => s.trim()).slice(0, 3);
+  const t = String(m.text);
+  if (NO_SERVICE_RE.test(t.replace(/\bno (?:free )?(?:regular |bridging )?bus(?:es)? services?\b/gi, ""))) return "no";
+  return STILL_RUN_RE.test(t);
+}
 function parseAlerts(body){
   const j = JSON.parse(body);
   let v = j.value ?? j;
@@ -2762,6 +2790,7 @@ function parseAlerts(body){
   const msgs = (v.Message || []).filter(m => m && m.Content)
     .map(m => ({text: m.Content, at: m.CreatedDate || ""}))
     .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  for (const sg of segs){ const r = segRunning(sg, msgs); sg.running = r === true; sg.noService = r === "no"; }
   return {status: Number(v.Status) === 2 ? 2 : 1, segments: segs, messages: msgs, at: Date.now()};
 }
 function parseNews(xml){
@@ -2847,7 +2876,7 @@ function rtParse(b64, kind){
       const a = pbFields(e[5][0]);
       const per = (a[1] || []).map(x => { const p = pbFields(x); return [p[1] ? pbInt(p[1][0]) * 1000 : 0, p[2] ? pbInt(p[2][0]) * 1000 : 0]; });
       const ents = (a[5] || []).map(pbFields);
-      res.alerts.push({head: pbText((a[10] || [])[0]), text: pbText((a[11] || [])[0]), per,
+      res.alerts.push({head: pbText((a[10] || [])[0]), text: pbText((a[11] || [])[0]), per, effect: a[7] ? pbInt(a[7][0]) : 0,
         routes: [...new Set(ents.map(x => pbStr((x[2] || [])[0])).filter(Boolean))],
         stops: [...new Set(ents.map(x => pbStr((x[5] || [])[0])).filter(Boolean))]});
     }
@@ -2944,6 +2973,8 @@ function segHTML(sg){
   if (sg.shuttle.length) extra.push(`Free bridging buses at ${esc(sg.shuttle.map(x => NAME_OF[x] || x).join(", "))}${sg.shuttleDir ? ` (${esc(sg.shuttleDir)})` : ""}`);
   return `<div class="seg"><div class="h">${pill}${esc(segTitle(sg))}</div>
     <span class="sub">${dir} · ${sg.codes.length} station${sg.codes.length === 1 ? "" : "s"} affected</span>
+    ${sg.running ? `<span class="sub"><b>Trains are still running</b> through here, with delays (LTA)</span>` : ""}
+    ${(sg.busText || []).map(s => `<span class="sub">🚌 ${esc(s)}</span>`).join("")}
     ${extra.map(x => `<span class="sub">${x}</span>`).join("")}</div>`;
 }
 function msgsHTML(msgs){
