@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 :root{
   --bg:#eef1f4; --panel:#ffffff; --fg:#14181d; --muted:#5b6672; --rule:#d6dce3;
@@ -1089,13 +1089,322 @@ body.on-map .hx-sheet{max-height:58vh}
 .rt-trains .code{font-size:10.5px;padding:0 4px}
 .rt-trains b{font-weight:600;color:var(--fg)}
 @media (max-width:1023px){ body.trip-on .mapwrap{height:40dvh!important;min-height:260px!important} }
+
+/* Adaptive shell: phones, tablets and desktop */
+:root{
+  --ui-max:1540px;
+  --touch:44px;
+  --dock-gap:10px;
+  --ui-gutter:clamp(10px,2vw,24px);
+}
+html{min-height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{min-height:100%;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+input,select,textarea{font-size:16px}   /* 16px stops iOS zooming into a box you type in */
+button,.btn,.tab,.views button,.tview button,.mapctl button,.theme-btn,.hchip,.cam-angles button,.mob-nav button{
+  touch-action:manipulation;
+}
+.wrap{width:100%;max-width:var(--ui-max);margin-inline:auto}
+header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
+.top-right{min-width:0}
+.search input{min-height:44px}
+
+/* iPhone / small Android phones */
+@media (max-width:700px){
+  .wrap{
+    padding-left:max(10px,env(safe-area-inset-left));
+    padding-right:max(10px,env(safe-area-inset-right));
+    padding-bottom:calc(96px + env(safe-area-inset-bottom));
+  }
+  header.app-header{
+    top:0;
+    margin-inline:-10px;
+    padding-inline:max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-right));
+    border-radius:0 0 16px 16px;
+  }
+  .top{align-items:center}
+  .brand-wrap{min-width:0;flex:1}
+  h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clock{font-size:15px}
+  .header-controls{display:grid;grid-template-columns:1fr;gap:7px}
+  .search{grid-column:1}
+  .views{grid-column:1;width:100%}
+  .tabs{margin-inline:-2px;padding-inline:2px}
+  .tabs button{scroll-snap-align:start}
+  .tabs{scroll-snap-type:x proximity}
+  .mapwrap{
+    height:calc(100dvh - 300px)!important;
+    min-height:min(58dvh,420px)!important;
+    max-height:calc(100dvh - 245px);
+  }
+  .mapctl button,.theme-btn{min-width:44px;min-height:44px}
+  .mapcount,.mapcrowd,.mapwx{font-size:12px}
+  .mapinfo{font-size:13.5px}
+  .status{grid-template-columns:6px 1fr auto}
+  .status .hb{min-height:44px}
+  .fleet ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .board{border-radius:14px}
+  .row{min-height:56px}
+  .st{padding-right:10px}
+  .next{font-size:12.5px}
+  .sheet,.simsheet{
+    padding-bottom:max(12px,env(safe-area-inset-bottom));
+  }
+  .sheet-body{padding-bottom:calc(22px + env(safe-area-inset-bottom))}
+  .mob-nav{
+    bottom:max(6px,env(safe-area-inset-bottom));
+    padding-bottom:5px;
+  }
+  .mob-nav button{min-height:50px}
+}
+
+/* iPhone SE / narrow Android */
+@media (max-width:380px){
+  .wrap{padding-left:8px;padding-right:8px}
+  header.app-header{
+    margin-inline:-8px;
+    padding-inline:8px;
+  }
+  h1{font-size:20px}
+  .devtag{font-size:9px;padding:4px 6px}
+  .clock{min-width:84px;font-size:14px}
+  .clock small{font-size:9px}
+  .views button{padding-inline:7px}
+  .tabs button{padding-inline:10px!important}
+  .fleet ul{grid-template-columns:1fr}
+  .mapwrap{min-height:370px!important}
+  .mob-nav button{font-size:10px}
+}
+
+/* iPad / Android tablets: use the extra width without forcing desktop density. */
+@media (min-width:701px) and (max-width:1199px){
+  .wrap{padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right))}
+  header.app-header{padding-top:max(12px,env(safe-area-inset-top))}
+  .header-controls{display:grid;grid-template-columns:minmax(240px,1fr) auto;align-items:center}
+  .search{min-width:0}
+  .tabs{padding-bottom:4px}
+  .mapwrap{height:clamp(500px,calc(100dvh - 250px),760px)}
+}
+@media (min-width:701px) and (max-width:1199px) and (orientation:landscape){
+  .wrap{padding-bottom:20px}
+  #viewTrains:not([hidden]){
+    display:grid;
+    grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);
+    gap:14px;
+  }
+  #mapView,#lineView{display:flex!important;flex-direction:column;min-height:0}
+  #mapView{min-width:0}
+  #lineView{overflow-y:auto;padding-right:3px}
+  .mapwrap{height:auto!important;min-height:0;flex:1}
+}
+
+/* Desktop / large monitors: keep the tracker dense but breathable. */
+@media (min-width:1200px){
+  .wrap{padding-inline:var(--ui-gutter)}
+  .header-controls{align-items:center}
+  .mapwrap{min-height:520px}
+  #viewTrains:not([hidden]){grid-template-columns:minmax(0,1.45fr) minmax(390px,.95fr)}
+}
+
+/* Foldables and split-screen Android: avoid horizontal overflow from long train labels. */
+@media (max-width:700px), (min-width:701px) and (max-width:1199px){
+  .name,.st,.mi-row,.tinfo,.status,.fleet li{min-width:0}
+  .name{overflow-wrap:anywhere}
+  .tinfo{flex-wrap:wrap}
+  .tinfo .eta{margin-left:auto}
+}
+
+/* iOS Safari/WebView keyboard + dynamic viewport stability. */
+@supports (height:100dvh){
+  .simsheet,.sheet{max-height:88dvh}
+}
+@supports (padding:max(0px)){
+  .mob-nav{padding-bottom:max(5px,env(safe-area-inset-bottom))}
+}
+
+/* Prevent accidental text selection while interacting with map controls. */
+.mapwrap,.mob-nav,.tabs,.views,.mapctl{user-select:none;-webkit-user-select:none}
+
+/* Performance: isolate large, independently scrolling UI surfaces. */
+@media (min-width:701px){
+  #lineView,#viewUpdates,#viewHist,#viewAsk,#viewCam{contain:layout paint}
+}
+
+/* Train details: the train's slot and source */
+.mi-trainmeta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:8px 0 2px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--soft);font-size:12px;line-height:1.25}
+.mi-trainmeta>b,.mi-trainmeta span:first-child{font-weight:800}
+.mi-trainmeta .mi-source{color:var(--muted);font-size:10px;white-space:nowrap}
+@media(max-width:560px){.mi-trainmeta{align-items:flex-start;flex-direction:column;gap:2px}.mi-trainmeta .mi-source{white-space:normal}}
+/* Keep the mobile map's lowest station labels clear of the fixed bottom navigation. */
+@media (max-width:700px){
+  .mapwrap{margin-bottom:72px;}
+  .offpill{position:relative;z-index:55;margin-bottom:8px;}
+}
+/* ===== Polish: one type family, calmer colours, consistent cards, controls and headings =====
+   Visual only. Later rules here win over the earlier layers above. */
+:root{
+  --display:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#f3f5f8; --panel:#ffffff; --fg:#111827; --muted:#5d6876; --rule:#e1e6ec; --soft:#eef1f5; --track:#cfd6de;
+  --accent:#0b63ce;
+  --shadow-soft:0 1px 2px rgba(16,24,40,.04),0 2px 6px rgba(16,24,40,.05);
+  --shadow-float:0 10px 30px rgba(16,24,40,.12),0 2px 6px rgba(16,24,40,.06);
+  --radius-md:16px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0a0d11; --panel:#12171d; --fg:#e9edf2; --muted:#94a0ad; --rule:#232b34; --soft:#1a2028; --track:#323d48;
+  --accent:#5aa2ff;
+  --shadow-soft:0 1px 0 rgba(255,255,255,.02);
+  --shadow-float:0 14px 40px rgba(0,0,0,.5);
+}}
+:root[data-theme="dark"]{
+  --bg:#0a0d11; --panel:#12171d; --fg:#e9edf2; --muted:#94a0ad; --rule:#232b34; --soft:#1a2028; --track:#323d48;
+  --accent:#5aa2ff;
+  --shadow-soft:0 1px 0 rgba(255,255,255,.02);
+  --shadow-float:0 14px 40px rgba(0,0,0,.5);
+}
+body{background:var(--bg);font-family:var(--body);letter-spacing:-.003em;-webkit-font-smoothing:antialiased;font-feature-settings:"cv11","ss01"}
+::selection{background:color-mix(in srgb,var(--accent) 25%,transparent)}
+:focus-visible{outline:2px solid var(--accent)!important;outline-offset:2px}
+
+/* headings: sentence case, one family */
+h1,.card h2,.ask-head h2,.cam-head h2,.simsheet h2,.sheet-h h2,.drv-panel h2,.status b,.fav-h b,.hm h3,.cam-msg b,.spot-head h3{
+  font-family:var(--display)!important;text-transform:none!important;letter-spacing:-.015em!important;font-weight:700}
+.card h2{font-size:17px!important;margin-bottom:6px}
+.ask-head h2,.cam-head h2{font-size:20px!important}
+.sheet-h h2{font-size:22px!important}
+.status b{font-size:18px!important}
+.fav-h b{font-size:18px!important}
+.hm h3{font-size:15px!important}
+.cam-msg b{font-size:15px!important}
+.hm-h h2,.legend,.hsub,.sheet-h .k,.simsheet h3,.cam-list h3{font-family:var(--body)!important;font-size:11.5px!important;font-weight:600!important;letter-spacing:.07em!important;color:var(--muted)}
+
+/* header */
+header.app-header{background:color-mix(in srgb,var(--bg) 86%,transparent);border-bottom:1px solid var(--rule);padding-bottom:10px}
+.brand-wrap{gap:10px;min-width:0}
+h1{display:flex;align-items:center;gap:10px;font-size:19px!important;line-height:1.1;white-space:nowrap;min-width:0}
+h1 .brand-mark{flex:0 0 auto;width:30px;height:30px;display:block;border-radius:9px;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+h1 .brand-name{overflow:hidden;text-overflow:ellipsis}
+.clock{background:var(--soft);border:0;box-shadow:none!important;border-radius:10px;padding:6px 10px;min-width:0!important;font-size:15px!important;font-weight:600}
+.clock small{font-size:9.5px!important;letter-spacing:.08em;margin-top:2px}
+.theme-btn{width:38px!important;height:38px!important;min-height:0!important;border-radius:10px;background:var(--soft);border:0;color:var(--fg);box-shadow:none!important}
+.theme-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.theme-btn:hover{transform:none;background:color-mix(in srgb,var(--fg) 8%,var(--soft))}
+.views{background:var(--soft);border-radius:11px;padding:3px}
+.views button{font-size:13px!important;font-weight:600;min-height:32px!important;border-radius:8px!important}
+.views button[aria-selected="true"]{background:var(--panel);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* search */
+.search input{min-height:42px;border-radius:12px;background-color:var(--panel);border:1px solid var(--rule);box-shadow:none;font-size:15px;
+  padding-left:38px;background-repeat:no-repeat;background-position:13px 50%;background-size:16px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a3' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E")}
+.search input::placeholder{color:var(--muted);opacity:.85}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.search-drop{border-radius:14px;box-shadow:var(--shadow-float)}
+
+/* Map / Line Board switch */
+.tview{background:var(--soft);border-radius:11px;padding:3px}
+.tview button{font-size:13.5px!important;font-weight:600;min-height:34px;border-radius:8px!important}
+.tview button[aria-selected="true"]{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* line chips */
+.tabs{gap:6px}
+.tabs button,.tab{min-height:32px!important;padding:5px 12px!important;border-radius:999px!important;font-size:13px!important;font-weight:600;
+  background:var(--panel)!important;border:1px solid var(--rule)!important;box-shadow:none!important;color:var(--fg)}
+.tabs button:hover{transform:none;background:var(--soft)!important}
+.tab .sw{width:9px;height:9px;border-radius:50%}
+.tab[aria-selected="true"],.tabs button[aria-selected="true"]{background:color-mix(in srgb,var(--c) 14%,var(--panel))!important;border-color:color-mix(in srgb,var(--c) 70%,transparent)!important}
+
+/* status banners: quiet when all is well, loud only when something is wrong */
+#alertBanner .alert{margin-bottom:10px}
+.alert{border-radius:14px!important}
+.alert.ok,.alert.off{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:9px 13px;background:var(--panel);border:1px solid var(--rule)}
+.alert.ok::before,.alert.off::before{content:"";flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 20%,transparent)}
+.alert.off::before{background:var(--muted);box-shadow:0 0 0 3px color-mix(in srgb,var(--muted) 18%,transparent)}
+.alert.ok b,.alert.off b{color:var(--fg)!important;font-size:13.5px;font-weight:600}
+.alert.ok .sub,.alert.off .sub{font-size:12px;color:var(--muted)}
+.alert.ok .sub{margin-left:auto}
+.alert.bad,.alert.warn{border-left-width:4px!important;padding:11px 14px}
+#updBanner{border-radius:14px}
+
+/* cards and surfaces */
+.card,.status,.fleet,.board,.mapinfo,.fav,.fav-edit,.ask-head,.cam-head,.hist .card,.hist section,.quick button,.tiles button,.hl,.links a{
+  border-color:var(--rule);box-shadow:var(--shadow-soft)}
+.card,.ask-head,.cam-head,.hist .card,.hist section{border-radius:16px!important}
+.card{padding:16px}
+.status,.fleet,.board,.fav,.fav-edit,.mapinfo{border-radius:16px!important}
+.links a{background:var(--soft);border:1px solid transparent;border-radius:12px}
+.links a:hover,.hl:hover,.quick button:hover,.tiles button:hover{transform:none;background:var(--soft)}
+.muted,.card .muted{color:var(--muted)}
+
+/* home */
+.home{gap:14px}
+.hm-h{margin:6px 2px -4px}
+.hm-h button{color:var(--accent);text-decoration:none;font-weight:600}
+.quick,.tiles{gap:10px}
+.quick button,.tiles button{position:relative;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:11px;row-gap:1px;
+  padding:12px;border-radius:16px;font-size:14.5px;font-weight:600;min-height:64px}
+.quick button>svg,.tiles button>svg{grid-row:span 2;width:38px;height:38px;padding:9px;border-radius:11px;box-sizing:border-box;
+  background:var(--soft);fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.quick button>svg{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.quick button span,.tiles button span{grid-column:2;font-size:12px}
+.fav-empty{border-radius:16px;border-style:dashed;background:var(--panel)}
+.fav-empty b,.fav-empty h3{font-size:15px}
+.fav-sugg button,.fav-sugg .btn{border-radius:999px!important;background:var(--soft)!important;color:var(--fg)!important;border:1px solid var(--rule)!important;font-size:13px!important;padding:6px 12px!important;min-height:0!important}
+
+/* map */
+.mapwrap{border-radius:18px;border:1px solid var(--rule);box-shadow:var(--shadow-soft)}
+.mapcount{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--rule);color:var(--fg);font-weight:600;box-shadow:var(--shadow-soft)}
+.mapctl button{background:color-mix(in srgb,var(--panel) 92%,transparent)!important;border:1px solid var(--rule)!important;color:var(--fg)!important;box-shadow:var(--shadow-soft)!important;font-size:18px}
+.mapctl button:hover{transform:none}
+.mapctl button.m3d[aria-pressed="true"]{background:var(--fg)!important;color:var(--panel)!important;border-color:var(--fg)!important}
+
+/* line board */
+.status{padding:13px 15px}
+.status .bar{width:5px!important;border-radius:3px}
+.legend{margin:14px 6px 6px}
+
+/* buttons */
+.btn{border-radius:10px!important;min-height:38px;padding:8px 14px;font-weight:600;font-size:14px}
+.btn:hover{transform:none;filter:brightness(1.06)}
+.btn.ghost{background:var(--soft);color:var(--fg);border:1px solid var(--rule)}
+.hchip{border-radius:999px}
+
+/* ask */
+.msg{border-radius:16px!important;box-shadow:none!important;border:1px solid var(--rule)}
+.ask-sugg button{border-radius:999px!important;border:1px solid var(--rule)!important;background:var(--panel)!important;box-shadow:none!important;font-weight:500}
+.ask-bar{border-radius:16px!important;box-shadow:var(--shadow-float)!important;border:1px solid var(--rule)!important}
+
+/* live cam */
+.cam-box{background:#05070a!important;border-radius:16px}
+.cam-box iframe{background:#05070a}
+.cam-badge{font-family:var(--body);font-size:11px;border-radius:999px;padding:4px 9px}
+.cam-angles button{border-radius:12px!important}
+
+/* bottom bar: floating dock, Material-style active pill */
+.mob-nav{border-radius:20px;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 90%,transparent);box-shadow:var(--shadow-float);padding:6px 4px}
+.mob-nav button{background:none!important;box-shadow:none!important;font-size:11px;font-weight:500;gap:3px;min-height:52px;color:var(--muted)}
+.mob-nav button svg{width:52px!important;height:28px!important;padding:4px 15px;border-radius:999px;box-sizing:border-box;transition:background .18s ease}
+.mob-nav button[aria-selected="true"]{color:var(--fg);font-weight:600}
+.mob-nav button[aria-selected="true"] svg{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+
+/* sheets */
+.sheet,.hx-sheet{border-radius:22px 22px 0 0;box-shadow:var(--shadow-float)}
+.sheet-grab{opacity:.6}
+
+footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
+.fleet:empty{display:none}
+@media (max-width:700px){
+  .alert.ok,.alert.off{display:grid;grid-template-columns:8px minmax(0,1fr);gap:1px 10px;padding:9px 13px}
+  .alert.ok::before,.alert.off::before{grid-row:span 2;align-self:center}
+  .alert.ok .sub,.alert.off .sub{margin-left:0;grid-column:2}
+}
 </style>
 
 <div class="wrap">
   <header class="app-header">
     <div class="top">
       <div class="brand-wrap">
-        <h1>MRT Train Tracker</h1>
+        <h1><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#d42e12"/><rect x="9" y="6.5" width="14" height="16" rx="4" fill="#fff"/><rect x="11.5" y="9.5" width="9" height="5" rx="1.5" fill="#d42e12"/><circle cx="12.5" cy="18.5" r="1.4" fill="#d42e12"/><circle cx="19.5" cy="18.5" r="1.4" fill="#d42e12"/><path d="M11 22.5l-2.5 3.5M21 22.5l2.5 3.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg><span class="brand-name">MRT Train Tracker</span></h1>
         <button type="button" class="devtag" id="devTag" hidden aria-haspopup="dialog" title="Test mode">Dev<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 14h9"/></svg></button>
       </div>
       <div class="top-right">
@@ -1143,17 +1452,17 @@ body.on-map .hx-sheet{max-height:58vh}
       <div class="fav-edit" id="favEdit" hidden></div>
       <div class="fav-list" id="favList"></div>
       <div class="quick">
-        <button type="button" id="hmTrip">Plan a trip<span id="hmTripSub">Route, time and fare</span></button>
-        <button type="button" id="hmMap">Live map<span id="hmMapSub">Every line, live trains</span></button>
+        <button type="button" id="hmTrip"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>Plan a trip<span id="hmTripSub">Route, time and fare</span></button>
+        <button type="button" id="hmMap"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="2 6 2 21 8.5 18 15.5 21 22 18 22 3 15.5 6 8.5 3 2 6"/><line x1="8.5" y1="3" x2="8.5" y2="18"/><line x1="15.5" y1="6" x2="15.5" y2="21"/></svg>Live map<span id="hmMapSub">Every line, live trains</span></button>
       </div>
       <div class="hm-h"><h2>More</h2></div>
       <div class="tiles">
-        <button type="button" id="hmLine">Line Board<span>Each line, stop by stop</span></button>
-        <button type="button" id="hmCam">Live cam<span>RailCam Singapore</span><i class="camdot" id="mbCamDot" hidden></i></button>
-        <button type="button" id="hmHist">Rail history<span>Lines, stations, train models</span></button>
-        <button type="button" id="hmNews">Alerts &amp; news<span>LTA notices, news reports</span></button>
-        <button type="button" id="hmSpot">Spotter's log<span id="hmSpotSub">Sightings and badges</span></button>
-        <button type="button" id="hmSet">Settings<span>Theme, keys, app updates</span></button>
+        <button type="button" id="hmLine"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18"/><circle cx="6" cy="6" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="6" cy="18" r="2"/><path d="M11 6h9M11 12h9M11 18h6"/></svg>Line Board<span>Each line, stop by stop</span></button>
+        <button type="button" id="hmCam"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>Live cam<span>RailCam Singapore</span><i class="camdot" id="mbCamDot" hidden></i></button>
+        <button type="button" id="hmHist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3.5 2"/></svg>Rail history<span>Lines, stations, train models</span></button>
+        <button type="button" id="hmNews"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Alerts &amp; news<span>LTA notices, news reports</span></button>
+        <button type="button" id="hmSpot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M4 19a2 2 0 0 1 2-2h12"/><path d="M9 8h5"/></svg>Spotter's log<span id="hmSpotSub">Sightings and badges</span></button>
+        <button type="button" id="hmSet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings<span>Theme, keys, app updates</span></button>
       </div>
     </div>
   </main>
@@ -3157,7 +3466,10 @@ function applyTheme(t){
   if (t) document.documentElement.setAttribute("data-theme", t);
   else document.documentElement.removeAttribute("data-theme");
   store.set("mrt.theme", t);
-  $("themeBtn").textContent = t === "dark" ? "🌙" : t === "light" ? "☀️" : "◐";
+  $("themeBtn").innerHTML = t === "dark" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'
+    : t === "light" ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>';
+  $("themeBtn").title = t === "dark" ? "Theme: dark" : t === "light" ? "Theme: light" : "Theme: follows your phone";
 }
 applyTheme(curTheme);
 $("themeBtn").onclick = () => {
@@ -9437,46 +9749,3 @@ discover();addEventListener("storage",discover);setInterval(discover,2500);
 window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),observations:S.observations.slice(-20),journeys:S.journeys.length,graphStations:Object.keys(S.graph).length,timetableLines:Object.keys(S.timetable?.lines||{}).length,timetableLoadedAt:S.loadedAt});
 })();
 </script>
-<script>
-(()=>{
-"use strict";
-const css="\n/* MRT UI refresh v3 — adaptive shell, iPhone/iPad/Android/desktop polish.\n   Behaviour/data code is untouched. */\n:root{\n  --ui-max:1540px;\n  --touch:44px;\n  --dock-gap:10px;\n  --ui-gutter:clamp(10px,2vw,24px);\n}\nhtml{min-height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}\nbody{min-height:100%;overflow-x:hidden;-webkit-tap-highlight-color:transparent}\nbutton,input,select,textarea{font-size:16px}\nbutton,.btn,.tab,.views button,.tview button,.mapctl button,.theme-btn,.hchip,.cam-angles button,.mob-nav button{\n  touch-action:manipulation;\n}\nbutton,.btn,.tab,.views button,.tview button,.mapctl button,.theme-btn,.hchip,.cam-angles button{min-height:var(--touch)}\n.wrap{width:100%;max-width:var(--ui-max);margin-inline:auto}\nheader.app-header{padding-top:max(10px,env(safe-area-inset-top));}\n.top-right{min-width:0}\n.search input{min-height:44px}\n\n/* iPhone / small Android phones */\n@media (max-width:700px){\n  .wrap{\n    padding-left:max(10px,env(safe-area-inset-left));\n    padding-right:max(10px,env(safe-area-inset-right));\n    padding-bottom:calc(96px + env(safe-area-inset-bottom));\n  }\n  header.app-header{\n    top:0;\n    margin-inline:-10px;\n    padding-inline:max(10px,env(safe-area-inset-left)) max(10px,env(safe-area-inset-right));\n    border-radius:0 0 16px 16px;\n  }\n  .top{align-items:center}\n  .brand-wrap{min-width:0;flex:1}\n  h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n  .clock{font-size:15px}\n  .header-controls{display:grid;grid-template-columns:1fr;gap:7px}\n  .search{grid-column:1}\n  .views{grid-column:1;width:100%}\n  .tabs{margin-inline:-2px;padding-inline:2px}\n  .tabs button{scroll-snap-align:start}\n  .tabs{scroll-snap-type:x proximity}\n  .mapwrap{\n    height:calc(100dvh - 300px)!important;\n    min-height:min(58dvh,420px)!important;\n    max-height:calc(100dvh - 245px);\n  }\n  .mapctl button,.theme-btn{min-width:44px;min-height:44px}\n  .mapcount,.mapcrowd,.mapwx{font-size:12px}\n  .mapinfo{font-size:13.5px}\n  .status{grid-template-columns:6px 1fr auto}\n  .status .hb{min-height:44px}\n  .fleet ul{grid-template-columns:repeat(2,minmax(0,1fr))}\n  .board{border-radius:14px}\n  .row{min-height:56px}\n  .st{padding-right:10px}\n  .next{font-size:12.5px}\n  .sheet,.simsheet{\n    padding-bottom:max(12px,env(safe-area-inset-bottom));\n  }\n  .sheet-body{padding-bottom:calc(22px + env(safe-area-inset-bottom))}\n  .mob-nav{\n    bottom:max(6px,env(safe-area-inset-bottom));\n    padding-bottom:5px;\n  }\n  .mob-nav button{min-height:50px}\n}\n\n/* iPhone SE / narrow Android */\n@media (max-width:380px){\n  .wrap{padding-left:8px;padding-right:8px}\n  header.app-header{\n    margin-inline:-8px;\n    padding-inline:8px;\n  }\n  h1{font-size:20px}\n  .devtag{font-size:9px;padding:4px 6px}\n  .clock{min-width:84px;font-size:14px}\n  .clock small{font-size:9px}\n  .views button{padding-inline:7px}\n  .tabs button{padding-inline:10px!important}\n  .fleet ul{grid-template-columns:1fr}\n  .mapwrap{min-height:370px!important}\n  .mob-nav button{font-size:10px}\n}\n\n/* iPad / Android tablets: use the extra width without forcing desktop density. */\n@media (min-width:701px) and (max-width:1199px){\n  .wrap{padding-inline:max(16px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-right))}\n  header.app-header{padding-top:max(12px,env(safe-area-inset-top))}\n  .header-controls{display:grid;grid-template-columns:minmax(240px,1fr) auto;align-items:center}\n  .search{min-width:0}\n  .tabs{padding-bottom:4px}\n  .mapwrap{height:clamp(500px,calc(100dvh - 250px),760px)}\n}\n@media (min-width:701px) and (max-width:1199px) and (orientation:landscape){\n  .wrap{padding-bottom:20px}\n  #viewTrains:not([hidden]){\n    display:grid;\n    grid-template-columns:minmax(0,1.08fr) minmax(340px,.92fr);\n    gap:14px;\n  }\n  #mapView,#lineView{display:flex!important;flex-direction:column;min-height:0}\n  #mapView{min-width:0}\n  #lineView{overflow-y:auto;padding-right:3px}\n  .mapwrap{height:auto!important;min-height:0;flex:1}\n}\n\n/* Desktop / large monitors: keep the tracker dense but breathable. */\n@media (min-width:1200px){\n  .wrap{padding-inline:var(--ui-gutter)}\n  .header-controls{align-items:center}\n  .mapwrap{min-height:520px}\n  #viewTrains:not([hidden]){grid-template-columns:minmax(0,1.45fr) minmax(390px,.95fr)}\n}\n\n/* Foldables and split-screen Android: avoid horizontal overflow from long train labels. */\n@media (max-width:700px), (min-width:701px) and (max-width:1199px){\n  .name,.st,.mi-row,.tinfo,.status,.fleet li{min-width:0}\n  .name{overflow-wrap:anywhere}\n  .tinfo{flex-wrap:wrap}\n  .tinfo .eta{margin-left:auto}\n}\n\n/* iOS Safari/WebView keyboard + dynamic viewport stability. */\n@supports (height:100dvh){\n  .simsheet,.sheet{max-height:88dvh}\n}\n@supports (padding:max(0px)){\n  .mob-nav{padding-bottom:max(5px,env(safe-area-inset-bottom))}\n}\n\n/* Prevent accidental text selection while interacting with map controls. */\n.mapwrap,.mob-nav,.tabs,.views,.mapctl{user-select:none;-webkit-user-select:none}\n\n/* Performance: isolate large, independently scrolling UI surfaces. */\n@media (min-width:701px){\n  #lineView,#viewUpdates,#viewHist,#viewAsk,#viewCam{contain:layout paint}\n}\n";
-const style=document.createElement("style");
-style.id="mrt-ui-refresh-v3";
-style.textContent=css;
-(document.head||document.documentElement).appendChild(style);
-const root=document.documentElement;
-const setClass=()=>{
-  const w=Math.max(document.documentElement.clientWidth,window.innerWidth||0);
-  root.classList.toggle("device-phone",w<=700);
-  root.classList.toggle("device-tablet",w>700&&w<1200);
-  root.classList.toggle("device-desktop",w>=1200);
-  root.classList.toggle("device-ios",/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1));
-  root.style.setProperty("--ui-vh",(window.visualViewport?window.visualViewport.height:window.innerHeight)+"px");
-};
-setClass();
-addEventListener("resize",setClass,{passive:true});
-addEventListener("orientationchange",()=>setTimeout(setClass,120),{passive:true});
-if(window.visualViewport) window.visualViewport.addEventListener("resize",setClass,{passive:true});
-})();
-
-</script>
-
-<style id="mrt-public-train-meta">
-.mi-trainmeta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:8px 0 2px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--soft);font-size:12px;line-height:1.25}
-.mi-trainmeta>b,.mi-trainmeta span:first-child{font-weight:800}
-.mi-trainmeta .mi-source{color:var(--muted);font-size:10px;white-space:nowrap}
-@media(max-width:560px){.mi-trainmeta{align-items:flex-start;flex-direction:column;gap:2px}.mi-trainmeta .mi-source{white-space:normal}}
-</style>
-
-<script id="mrt-promoted-run-graph">
-(function(){var script=document.createElement("script");script.src="run-graph.js";script.defer=true;document.head.appendChild(script);})();
-</script>
-
-<style id="mrt-mobile-map-safe-area">
-/* Keep the mobile map's lowest station labels clear of the fixed bottom navigation. */
-@media (max-width:700px){
-  .mapwrap{margin-bottom:72px;}
-  .offpill{position:relative;z-index:55;margin-bottom:8px;}
-}
-</style>
