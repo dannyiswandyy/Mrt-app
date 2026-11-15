@@ -1,6 +1,6 @@
 # MRT Tracker - Android app builder
 # Manual build trigger: 2026-11-13 public build
-# This one file holds the whole app. Every time it is saved on GitHub, it builds
+# This one file holds the whole app. Whenever the workflow, Android page, or build tools change on GitHub, it builds
 # the app and publishes the .apk under Releases.
 #
 # There are two copies of this file, which differ only in the lines from here to CHANNEL:
@@ -257,7 +257,6 @@ jobs:
           # Android page source lives in android-page/ so the APK uses the same checked-in source every build.
           cp android-page/index.html 'mrt-tracker-app/app/src/main/assets/index.html'
           cp android-page/*.js 'mrt-tracker-app/app/src/main/assets/'
-          MRTAPP_EOF
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cat > 'mrt-tracker-app/app/src/main/assets/livecam.html' <<'MRTAPP_EOF'
           <!doctype html>
