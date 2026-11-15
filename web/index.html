@@ -9394,3 +9394,11 @@ if(window.visualViewport) window.visualViewport.addEventListener("resize",setCla
 <script id="mrt-promoted-run-graph">
 (function(){var script=document.createElement("script");script.src="run-graph.js";script.defer=true;document.head.appendChild(script);})();
 </script>
+
+<style id="mrt-mobile-map-safe-area">
+/* Keep the mobile map's lowest station labels clear of the fixed bottom navigation. */
+@media (max-width:700px){
+  .mapwrap{margin-bottom:72px;}
+  .offpill{position:relative;z-index:55;margin-bottom:8px;}
+}
+</style>
