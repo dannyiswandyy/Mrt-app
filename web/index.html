@@ -3791,8 +3791,12 @@ function mapInfoHTML(){
     if (!t){ mSel = null; return mapInfoHTML(); }
     mSel.id = t.id;                                          // it turned round: keep following the same train
     const act = activeStations(L, now.iso), stop = act[t.next][1];
+    const tid = t.ref && t.ref.tid ? String(t.ref.tid) : "";
+    const parts = tid.split("_"), run = parts.length >= 2 && /^\\d+$/.test(parts[parts.length - 2]) ? parts[parts.length - 2] : "";
+    const slot = typeof ttSlotOf === "function" ? ttSlotOf(tid) : "";
+    const trainMeta = slot || run ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot || "—")}</b>${run ? ` · run ${esc(run)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
-      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}
+      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}
       <div class="mi-act"><button class="btn ghost" type="button" data-act="line">Open on Line Board</button></div>`;
   }
   const e = MSTN.find(x => x.name === mSel.name);
@@ -9379,3 +9383,10 @@ if(window.visualViewport) window.visualViewport.addEventListener("resize",setCla
 })();
 
 </script>
+
+<style id="mrt-public-train-meta">
+.mi-trainmeta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:8px 0 2px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--soft);font-size:12px;line-height:1.25}
+.mi-trainmeta>b,.mi-trainmeta span:first-child{font-weight:800}
+.mi-trainmeta .mi-source{color:var(--muted);font-size:10px;white-space:nowrap}
+@media(max-width:560px){.mi-trainmeta{align-items:flex-start;flex-direction:column;gap:2px}.mi-trainmeta .mi-source{white-space:normal}}
+</style>
