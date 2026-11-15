@@ -1189,7 +1189,7 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
 .mi-trainmeta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:8px 0 2px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--soft);font-size:12px;line-height:1.25}
 .mi-trainmeta>b,.mi-trainmeta span:first-child{font-weight:800}
 .mi-trainmeta .mi-source{color:var(--muted);font-size:10px;white-space:nowrap}
-@media(max-width:560px){.mi-trainmeta{align-items:flex-start;flex-direction:column;gap:2px}.mi-trainmeta .mi-source{white-space:normal}}
+@media(max-width:560px){.mi-trainmeta{align-items:flex-start;flex-direction:column;gap:2px}.mi-trainmeta .mi-source{white-space:normal}.mi-run{margin:8px 0 0;border:1px solid var(--rule);border-radius:12px;background:var(--soft);overflow:hidden}.mi-run summary{cursor:pointer;list-style:none;padding:10px 12px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:10px}.mi-run summary::-webkit-details-marker{display:none}.mi-run summary::after{content:"›";font-size:18px;color:var(--muted);transform:rotate(90deg)}.mi-run:not([open]) summary::after{transform:none}.mi-run-head{display:flex;justify-content:space-between;gap:8px;padding:0 12px 8px;color:var(--muted);font-size:12px}.mi-run-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:8px 12px;border-top:1px solid var(--rule);font-size:13px}.mi-run-row.here{background:color-mix(in srgb,var(--fg) 5%,transparent)}.mi-run-time{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:800;white-space:nowrap}.mi-run-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mi-run-arr{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}.mi-run-more{padding:8px 12px;color:var(--muted);font-size:12px;border-top:1px solid var(--rule)}}
 /* Keep the mobile map's lowest station labels clear of the fixed bottom navigation. */
 @media (max-width:700px){
   .mapwrap{margin-bottom:72px;}
@@ -4087,14 +4087,14 @@ function mrtRunDayHTML(tid){
   if (!trip || !trip.run || !trip.run.trips || !trip.run.trips.length) return "";
   const run = trip.run;
   const clock = x => { x=Math.round(Number(x)||0); const m=Math.floor(x/60)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
-  const rows = run.trips.map((x,i) => {
+  const rows = run.trips.map(x => {
     const here = String(x.tid) === String(tid);
     const label = x.origin && x.dest ? esc(x.origin)+" → "+esc(x.dest) : esc(x.tid);
-    return '<div class="mi-run-row'+(here?' here':'')+'"><span><b>'+(i+1)+'.</b> '+label+'</span><span>'+clock(x.dep)+'–'+clock(x.arr)+'</span></div>';
+    return '<div class="mi-run-row'+(here?' here':'')+'"><span class="mi-run-time">'+clock(x.dep)+'</span><span class="mi-run-route">'+label+'</span><span class="mi-run-arr">arr '+clock(x.arr)+'</span></div>';
   }).join("");
-  return '<details class="mi-run"><summary>This train’s day · run '+esc(String(run.run))+'</summary>'+
-    '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>'+run.trips.length+' scheduled trips</span></div>'+rows+
-    '<div class="mi-run-note">LTA timetable run reconstruction · scheduled duty, not a physical trainset</div></details>';
+  return '<details class="mi-run"><summary><span>Train duty · run '+esc(String(run.run))+'</span><span>'+run.trips.length+' trips</span></summary>'+
+    '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>Today</span></div>'+rows+
+    '</details>';
 }
 function mapInfoHTML(){
   const now = sgNow();
