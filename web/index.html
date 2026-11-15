@@ -1169,6 +1169,22 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
   #lineView,#viewUpdates,#viewHist,#viewAsk,#viewCam{contain:layout paint}
 }
 
+/* Casual train-day view: useful to riders, without exposing run-analysis vocabulary. */
+.casual-daytrip{border:1px solid var(--rule);border-radius:12px;background:var(--panel);overflow:hidden}
+.cdt-current{display:grid;gap:3px;padding:11px 12px}
+.cdt-current>span{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.cdt-current>b{font-size:14px}
+.cdt-current>small{font-size:11px;color:var(--muted)}
+.casual-daytrip details{border-top:1px solid var(--soft)}
+.casual-daytrip summary{padding:9px 12px;cursor:pointer;color:var(--fg);font-size:12px;font-weight:600}
+.casual-daytrip ol{list-style:none;margin:0;padding:0 12px 8px}
+.casual-daytrip li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--soft);font-size:12px}
+.casual-daytrip li.is-now{font-weight:700}
+.cdt-time{font:600 11px var(--mono);color:var(--muted)}
+.cdt-route{display:flex;gap:5px;min-width:0;align-items:center;flex-wrap:wrap}
+.cdt-route span{color:var(--muted)}
+.cdt-now{font-size:10px;padding:2px 5px;border-radius:5px;background:var(--soft);color:var(--fg)}
+.casual-daytrip .hint{padding:0 12px 10px;margin:0}
 /* Train details: the train's slot and source */
 .mi-trainmeta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:8px 0 2px;padding:8px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--soft);font-size:12px;line-height:1.25}
 .mi-trainmeta>b,.mi-trainmeta span:first-child{font-weight:800}
@@ -8063,6 +8079,22 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return {now, L, t, act, stop: act[t.next] ? act[t.next][1] : "", to: destOf(L, t.dir, act, t.to), full: dest(L, t.dir, act), sb: isShortTo(L, t.dir, act, t.to)};
   }
   window.hxTrainNow = trainNow;
+  /* Casual train-day view: simple scheduled duty for everyday riders. */
+  function casualDayTripHTML(x, T){
+    try{
+      const tid = T.t && T.t.ref && T.t.ref.tid ? String(T.t.ref.tid) : "";
+      const G = window.mrtRunGraphToday, api = window.mrtRunGraph;
+      if (!tid || !G || !api || !api.findTrip || !G.lines[x.line]) return "";
+      const cur = api.findTrip(G, x.line, tid);
+      if (!cur || !cur.run) return "";
+      const trips = cur.run.trips.filter(t => t.service === cur.service);
+      if (trips.length < 2) return "";
+      const idx = Math.max(0, trips.indexOf(cur));
+      const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now">Now</span>` : ""}</li>`).join("");
+      const current = `<div class="cdt-current"><span>Today’s journey</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today</small></div>`;
+      return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">Based on LTA’s timetable. This groups scheduled trips together; it does not identify the physical trainset.</p></details></div>`;
+    }catch(e){ return ""; }
+  }
   function trainLive(x){
     const T = trainNow(x); if (!T) return null;
     const {t, stop, to, full, sb} = T;
@@ -8074,6 +8106,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const trainMeta = slot ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot)}</b>${tripNo ? ` · trip ${esc(tripNo)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     return `<div class="tsum" style="--c:var(--${x.line})">${trainSVG(t.dir)}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span></div></div>
       ${trainMeta}
+      ${casualDayTripHTML(x, T)}
       <div class="hfacts">
         <div><span>Bound</span><b>${esc(full)}</b><small>direction of travel</small></div>
         <div><span>Ends at</span><b>${esc(BOUND_RE.test(to) ? (sb ? String(to).split(" ends at ")[1] : "Keeps going") : to)}</b><small>${BOUND_RE.test(to) ? (sb ? "ends early" : "round the loop") : sb ? "special-bound" : "runs the whole way"}</small></div>
