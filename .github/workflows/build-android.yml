@@ -2475,10 +2475,10 @@ jobs:
           path: osm-cache
           key: osm-buildings-v1-${{ github.run_id }}
 
-      # The app's page allows its own inline script ('unsafe-inline'); there are no script fingerprints to
-      # keep in step any more, so editing the page can't make it open blank. If the policy ever names a
-      # fingerprint again it's put back to 'unsafe-inline' here; and if the script itself has a mistake
-      # that stops it running, the build stops and says where.
+      # The app's page allows its own inline script and its own script files ('self' 'unsafe-inline': run-graph.js
+      # and config.js are separate files). There are no script fingerprints to keep in step, so editing the page
+      # can't make it open blank. If the policy ever says anything else it's put back here; and if the script
+      # itself has a mistake that stops it running, the build stops and says where.
       - name: Check the app page's script
         run: |
           python3 - mrt-tracker-app/app/src/main/assets/index.html <<'PY'
@@ -2493,12 +2493,12 @@ jobs:
           have = re.search(r"script-src ([^;\"]*);", page)
           if not scripts or not have:
               say("⚠️ The page has no script or no security policy; nothing to check.")
-          elif have.group(1).strip() != "'unsafe-inline'":
-              page = page[:have.start(1)] + "'unsafe-inline'" + page[have.end(1):]
+          elif have.group(1).strip() != "'self' 'unsafe-inline'":
+              page = page[:have.start(1)] + "'self' 'unsafe-inline'" + page[have.end(1):]
               open(path, "w", encoding="utf-8").write(page)
-              say("🔧 The page's script policy was set back to 'unsafe-inline' for this build.")
+              say("🔧 The page's script policy was set back to 'self' 'unsafe-inline' for this build.")
           else:
-              say("✅ The page's script policy is 'unsafe-inline' (no fingerprint needed).")
+              say("✅ The page's script policy is 'self' 'unsafe-inline' (its own files and inline script).")
           try:
               with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
                   f.write("\n".join(scripts))
