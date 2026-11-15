@@ -1385,14 +1385,33 @@ body.on-map .hx-sheet{max-height:58vh}
    * what only the phone app can do (in-app updates, saving LTA's timetable file, the home-screen widget,
      Android notifications and trip alarms) is left out, so the page hides those buttons;
    * sharing the spotter's log uses the browser's share sheet when it has one; otherwise the page copies
-     the text itself. Online/offline follows the browser. */
+     the text itself. Online/offline follows the browser.
+   Inside the Android app this same page is bundled into the app, and the app has already given it the real
+   window.MrtApp. Then none of this stand-in is used: the app's script just starts with the app's own bridge. */
 (() => {
+  // the app's own script, once the whole page is in (the app's script reads the page as it starts)
+  const runMain = after => {
+    const go = () => {
+      const src = document.getElementById("mrt-main"), s = document.createElement("script");
+      s.textContent = src.textContent;
+      src.remove();
+      document.body.appendChild(s);
+      if (after) after();
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go, {once: true}); else go();
+  };
+  let inApp = false;
+  try { inApp = !!(window.MrtApp && typeof window.MrtApp.getTimetable === "function"); } catch(e){}
+  if (inApp){ runMain(); return; }
+
   const C = window.MRT_WEB_CONFIG || {}, PROXY = String(C.proxy || "").trim().replace(/\/+$/, "");
   const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "2026.11.15-1246"};
   const within = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
   const getText = (u, ms) => within(fetch(u, {cache: "no-cache"}).then(r => r.ok ? r.text() : null).catch(() => null), ms);
   const reply = (id, code, body) => setTimeout(() => { if (window.__native) window.__native(id, code, body || ""); }, 0);
-  const send = (id, url, opt) => fetch(url, opt).then(async r => reply(id, r.status, await r.text())).catch(() => reply(id, 0, ""));
+  // 0 means "no connection" to the page (it then shows Offline), so use it only when the browser really is offline;
+  // a relay or service that can't be reached gets 502, and something this website doesn't offer gets 503.
+  const send = (id, url, opt) => fetch(url, opt).then(async r => reply(id, r.status, await r.text())).catch(() => reply(id, navigator.onLine === false ? 0 : 502, ""));
 
   /* Where each request the page makes goes on the website (null: not available). */
   function route(url){
@@ -1420,11 +1439,11 @@ body.on-map .hx-sheet{max-height:58vh}
     isOnline: () => navigator.onLine !== false,
     fetch(id, url){
       const to = route(url);
-      if (!to){ reply(id, 0, ""); return; }
+      if (!to){ reply(id, 503, ""); return; }
       send(id, to, {headers: {Accept: "application/json, application/rss+xml, text/xml"}});
     },
     askAi(id, request){
-      if (!W.ai){ reply(id, 0, ""); return; }
+      if (!W.ai){ reply(id, 503, ""); return; }
       send(id, PROXY + "/ai", {method: "POST", headers: {"content-type": "application/json"}, body: request});
     }
   };
@@ -1443,19 +1462,24 @@ body.on-map .hx-sheet{max-height:58vh}
     if (h && h.ok){ W.relay = true; W.live = !!h.lta; W.ai = !!h.ai; W.yt = !!h.yt; }
     if (W.yt) bridge.liveLookup = (id, handle) => send(id, PROXY + "/yt?handle=" + encodeURIComponent(handle));
     window.MrtApp = bridge;
-
-    // the app's own script, once the whole page is in (the app's script reads the page as it starts)
-    const start = () => {
-      const src = document.getElementById("mrt-main"), s = document.createElement("script");
-      s.textContent = src.textContent;
-      src.remove();
-      document.body.appendChild(s);
-      later();
-    };
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once: true}); else start();
+    runMain(later);
   });
 
   function later(){
+
+    // check the relay again now and then, so a short relay or LTA outage doesn't leave the page on
+    // "Live data unavailable" until it is reloaded (relay trouble is not "offline": that follows the browser)
+    if (PROXY) setInterval(async () => {
+      if (document.hidden) return;
+      const h = await within(fetch(PROXY + "/health", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null), 4000);
+      const was = W.live, ok = !!(h && h.ok);
+      W.relay = ok; W.live = ok && !!h.lta; W.ai = ok && !!h.ai; W.yt = ok && !!h.yt;
+      if (W.yt) bridge.liveLookup = (id, handle) => send(id, PROXY + "/yt?handle=" + encodeURIComponent(handle));
+      else delete bridge.liveLookup;
+      if (W.live === was) return;
+      try { renderBanner(); } catch(e){}
+      try { if (W.live) refreshAll(); } catch(e){}
+    }, 60000);
 
     // buildings are big: they load after the map is up, then show
     getText("data/buildings.json", 60000).then(b => {
@@ -3826,7 +3850,7 @@ function mrtRunDayHTML(tid){
     const label = x.origin && x.dest ? esc(x.origin)+" → "+esc(x.dest) : esc(x.tid);
     return '<div class="mi-run-row'+(here?' here':'')+'"><span><b>'+(i+1)+'.</b> '+label+'</span><span>'+clock(x.dep)+'–'+clock(x.arr)+'</span></div>';
   }).join("");
-  return '<details class="mi-run"><summary>This train\\'s day · run '+esc(String(run.run))+'</summary>'+
+  return '<details class="mi-run"><summary>This train’s day · run '+esc(String(run.run))+'</summary>'+
     '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>'+run.trips.length+' scheduled trips</span></div>'+rows+
     '<div class="mi-run-note">LTA timetable run reconstruction · scheduled duty, not a physical trainset</div></details>';
 }
@@ -5914,7 +5938,8 @@ const CAM_ANGLES = [
 let camAngle = (() => { try { const a = localStorage.getItem("camAngle"); return CAM_ANGLES.some(x => x.id === a) ? a : "main"; } catch(e){ return "main"; } })();
 const camAngleOf = () => CAM_ANGLES.find(x => x.id === camAngle) || CAM_ANGLES[0];
 const CAM_EVERY = 3 * 60e3;                       // look for a new stream this often while the tab is open
-const CAM_APP_PLAYER = new URL("livecam.html", location.href).href;
+// the app serves its player page at this address (with the headers YouTube needs); the website has its own copy
+const CAM_APP_PLAYER = window.MRT_WEB ? new URL("livecam.html", location.href).href : "https://sg.mrttracker.app/livecam.html";
 const camApp = () => { try { return !!(APP && APP.liveLookup); } catch(e){ return false; } };
 const CAM_ERR = {
   2: "YouTube couldn't play this video.", 5: "YouTube's player had a problem on this phone.",
