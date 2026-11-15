@@ -12,7 +12,7 @@ This is the **public** MRT Tracker app and website. Danny works on it with more 
 
 | What | Where |
 | --- | --- |
-| The app page (map, trains, Live cam, disruptions…) | inside `.github/workflows/build-android.yml`, after `base64 -d <<'MRTAPP_EOF' \| xz -d > '…/assets/index.html'`: `index.html` compressed with xz, then base64, in lines of 76 characters indented 10 spaces |
+| The app page (map, trains, Live cam, disruptions…) | `web/index.html`, copied into the Android assets by `.github/workflows/build-android.yml` |
 | Android project (Java, manifest, Gradle) | written by `.github/workflows/build-android.yml` |
 | Build tools (LTA timetable, buildings, RTS/Sentosa tracks, station exits) and the station list they use | `tools/` (`build_*.py`, `lines.json`), copied into the project by `build-android.yml` and used by `deploy-web.yml` too |
 | The website | `web/index.html` (the same page, made for browsers), published by `deploy-web.yml` |
@@ -22,9 +22,8 @@ This is the **public** MRT Tracker app and website. Danny works on it with more 
 
 ## Changing the app page
 
-- **Change the app and the website together.** Make the same edit to the page in `build-android.yml` and to `web/index.html`. `web/tools/make_web.py` makes the website from the app page, including the website's own security rules (CSP), so `python3 web/tools/make_web.py` after changing the app page keeps the two in step.
+- **Change the app and the website together.** `web/index.html` is the canonical public page. The Android build copies it into the app assets, while the Pages workflow publishes `web/`. Do not create a second packed copy of the page.
 - Edit the page itself. Don't add steps to the workflow that patch `index.html` during the build.
-- To unpack the app page: take the indented lines between the `base64 -d <<'MRTAPP_EOF' | xz -d` line and its closing `MRTAPP_EOF`, strip the spaces, base64-decode, then xz-decompress. Pack it back the same way (`xz -9e`, base64, 76-character lines, 10 spaces of indent), and check it unpacks to exactly your edited file.
 - Trains keep left: each arrow sits on the left of its line in the direction of travel. Don't "fix" arrows by flipping which way trains point.
 
 ## Before you push

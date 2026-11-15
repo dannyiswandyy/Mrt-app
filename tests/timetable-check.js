@@ -104,7 +104,9 @@ function embeddedHtml() {
   const yml = fs.readFileSync(path.join(root, ".github/workflows/build-android.yml"), "utf8");
   const mark = "base64 -d <<'MRTAPP_EOF' | xz -d > 'mrt-tracker-app/app/src/main/assets/index.html'";
   const at = yml.indexOf(mark);
-  if (at < 0) throw new Error("build-android.yml has no embedded index.html");
+  // The public page is now canonical in web/index.html and copied into the Android assets by the build.
+  // Keep this check backwards-compatible with older branches that still packed the page into the workflow.
+  if (at < 0) return pageHtml();
   const rest = yml.slice(at + mark.length);
   const end = rest.search(/\n[ \t]*MRTAPP_EOF\b/);
   if (end < 0) throw new Error("embedded index.html is missing its MRTAPP_EOF end");
@@ -194,7 +196,7 @@ function main() {
   checkCases(web, "website");
 
   const packed = embeddedHtml();
-  if (!packed.includes("function headway") || !packed.includes("NSL_TRAINS")) fail("packed page has no timetable script");
+  if (!packed.includes("function headway") || !packed.includes("NSL_TRAINS")) fail("Android page has no timetable script");
   const app = loadPage(packed);
   checkRosters(app, "packed page");
   checkCases(app, "packed page");
@@ -206,7 +208,7 @@ function main() {
     process.exit(1);
   }
   const cases = DAYS.length * BANDS.length * LINES.length;
-  console.log("Timetable checks passed: " + cases + " line/day/time cases on the website and the packed page (DTL 2.5/4.5/7).");
+  console.log("Timetable checks passed: " + cases + " line/day/time cases on the public page and Android page source (DTL 2.5/4.5/7).");
 }
 
 main();
