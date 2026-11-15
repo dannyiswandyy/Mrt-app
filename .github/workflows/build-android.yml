@@ -14,6 +14,7 @@ on:
     paths:
       - .github/workflows/build-android.yml
       - tools/**
+      - web/**
   workflow_dispatch:
 
 permissions:
@@ -258,6 +259,7 @@ jobs:
           # web/index.html is the canonical public UI; the Dev app remains separate.
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cp 'web/index.html' 'mrt-tracker-app/app/src/main/assets/index.html'
+          cp 'web/run-graph.js' 'mrt-tracker-app/app/src/main/assets/run-graph.js'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cat > 'mrt-tracker-app/app/src/main/assets/livecam.html' <<'MRTAPP_EOF'
           <!doctype html>
