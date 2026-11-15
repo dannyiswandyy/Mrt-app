@@ -1370,6 +1370,7 @@ body.on-map .hx-sheet{max-height:58vh}
 </section>
 
 <script src="config.js"></script>
+<script src="run-graph.js"></script>
 <script>
 /* ---------- MRT Tracker website: stand-in for the Android app's bridge ----------
    The phone app gives this page window.MrtApp (LTA data with the app's key, news, the timetable, buildings
@@ -2180,6 +2181,19 @@ if (TT){
     });
   }
 }
+/* Build the validated Dev run graph from the same packed LTA timetable used by the public tracker.
+   The graph is a secondary intelligence layer: existing timetable behaviour remains the fallback. */
+let mrtRunGraphToday = null;
+function rebuildMrtRunGraph(){
+  if (!TT || !window.mrtRunGraph || !window.mrtRunGraph.build) return null;
+  try {
+    mrtRunGraphToday = window.mrtRunGraph.build(TT, {stationsOf: code => LINES[code] ? LINES[code].stations : null});
+    window.mrtRunGraphToday = mrtRunGraphToday;
+    return mrtRunGraphToday;
+  } catch(e){ mrtRunGraphToday = null; window.mrtRunGraphToday = null; return null; }
+}
+rebuildMrtRunGraph();
+
 const ttDayCache = {};
 /* Service calendars running on a service day (handles public holidays and other exceptions). */
 function ttServices(iso){
@@ -2260,6 +2274,20 @@ function ttSlotOf(tid){
 }
 function ttLinks(list){
   if (list.links) return list.links;
+  /* Prefer LTA's explicit service+run grouping from the validated GTFS run graph.
+     If a trip is absent from the graph, keep the original slot/station fallback below. */
+  const graphLine = window.mrtRunGraphToday && list.code ? window.mrtRunGraphToday.lines && window.mrtRunGraphToday.lines[list.code] : null;
+  if (graphLine && graphLine.runs && graphLine.runs.length){
+    const byTid = new Map(list.map(r => [String(r.tid || ""), r]));
+    const nextG = new Map(), prevG = new Map();
+    for (const gr of graphLine.runs){
+      for (let i = 0; i + 1 < gr.trips.length; i++){
+        const a = byTid.get(String(gr.trips[i].tid || "")), b = byTid.get(String(gr.trips[i + 1].tid || ""));
+        if (a && b){ nextG.set(a, b); prevG.set(b, a); }
+      }
+    }
+    if (nextG.size || prevG.size) return list.links = {next: nextG, prev: prevG, source: "LTA GTFS run graph"};
+  }
   const next = new Map(), prev = new Map(), st = list.code && LINES[list.code] ? LINES[list.code].stations : null;
   // the same station: on the Circle Line a run carried on round to Promenade ends at the second Promenade in the list
   const nm = i => st && st[i] ? st[i][1] : i, endAt = r => nm(r.p.f + r.p.d * (r.p.arr.length - 1)), gets = r => r.s + r.p.end;
