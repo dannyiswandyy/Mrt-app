@@ -1501,7 +1501,7 @@ footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
       <section class="fleet" id="fleet"></section>
       <div id="notice"></div>
       <div id="trainInfo"><p class="hint">Tap a train to see where it's heading.</p></div>
-      <!--DEV:START--><div class="rep-entry" id="repEntry" hidden><button type="button" class="btn ghost" id="repOpenBtn">Spotted a train the app isn't showing?</button><span id="repCount"></span></div><!--DEV:END-->
+      <!--DEV:START--><div class="rep-entry" id="repEntry" hidden><button type="button" class="btn ghost" id="repOpenBtn">Spot a train the app isn't showing</button><span id="repCount"></span></div><!--DEV:END-->
       <p class="cw-note" id="cwNote" hidden></p>
       <div class="legend"><span id="lgA">↓ Lane 1</span><span id="lgB">Lane 2 ↑</span></div>
       <div class="board" id="board"></div>
@@ -1571,10 +1571,10 @@ footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
 <!--DEV:START-->
       <section class="spot" id="spot" hidden aria-labelledby="spotH">
         <div class="spot-head">
-          <h3 id="spotH">Train spotting <span class="spot-tag">Test</span></h3>
+          <h3 id="spotH">Live train spotting <span class="spot-tag">Spotter</span></h3>
           <label class="spot-sw"><input type="checkbox" id="spotOn"> On</label>
         </div>
-        <p class="spot-intro">Watches the tracks in the video for North-South Line trains, and uses when they pass to set NSL times right.</p>
+        <p class="spot-intro">Watches the RailCam tracks for North-South Line trains, estimates their direction and checks the sighting against the timetable. Nothing is uploaded or shared.</p>
         <div class="spot-live" id="spotLive" hidden>
           <canvas id="spotView" width="192" height="60" aria-label="What the app sees in the box"></canvas>
           <div><p class="spot-st" id="spotSt" role="status"></p><div class="spot-meter"><i id="spotBar"></i></div></div>
@@ -6432,7 +6432,7 @@ window.appPause = () => { if (camOn){ camShown(false); camOn = "paused"; } };
    fills it and leaves; the side it comes in from says which way it's going. Each train seen is matched
    with the nearest train the app expected to pass the camera, and how late or early the last few were
    (the middle one) moves NSL times in that direction, fading out 15 to 45 minutes after the last one. */
-const SPOT_DEV = APP_CHANNEL === "dev";
+const SPOT_DEV = APP_CHANNEL === "beta" && !!(APP && typeof APP.camWatch === "function");
 const SPOT_DEF = {on: false, box: null, lr: 0, seg: null, frac: 50, delay: 20, fix: true};
 let SPOT = (() => { try { return Object.assign({}, SPOT_DEF, JSON.parse(localStorage.getItem("spot") || "{}")); } catch(e){ return Object.assign({}, SPOT_DEF); } })();
 if (SPOT.seg == null) SPOT.seg = Math.max(0, LINES.NSL.stations.findIndex(s => s[0] === "NS11"));   // guess: Sembawang to Canberra
@@ -6722,7 +6722,7 @@ setInterval(() => { if (SPOT_DEV && SPOT.on && curView === "cam") spotSync(); },
    the one: it's moved to where it was seen. The same happens with the nearest one when the map already
    shows as many trains as the line's train duty list says are out. Moved trains get a dashed ring.
    The list is kept on this phone for the day. */
-const REP_DEV = APP_CHANNEL === "dev";
+const REP_DEV = APP_CHANNEL === "beta";
 let REPS = (() => { try { const v = JSON.parse(localStorage.getItem("trainReports") || "[]"); return Array.isArray(v) ? v : []; } catch(e){ return []; } })();
 const repSave = () => { try { localStorage.setItem("trainReports", JSON.stringify(REPS.slice(-60))); } catch(e){} };
 let repOpenNow = false, repForm = null, repMsgText = "";
@@ -6882,7 +6882,7 @@ function repRender(full){
   }).join("") : `<li class="rl-st">Nothing spotted yet today.</li>`;
   if (full){
     $("repSheet").innerHTML = `<div class="sim-h"><h2 id="repTitle">Spotted a train</h2><button type="button" data-rep="close" aria-label="Close">×</button></div>
-      <p>Seen a train somewhere the app doesn't have it? Add it here. If the map has a train going that way due there within a few minutes (arriving, or just gone), that train is moved to where you saw it. If not, a new train appears from where you saw it and moves along the line, unless the map already shows as many trains as the line's train list says are out: then the nearest one is moved instead.</p>
+      <p>See a train that the app missed? Add it here. Your sighting is kept on this phone and used to place the train on the map. If the map has a train going that way due there within a few minutes (arriving, or just gone), that train is moved to where you saw it. If not, a new train appears from where you saw it and moves along the line, unless the map already shows as many trains as the line's train list says are out: then the nearest one is moved instead.</p>
       <form id="repF" autocomplete="off">
         <label>Line<select id="repLine">${lines.map(c => `<option value="${c}"${c === F.line ? " selected" : ""}>${esc(LINES[c].name)}</option>`).join("")}</select></label>
         <label>Going<select id="repDir"><option value="0"${F.dir === 0 ? " selected" : ""}>${esc(dest(L, 0, act))}</option><option value="1"${F.dir === 1 ? " selected" : ""}>${esc(dest(L, 1, act))}</option></select></label>
