@@ -3811,6 +3811,25 @@ function canvasPills(ctx, list, x, y, fs, draw = true){
 /* ---- info card under your finger ---- */
 
 /* ---- info card under your finger & desktop split sync ---- */
+function mrtRunDayHTML(tid){
+  const g = window.mrtRunGraphToday;
+  if (!g || !tid) return "";
+  const p = window.mrtRunGraph && window.mrtRunGraph.parseTripId ? window.mrtRunGraph.parseTripId(tid) : null;
+  if (!p || p.run == null || !g.lines || !g.lines[p.system]) return "";
+  const line = g.lines[p.system];
+  const trip = (line.trips || []).find(x => String(x.tid) === String(tid));
+  if (!trip || !trip.run || !trip.run.trips || !trip.run.trips.length) return "";
+  const run = trip.run;
+  const clock = x => { x=Math.round(Number(x)||0); const m=Math.floor(x/60)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
+  const rows = run.trips.map((x,i) => {
+    const here = String(x.tid) === String(tid);
+    const label = x.origin && x.dest ? esc(x.origin)+" → "+esc(x.dest) : esc(x.tid);
+    return '<div class="mi-run-row'+(here?' here':'')+'"><span><b>'+(i+1)+'.</b> '+label+'</span><span>'+clock(x.dep)+'–'+clock(x.arr)+'</span></div>';
+  }).join("");
+  return '<details class="mi-run"><summary>This train\\'s day · run '+esc(String(run.run))+'</summary>'+
+    '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>'+run.trips.length+' scheduled trips</span></div>'+rows+
+    '<div class="mi-run-note">LTA timetable run reconstruction · scheduled duty, not a physical trainset</div></details>';
+}
 function mapInfoHTML(){
   const now = sgNow();
   if (!mSel) return `<p class="hint" style="margin:0">Tap any train or station on the map · Pinch or scroll to zoom.</p>`;
@@ -3824,7 +3843,7 @@ function mapInfoHTML(){
     const slot = typeof ttSlotOf === "function" ? ttSlotOf(tid) : "";
     const trainMeta = slot || run ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot || "—")}</b>${run ? ` · run ${esc(run)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
-      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}
+      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mrtRunDayHTML(tid)}
       <div class="mi-act"><button class="btn ghost" type="button" data-act="line">Open on Line Board</button></div>`;
   }
   const e = MSTN.find(x => x.name === mSel.name);
