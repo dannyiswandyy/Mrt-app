@@ -4085,8 +4085,15 @@ function mrtRunDayHTML(tid){
   if (!p || p.run == null || !g.lines || !g.lines[p.system]) return "";
   const line = g.lines[p.system];
   const trip = (line.trips || []).find(x => String(x.tid) === String(tid));
-  if (!trip || !trip.run || !trip.run.trips || !trip.run.trips.length) return "";
-  const run = trip.run;
+  // Some special-bound trips use a timetable identifier that isn't present verbatim
+  // in the validated graph. If so, recover the same scheduled duty by run + day type.
+  const dutyTrip = trip || (line.trips || []).find(x =>
+    x.id && String(x.id.run) === String(p.run) &&
+    (!p.dayType || x.id.dayType === p.dayType) &&
+    x.run && x.run.trips && x.run.trips.length
+  );
+  if (!dutyTrip || !dutyTrip.run || !dutyTrip.run.trips || !dutyTrip.run.trips.length) return "";
+  const run = dutyTrip.run;
   const clock = x => { x=Math.round(Number(x)||0); const m=Math.floor(x/60)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
   const rows = run.trips.map(x => {
     const here = String(x.tid) === String(tid);
