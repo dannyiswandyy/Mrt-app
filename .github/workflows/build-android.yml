@@ -1126,7 +1126,12 @@ jobs:
                                       web.evaluateJavascript("window.updateProgress && window.updateProgress(" + pct + ")", null)));
                               runOnUiThread(() -> web.evaluateJavascript("window.updateProgress && window.updateProgress(100)", null));
                           } catch (Exception e) {
-                              reportUpdateError("The download didn't finish. Check your internet connection and try again.");
+                              String msg = e.getMessage();
+                              if (msg == null || msg.trim().isEmpty()) msg = e.getClass().getSimpleName();
+                              // Keep the message short and useful; this is primarily for diagnosing update failures.
+                              if (msg.length() > 180) msg = msg.substring(0, 180);
+                              final String detail = "Update failed: " + msg;
+                              reportUpdateError(detail);
                           } finally {
                               updating = false;
                           }
@@ -1796,7 +1801,7 @@ jobs:
               static final String CHANNEL = "updates";
               static final int NOTIFY_ID = 1001;
               static final int JOB_ID = 2001;
-              private static final long MAX_APK = 60L * 1024 * 1024;
+              private static final long MAX_APK = 120L * 1024 * 1024; // allow the bundled train/audio assets to grow
 
               private Updater() {}
 
