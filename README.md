@@ -2,9 +2,11 @@
 
 A Singapore MRT/LRT tracker for Android, plus a website at [dannyiswandyy.github.io/Mrt-app](https://dannyiswandyy.github.io/Mrt-app/). It shows the network map (2D and 3D), trains and timings, station and train-model information, weather, news, disruptions, and a trip planner.
 
-**MRT Tracker** (the public / beta app you use day to day) is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` under Releases. 3D buildings are downloaded in smaller parts with retries and cached between builds, so when OpenStreetMap is slow the missing station areas fill in over the next few builds. If the LTA timetable can't be downloaded, the build summary says whether the key was refused or the file link failed, and the app falls back to estimates.
+**MRT Tracker** is the public / beta app for day-to-day use. It is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` and `version.json` under the repository's **latest** release. The app can check that release and install newer builds in-app. The public app does **not** contain the private Dev build or Dev workflow.
 
-A separate private dev build exists for the maintainer's own testing.
+3D buildings are downloaded in smaller parts with retries and cached between builds, so when OpenStreetMap is slow the missing station areas fill in over the next few builds. If the LTA timetable can't be downloaded, the build summary says whether the key was refused or the file link failed, and the app falls back to estimates.
+
+A separate private Dev build exists for the maintainer's own testing and is kept in the private `mrt-dev-app` repository. Dev builds are not part of this public repository or its public updater.
 
 ## Current features (MRT Tracker)
 
@@ -51,7 +53,7 @@ When LTA's timetable isn't available for a line, the app estimates trains from h
 
 ## Website
 
-The website is a full web version of the **normal** (public) app, not MRT Dev, at:
+The website is the full web version of the **normal public app**, not MRT Dev, at:
 
 **[https://dannyiswandyy.github.io/Mrt-app/](https://dannyiswandyy.github.io/Mrt-app/)**
 
@@ -74,9 +76,11 @@ Set these under **Settings → Secrets and variables → Actions**. Do not commi
 
 | Secret | Used by | Purpose |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Both Android apps (optional) | Lets the Ask tab use Claude. Without it, the Ask tab gives built-in answers. |
+| `ANTHROPIC_API_KEY` | Public Android app (optional) | Lets the Ask tab use Claude. Without it, the Ask tab gives built-in answers. |
 
-In-app updates need no secret: each build puts `mrt-tracker.apk` and `version.json` in this repo's **latest** release, and the app checks that, then downloads and installs new versions itself.
+The public updater does **not** need a GitHub token. Each public build puts `mrt-tracker.apk` and `version.json` in this repository's **latest** release, and the normal app checks that public release, compares versions, then downloads and installs the newer APK when one is available.
+
+The private Dev app is deliberately excluded from this updater. It is maintained separately in the private `mrt-dev-app` repository and is installed manually from its private Releases.
 
 The LTA DataMall key used by the website belongs in the Cloudflare Worker secret `LTA_KEY`, not in this repository.
 
