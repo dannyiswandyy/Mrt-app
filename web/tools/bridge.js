@@ -83,6 +83,25 @@
 
   function later(){
 
+    // Re-check the relay periodically. A temporary Worker/LTA outage should not leave the website
+    // stuck in "Live data unavailable" until the next full page load.
+    const refreshRelayState = async () => {
+      if (!PROXY) return;
+      const h = await within(fetch(PROXY + "/health", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null), 4000);
+      const wasLive = W.live;
+      if (h && h.ok) {
+        W.relay = true; W.live = !!h.lta; W.ai = !!h.ai; W.yt = !!h.yt;
+      } else {
+        W.relay = false; W.live = false; W.ai = false; W.yt = false;
+      }
+      if (W.live !== wasLive) {
+        try { if (typeof renderBanner === "function") renderBanner(); } catch(e) {}
+        try { if (typeof refreshAll === "function") refreshAll(); } catch(e) {}
+        try { if (typeof window.netState === "function") window.netState(W.live); } catch(e) {}
+      }
+    };
+    setInterval(refreshRelayState, 30000);
+
     // buildings are big: they load after the map is up, then show
     getText("data/buildings.json", 60000).then(b => {
       if (!b || !b.trim().startsWith("{") || !b.includes('"b"')) return;
