@@ -1,0 +1,2564 @@
+# MRT Tracker - Android app builder
+# Manual build trigger: 2026-11-13 public build
+# This one file holds the whole app. Every time it is saved on GitHub, it builds
+# the app and publishes the .apk under Releases.
+#
+# There are two copies of this file, which differ only in the lines from here to CHANNEL:
+#   build-android.yml      builds MRT Tracker (beta), the app you use day to day
+#   build-android-dev.yml  builds MRT Tracker, a separate app for trying new features first
+# Each one only builds when that file itself is saved (or from Actions > Run workflow).
+name: Build MRT Tracker dev app
+
+on:
+  push:
+    paths:
+      - .github/workflows/build-android-dev.yml
+      - tools/**
+      - web/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CHANNEL: dev
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write the app project
+        run: |
+          rm -rf mrt-tracker-app
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/README.md' <<'MRTAPP_EOF'
+          # MRT Tracker (Android)
+          
+          A small Android app that shows the MRT Train Tracker full screen. The tracker page is bundled inside the app (`app/src/main/assets/index.html`), so trains and timings work offline; the internet is only used for fonts.
+          
+          ## Build with GitHub (no computer needed)
+          
+          The easiest way is the single file `build-android.yml`, which contains this whole project:
+          
+          1. Create a new **private** repository on github.com.
+          2. Add the file at `.github/workflows/build-android.yml`.
+          3. Open the **Actions** tab and wait for the green tick (about 5 minutes).
+          4. Open **Releases → latest** and download `mrt-tracker.apk` on your phone.
+          
+          Each new build installs over the previous one, because the first build saves a signing key to `signing/mrt-tracker.jks` in your repository.
+          
+          ## Two apps: MRT Tracker and MRT Tracker
+          
+          There are two copies of the workflow file in `.github/workflows`, which differ only in a few lines at the top:
+          
+          - `build-android.yml` builds **MRT Tracker**, the beta app you use day to day. Its Releases entry is "MRT Tracker …".
+          - `build-android-dev.yml` builds **MRT Tracker**, a separate app with an orange icon and a DEV badge, for trying new features first. Its Releases entry is the "MRT Tracker …" pre-release, with `mrt-tracker.apk`.
+          
+          Each one only builds when that file itself is saved, so trying something in MRT Tracker never changes MRT Tracker. Both can be installed at the same time and keep their own settings. Each app checks for its own updates. To move a feature into MRT Tracker, save the matching `build-android.yml`.
+          
+          ## LTA timetable
+          
+          Every build downloads LTA's official train timetable (GTFS Schedule (Train), LTA DataMall) and packs it into the app, so train times follow the real schedule. Each good download is also saved in the repository as `data/lta-timetable.json`. If LTA's download fails during a build, that saved copy is packed instead, so every version of the app has the timetable. The app's Settings (under Updates) shows which timetable it has and when it was downloaded.
+          
+          ## Live weather (MRT Tracker)
+          
+          The map shows live weather from the National Environment Agency (NEA), via data.gov.sg: the 2-hour forecast, rain measured at rain gauges, temperature, wind and lightning, refreshed every 10 minutes. On the 2D map, rain falls where the gauges measure it, clouds drift over cloudy or showery areas, hazy areas get a tint, and lightning flashes where it's detected or storms are forecast. Tap the weather chip for details, or to turn the weather on the map off.
+          
+          ## Ask tab (chatbot)
+          
+          The Ask tab answers questions about stations, lines and trains. Without a key it gives built-in answers from the app's own data. To let Claude answer instead:
+          
+          1. Get an API key at console.anthropic.com (API keys), and set a monthly spending limit there.
+          2. In your repository, open **Settings → Secrets and variables → Actions → New repository secret**.
+          3. Name it `ANTHROPIC_API_KEY`, paste the key, and save. Then build again.
+          
+          The key is built into the app scrambled, and the app only ever sends it to Anthropic. Anyone with a copy of the app could still dig it out, which is why the spending limit matters. Each phone can ask Claude up to 60 questions a day; after that, or when offline, the app falls back to built-in answers.
+          
+          ## 3D buildings
+          
+          When zoomed in on the 2D map, buildings near each station rise up in 3D. Their outlines and heights come from OpenStreetMap (© OpenStreetMap contributors), downloaded while GitHub builds the app and packed into it. GitHub keeps a copy between builds, so OpenStreetMap is only asked again once a month. If the download fails, the last copy is used, and the build never fails because of it. The **3D** button on the map turns them off.
+          
+          ## RTS Link and Sentosa Express tracks
+          
+          SG Rail Data, where the map's lines come from, has no track for the RTS Link or the Sentosa Express. So while GitHub builds the app, it downloads their routes from OpenStreetMap (© OpenStreetMap contributors): Sentosa Express relations 2353581 and 9663249, RTS Link relations 19927885 and 19927886, as listed on the OpenStreetMap wiki page "Singapore/Rail Transport". Each route's track is cut at the app's stations, so both lines follow their real track on the map. GitHub keeps a copy between builds. If the download fails, the last copy is used; with neither, the two lines stay straight. The build never fails because of it. The web version has no download, so it shows them straight.
+          
+          ## Build with Android Studio
+          
+          Open this folder in Android Studio and run **Build → Build APK(s)**. A debug build needs no signing key.
+          
+          ## Updating the tracker
+          
+          Replace `app/src/main/assets/index.html` and build again. (Inside the workflow file the page is stored compressed, as xz then base64, because GitHub won't run a workflow file over 500 KB; the workflow file is made from this project, so change the project and remake it.)
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app'
+          # build tools (timetable, buildings, tracks, station exits) live in this repository's tools/ folder
+          mkdir -p mrt-tracker-app/tools
+          cp tools/*.py tools/lines.json mrt-tracker-app/tools/
+          cat > 'mrt-tracker-app/app/build.gradle' <<'MRTAPP_EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          // Which app to build: "beta" is MRT Tracker; "dev" is MRT Tracker, a separate app (its own name, icon
+          // and settings) for trying new features before they go into MRT Tracker. Set by the workflow file.
+          def channel = (project.findProperty('channel') ?: 'beta').toString() == 'dev' ? 'dev' : 'beta'
+
+          // Scrambles a key with a mask made from the app's package name; the app unscrambles it in memory.
+          def scrambleKey = { String s ->
+              s = (s ?: '').trim()
+              if (s.isEmpty()) return ''
+              byte[] mask = java.security.MessageDigest.getInstance('SHA-256').digest('sg.mrttracker.app'.getBytes('UTF-8'))
+              byte[] b = s.getBytes('UTF-8')
+              StringBuilder sb = new StringBuilder()
+              for (int i = 0; i < b.length; i++) sb.append(String.format('%02x', (b[i] ^ mask[i % mask.length]) & 0xff))
+              return sb.toString()
+          }
+
+          android {
+              namespace 'sg.mrttracker.app'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId channel == 'dev' ? 'sg.mrttracker.app' : 'sg.mrttracker.app'
+                  resValue 'string', 'app_name', channel == 'dev' ? 'MRT Tracker' : 'MRT Tracker'
+                  resValue 'color', 'icon_bg', '#0A0E14'
+                  buildConfigField 'String', 'CHANNEL', '"' + channel + '"'
+                  minSdk 24
+                  targetSdk 34
+                  // GitHub passes in a number that grows with every build (minutes since 2026), so each
+                  // new build installs over the last one, and the build date and time as the version name.
+                  versionCode Integer.parseInt((project.findProperty('vc') ?: '1').toString())
+                  versionName((project.findProperty('vn') ?: 'dev').toString())
+                  // LTA DataMall key built into the app, so live alerts work for everyone with no setup.
+                  // Stored scrambled (the app unscrambles it in memory), so it can't be read from this file
+                  // or found by searching the app's contents.
+                  // Public GitHub repo whose "latest" release the app checks for updates (empty = off).
+                  buildConfigField 'String', 'UPDATE_REPO', '"' + (project.findProperty('updateRepo') ?: '').toString().replaceAll('[^A-Za-z0-9._/-]', '') + '"'
+                  buildConfigField 'String', 'LTA_KEY_X', '"ac482e340c45fb8ce3d416f40eeba0afa7c59acac8579667"'
+                  // Claude API key for the Ask tab, from the ANTHROPIC_API_KEY GitHub secret (none = built-in answers only).
+                  buildConfigField 'String', 'AI_KEY_X', '"' + scrambleKey((project.findProperty('aiKey') ?: '').toString()) + '"'
+              }
+
+              buildFeatures {
+                  buildConfig true
+                  resValues true
+              }
+
+              dependencies {
+                  implementation "androidx.webkit:webkit:1.18.0"
+              }
+
+              signingConfigs {
+                  release {
+                      // The keystore is created once by the GitHub build and kept in the repo,
+                      // so every later build is signed with the same key.
+                      storeFile file(project.findProperty('ks') ?: 'missing.jks')
+                      storePassword 'mrttracker'
+                      keyAlias 'mrttracker'
+                      keyPassword 'mrttracker'
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      // Shrink and scramble the app's code so it's harder to pick apart.
+                      minifyEnabled true
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                      signingConfig signingConfigs.release
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app'
+          cat > 'mrt-tracker-app/app/proguard-rules.pro' <<'MRTAPP_EOF'
+          # The tracker page calls these methods by name, so they must keep their names.
+          -keepclassmembers class * {
+              @android.webkit.JavascriptInterface <methods>;
+          }
+          -keepattributes JavascriptInterface
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main'
+          cat > 'mrt-tracker-app/app/src/main/AndroidManifest.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          
+              <uses-permission android:name="android.permission.INTERNET" />
+              <!-- In-app updates: install new versions, notify about them, and keep checking after a restart. -->
+              <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+              <!-- Offline mode: notices when the connection drops, to show saved data. -->
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+          
+              <application
+                  android:label="@string/app_name"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher"
+                  android:theme="@style/AppTheme"
+                  android:allowBackup="false"
+                  android:fullBackupContent="false"
+                  android:dataExtractionRules="@xml/data_extraction_rules"
+                  android:usesCleartextTraffic="false"
+                  android:networkSecurityConfig="@xml/network_security_config">
+          
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+          
+                  <service
+                      android:name=".UpdateJob"
+                      android:permission="android.permission.BIND_JOB_SERVICE"
+                      android:exported="false" />
+          
+                  <receiver
+                      android:name=".InstallReceiver"
+                      android:exported="false" />
+          
+                  <!-- Home screen widget: next trains at the first saved station. -->
+                  <receiver
+                      android:name=".TrainWidget"
+                      android:exported="true"
+                      android:label="@string/app_name">
+                      <intent-filter>
+                          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.appwidget.provider"
+                          android:resource="@xml/train_widget_info" />
+                  </receiver>
+          
+                  <!-- Trip reminders, set from the planned timetable. -->
+                  <receiver
+                      android:name=".TripAlarm"
+                      android:exported="false" />
+          
+                  <!-- Disruption check for the saved lines while the app is closed. -->
+                  <service
+                      android:name=".AlertJob"
+                      android:permission="android.permission.BIND_JOB_SERVICE"
+                      android:exported="false" />
+              </application>
+          </manifest>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/assets'
+          # mrt-tracker-app/app/src/main/assets/index.html is stored compressed (xz, then base64) to keep this file under GitHub's 500 KB limit
+          # Keep the Android app and website on the exact same public page.
+          # web/index.html is the canonical public UI; the Dev app remains separate.
+          mkdir -p 'mrt-tracker-app/app/src/main/assets'
+          cp 'web/index.html' 'mrt-tracker-app/app/src/main/assets/index.html'
+          cp 'web/run-graph.js' 'mrt-tracker-app/app/src/main/assets/run-graph.js'
+          mkdir -p 'mrt-tracker-app/app/src/main/assets'
+          cat > 'mrt-tracker-app/app/src/main/assets/livecam.html' <<'MRTAPP_EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="referrer" content="strict-origin-when-cross-origin">
+          <title>Live cam</title>
+          <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#player,iframe{position:absolute;inset:0;width:100%;height:100%;border:0}</style>
+          </head>
+          <body>
+          <div id="player"></div>
+          <script>
+          /* The Live cam tab's video player. The app serves this page at https://sg.mrttracker.app/livecam.html
+             (it never comes from the internet), so YouTube can tell which app is showing its video. It plays one
+             video (?v=) or a channel's live stream (?c=), tells the tracker page what the player is doing, and
+             takes "mute", "unmute" and "play" from it. */
+          (function(){
+            var q = new URLSearchParams(location.search), v = q.get("v") || "", c = q.get("c") || "";
+            if (!/^[A-Za-z0-9_-]{11}$/.test(v)) v = "";
+            if (!/^UC[A-Za-z0-9_-]{22}$/.test(c)) c = "";
+            var muted = q.get("mute") !== "0", player = null;
+            function tell(m){ m.mrtcam = 1; try { parent.postMessage(m, "*"); } catch(e){} }
+            if (!v && !c){ tell({error: "none"}); return; }
+            window.onYouTubeIframeAPIReady = function(){
+              var vars = {autoplay: 1, mute: muted ? 1 : 0, playsinline: 1, rel: 0, origin: location.origin, widget_referrer: location.href};
+              if (!v) vars.channel = c;
+              player = new YT.Player("player", {
+                host: v ? "https://www.youtube-nocookie.com" : "https://www.youtube.com",
+                videoId: v || "live_stream",
+                playerVars: vars,
+                events: {
+                  onReady: function(e){ if (muted) e.target.mute(); e.target.playVideo(); tell({ready: 1}); },
+                  onStateChange: function(e){ tell({state: e.data}); },
+                  onError: function(e){ tell({error: e.data}); }
+                }
+              });
+            };
+            window.addEventListener("message", function(e){
+              if (e.source !== parent || !player || !e.data || !e.data.mrtcam) return;
+              try {
+                if (e.data.cmd === "mute") player.mute();
+                else if (e.data.cmd === "unmute"){ player.unMute(); player.setVolume(100); player.playVideo(); }
+                else if (e.data.cmd === "play") player.playVideo();
+              } catch(err){}
+            });
+            var s = document.createElement("script");
+            s.src = "https://www.youtube.com/iframe_api";
+            s.onerror = function(){ tell({error: "api"}); };
+            document.head.appendChild(s);
+          })();
+          </script>
+          </body>
+          </html>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/InstallReceiver.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.pm.PackageInstaller;
+          import android.os.Build;
+
+          /** Hears back from Android's installer; shows Android's "Update this app?" screen when it asks. */
+          public class InstallReceiver extends BroadcastReceiver {
+
+              @Override
+              public void onReceive(Context context, Intent intent) {
+                  int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+                  if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                      Intent confirm = Build.VERSION.SDK_INT >= 33
+                              ? intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class)
+                              : intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                      if (confirm != null) {
+                          confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          try {
+                              context.startActivity(confirm);
+                          } catch (Exception ignored) {
+                          }
+                      }
+                  } else if (status != PackageInstaller.STATUS_SUCCESS) {
+                      MainActivity.reportUpdateError(intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE));
+                  }
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/Alerts.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+          
+          import android.app.AlarmManager;
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.job.JobInfo;
+          import android.app.job.JobScheduler;
+          import android.content.ComponentName;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.os.Build;
+          
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+          
+          import java.io.ByteArrayOutputStream;
+          import java.io.InputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.nio.charset.StandardCharsets;
+          import java.util.ArrayList;
+          import java.util.Collections;
+          import java.util.List;
+          
+          /**
+           * MRT Dev notifications: disruptions on the lines at your saved stations, and trip reminders
+           * from the planned timetable. Nothing here uses your location.
+           */
+          final class Alerts {
+              static final String CH_DISRUPT = "disruptions";
+              static final String CH_TRIP = "trip";
+              private static final int DISRUPT_ID = 2001;
+              private static final int TRIP_BASE = 3000;
+              private static final int TRIP_MAX = 8;
+              private static final int JOB_ID = 7301;
+              private static final String PREFS = "alerts";
+              private static final String DATAMALL = "https://datamall2.mytransport.sg/ltaodataservice/TrainServiceAlerts";
+          
+              private Alerts() {}
+          
+              static SharedPreferences prefs(Context c) {
+                  return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+              }
+          
+              static void channels(Context c) {
+                  if (Build.VERSION.SDK_INT < 26) return;
+                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                  if (nm == null) return;
+                  NotificationChannel d = new NotificationChannel(CH_DISRUPT, "Line disruptions", NotificationManager.IMPORTANCE_HIGH);
+                  d.setDescription("LTA disruption notices for the lines at the stations saved on Home");
+                  nm.createNotificationChannel(d);
+                  NotificationChannel t = new NotificationChannel(CH_TRIP, "Trip reminders", NotificationManager.IMPORTANCE_HIGH);
+                  t.setDescription("When to board and when to get off, from the planned timetable");
+                  nm.createNotificationChannel(t);
+              }
+          
+              /** True when this app may show notifications (Android 13+ asks the person first). */
+              static boolean allowed(Context c) {
+                  if (Build.VERSION.SDK_INT >= 33 && c.checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                          != android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
+                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                  return nm != null && nm.areNotificationsEnabled();
+              }
+          
+              static void post(Context c, String channel, int id, String title, String text) {
+                  try {
+                      channels(c);
+                      if (!allowed(c)) return;
+                      NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                      Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                      PendingIntent pi = PendingIntent.getActivity(c, id, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                      Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, channel) : new Notification.Builder(c);
+                      b.setSmallIcon(R.drawable.ic_stat_train)
+                              .setContentTitle(clip(title, 120))
+                              .setContentText(clip(text, 400))
+                              .setStyle(new Notification.BigTextStyle().bigText(clip(text, 400)))
+                              .setContentIntent(pi)
+                              .setAutoCancel(true)
+                              .setShowWhen(true);
+                      if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH);
+                      nm.notify(id, b.build());
+                  } catch (Exception ignored) {
+                  }
+              }
+          
+              private static String clip(String s, int n) {
+                  s = s == null ? "" : s.trim();
+                  return s.length() > n ? s.substring(0, n - 1) + "…" : s;
+              }
+          
+              /* ---------- disruptions ---------- */
+          
+              /** Posts once per new disruption (sig names the affected stretches); an empty sig means all clear. */
+              static synchronized void disruption(Context c, String sig, String title, String text) {
+                  SharedPreferences p = prefs(c);
+                  if (sig == null || sig.isEmpty()) {
+                      p.edit().putString("dis_sig", "").apply();
+                      return;
+                  }
+                  if (sig.equals(p.getString("dis_sig", ""))) return;
+                  p.edit().putString("dis_sig", sig).apply();
+                  if (!p.getBoolean("on", true)) return;
+                  post(c, CH_DISRUPT, DISRUPT_ID, title, text);
+              }
+          
+              /** The page says which LTA lines to watch ({"on":true,"lines":["NSL","CCL"]}); background checks follow. */
+              static void setLines(Context c, String json) {
+                  try {
+                      JSONObject j = new JSONObject(json);
+                      JSONArray ls = j.optJSONArray("lines");
+                      StringBuilder sb = new StringBuilder();
+                      if (ls != null) for (int i = 0; i < ls.length() && i < 30; i++) {
+                          String l = ls.optString(i, "").replaceAll("[^A-Z]", "");
+                          if (!l.isEmpty()) sb.append(sb.length() > 0 ? "," : "").append(l);
+                      }
+                      prefs(c).edit().putBoolean("on", j.optBoolean("on", true)).putString("lines", sb.toString()).apply();
+                  } catch (Exception ignored) {
+                  }
+                  schedule(c);
+              }
+          
+              static void schedule(Context c) {
+                  try {
+                      JobScheduler js = (JobScheduler) c.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                      if (js == null) return;
+                      SharedPreferences p = prefs(c);
+                      boolean want = p.getBoolean("on", true) && !p.getString("lines", "").isEmpty() && !BuildConfig.LTA_KEY_X.isEmpty();
+                      if (!want) {
+                          js.cancel(JOB_ID);
+                          return;
+                      }
+                      for (JobInfo j : js.getAllPendingJobs()) if (j.getId() == JOB_ID) return;
+                      js.schedule(new JobInfo.Builder(JOB_ID, new ComponentName(c, AlertJob.class))
+                              .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                              .setPeriodic(30L * 60 * 1000)       // about every half hour, when Android allows
+                              .setPersisted(true)
+                              .build());
+                  } catch (Exception ignored) {
+                  }
+              }
+          
+              /** Background check (the app closed): LTA's train service alerts for the saved lines. */
+              static void check(Context c) {
+                  SharedPreferences p = prefs(c);
+                  String saved = p.getString("lines", "");
+                  if (!p.getBoolean("on", true) || saved.isEmpty()) return;
+                  List<String> lines = java.util.Arrays.asList(saved.split(","));
+                  HttpURLConnection conn = null;
+                  try {
+                      String key = MainActivity.unscramble(BuildConfig.LTA_KEY_X);
+                      if (key.isEmpty()) return;
+                      conn = (HttpURLConnection) new URL(DATAMALL).openConnection();
+                      conn.setConnectTimeout(10000);
+                      conn.setReadTimeout(15000);
+                      conn.setRequestProperty("User-Agent", "MRTTracker/1.0 (Android)");
+                      conn.setRequestProperty("Accept", "application/json");
+                      conn.setRequestProperty("AccountKey", key);
+                      if (conn.getResponseCode() != 200) return;
+                      InputStream in = conn.getInputStream();
+                      ByteArrayOutputStream out = new ByteArrayOutputStream();
+                      byte[] buf = new byte[8192];
+                      int n;
+                      while ((n = in.read(buf)) > 0 && out.size() < 1_000_000) out.write(buf, 0, n);
+                      in.close();
+                      JSONObject root = new JSONObject(out.toString(StandardCharsets.UTF_8.name()));
+                      Object v = root.opt("value");
+                      JSONObject val = v instanceof JSONArray ? ((JSONArray) v).optJSONObject(0) : v instanceof JSONObject ? (JSONObject) v : root;
+                      if (val == null) return;
+                      List<String> sigs = new ArrayList<>();
+                      List<String> names = new ArrayList<>();
+                      if (val.optInt("Status", 1) == 2) {
+                          JSONArray segs = val.optJSONArray("AffectedSegments");
+                          if (segs != null) for (int i = 0; i < segs.length(); i++) {
+                              JSONObject sg = segs.optJSONObject(i);
+                              if (sg == null) continue;
+                              String line = sg.optString("Line", "").toUpperCase(java.util.Locale.ROOT);
+                              if (!lines.contains(line)) continue;
+                              List<String> codes = new ArrayList<>();
+                              for (String s : sg.optString("Stations", "").split(",")) {
+                                  s = s.trim();
+                                  if (s.isEmpty()) continue;
+                                  codes.add(s.equals("CE1") ? "CC34" : s.equals("CE2") ? "CC33" : s);
+                              }
+                              if (codes.isEmpty()) continue;
+                              sigs.add(line + ":" + codes.get(0) + "-" + codes.get(codes.size() - 1));
+                              String nm = lineName(line);
+                              if (!names.contains(nm)) names.add(nm);
+                          }
+                      }
+                      Collections.sort(sigs);
+                      String sig = android.text.TextUtils.join("|", sigs);
+                      String msg = "";
+                      JSONArray ms = val.optJSONArray("Message");
+                      if (ms != null && ms.length() > 0) {
+                          JSONObject m = ms.optJSONObject(ms.length() - 1);
+                          if (m != null) msg = m.optString("Content", "");
+                      }
+                      disruption(c, sig, "Disruption: " + android.text.TextUtils.join(", ", names),
+                              msg.isEmpty() ? "Trains are affected on a line at your saved stations. Open the app for details." : msg);
+                  } catch (Exception ignored) {
+                  } finally {
+                      if (conn != null) conn.disconnect();
+                  }
+              }
+          
+              private static String lineName(String l) {
+                  switch (l) {
+                      case "NSL": return "North-South Line";
+                      case "EWL": return "East-West Line";
+                      case "NEL": return "North East Line";
+                      case "CCL": return "Circle Line";
+                      case "DTL": return "Downtown Line";
+                      case "TEL": return "Thomson-East Coast Line";
+                      case "BPL": return "Bukit Panjang LRT";
+                      case "STL": return "Sengkang LRT";
+                      case "PTL": return "Punggol LRT";
+                      case "CGL": return "Changi Airport Branch";
+                      case "CEL": return "Circle Line Extension";
+                      default: return l;
+                  }
+              }
+          
+              /* ---------- trip reminders (AlarmManager, inexact, no special permission) ---------- */
+          
+              static void tripSchedule(Context c, String json) {
+                  tripCancel(c);
+                  try {
+                      JSONArray a = new JSONArray(json);
+                      AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+                      if (am == null) return;
+                      long now = System.currentTimeMillis();
+                      for (int i = 0, k = 0; i < a.length() && k < TRIP_MAX; i++) {
+                          JSONObject o = a.optJSONObject(i);
+                          if (o == null) continue;
+                          long at = o.optLong("at", 0);
+                          if (at < now + 5000 || at > now + 6L * 3600 * 1000) continue;     // only the next few hours
+                          Intent it = new Intent(c, TripAlarm.class).setAction("sg.mrttracker.app.TRIP_" + k)
+                                  .putExtra("title", clip(o.optString("title", ""), 120))
+                                  .putExtra("text", clip(o.optString("text", ""), 300))
+                                  .putExtra("id", TRIP_BASE + k);
+                          PendingIntent pi = PendingIntent.getBroadcast(c, TRIP_BASE + k, it, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                          am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+                          k++;
+                      }
+                  } catch (Exception ignored) {
+                  }
+              }
+          
+              static void tripCancel(Context c) {
+                  AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+                  for (int k = 0; k < TRIP_MAX; k++) {
+                      Intent it = new Intent(c, TripAlarm.class).setAction("sg.mrttracker.app.TRIP_" + k);
+                      PendingIntent pi = PendingIntent.getBroadcast(c, TRIP_BASE + k, it, PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+                      if (pi != null) {
+                          if (am != null) am.cancel(pi);
+                          pi.cancel();
+                      }
+                  }
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/AlertJob.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+          
+          import android.app.job.JobParameters;
+          import android.app.job.JobService;
+          
+          /** About every half hour while the app is closed: checks LTA for disruptions on the saved lines. */
+          public class AlertJob extends JobService {
+          
+              @Override
+              public boolean onStartJob(final JobParameters params) {
+                  new Thread(() -> {
+                      Alerts.check(getApplicationContext());
+                      jobFinished(params, false);
+                  }).start();
+                  return true;
+              }
+          
+              @Override
+              public boolean onStopJob(JobParameters params) {
+                  return true;   // try again later
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/MainActivity.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.ViewGroup;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import androidx.webkit.WebViewAssetLoader;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.FrameLayout;
+
+          import org.json.JSONObject;
+
+          import java.io.ByteArrayOutputStream;
+          import java.io.InputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.nio.charset.StandardCharsets;
+          import java.util.Arrays;
+          import java.util.HashSet;
+          import java.util.Set;
+
+          public class MainActivity extends Activity {
+
+              /** The only sites the tracker page may ask the app to fetch. */
+              private static final Set<String> ALLOWED_HOSTS = new HashSet<>(Arrays.asList(
+                      "datamall2.mytransport.sg",
+                      "news.google.com",
+                      "api-open.data.gov.sg"));      // NEA live weather (data.gov.sg)
+
+              /** The app's own page, bundled inside the app. */
+              private static final String PAGE_URL = "https://sg.mrttracker.app/assets/index.html";
+              private WebViewAssetLoader assetLoader;
+              /** Where LTA's temporary timetable download links point. */
+              private static final String LTA_FILES_HOST = "dmprod-datasets.s3.ap-southeast-1.amazonaws.com";
+
+              /**
+               * The Live cam tab's player page (assets/livecam.html) is served at this address, never fetched from
+               * the internet. YouTube only plays embedded videos for an app that identifies itself with an https
+               * address (its "Referer"), which the tracker page itself, a bundled file, can't give.
+               */
+              private static final String CAM_HOST = "sg.mrttracker.app";
+              private static final String CAM_CSP = "default-src 'none'; script-src 'unsafe-inline' https://www.youtube.com https://s.ytimg.com; "
+                      + "frame-src https://www.youtube.com https://www.youtube-nocookie.com; style-src 'unsafe-inline'; img-src https: data:; "
+                      + "base-uri 'none'; form-action 'none'";
+
+              /** The Claude API (Anthropic), used by the Ask tab, and the model it uses. */
+              private static final String AI_URL = "https://api.anthropic.com/v1/messages";
+              private static final String AI_MODEL = "claude-haiku-5-5";
+
+              private WebView web;
+              private String cachedKey = null;
+              private String cachedAiKey = null;
+              private SharedPreferences prefs;
+              private boolean pageLoaded = false;
+              private boolean updating = false;
+              /** A video shown full screen (the Live cam's full-screen button), and how to hand it back. */
+              private View fullView = null;
+              private WebChromeClient.CustomViewCallback fullDone = null;
+              // DEV:START
+              /** Train spotting (MRT Tracker's Live cam): the box over the tracks, in the page's CSS pixels, and how often to look. */
+              private final android.os.Handler camHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+              private android.graphics.RectF camBox = null;
+              private int camEvery = 200;
+              private boolean camCopying = false;
+              private final Runnable camTick = new Runnable() {
+                  @Override
+                  public void run() {
+                      if (camBox == null) return;
+                      camCapture();
+                      camHandler.postDelayed(this, camEvery);
+                  }
+              };
+              // DEV:END
+              private static java.lang.ref.WeakReference<MainActivity> current = new java.lang.ref.WeakReference<>(null);
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  prefs = getSharedPreferences("settings", MODE_PRIVATE);
+                  prefs.edit().remove("spot_host").apply();   // spotter feed from older versions is no longer used
+                  prefs.edit().remove("lta_key").apply();   // keys typed into older versions are no longer used
+                  getSharedPreferences("game", MODE_PRIVATE).edit().clear().apply();   // the spotting game was removed
+
+                  // Nobody can attach a debugger to the page inside this app.
+                  WebView.setWebContentsDebuggingEnabled(false);
+
+                  web = new WebView(this);
+                  assetLoader = new WebViewAssetLoader.Builder()
+                          .setDomain(CAM_HOST)
+                          .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                          .build();
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setAllowFileAccess(false);
+                  s.setAllowContentAccess(false);
+                  s.setAllowFileAccessFromFileURLs(false);
+                  s.setAllowUniversalAccessFromFileURLs(false);
+                  s.setGeolocationEnabled(false);
+                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+                  // The page only needs its own bundled file; it may not read other files on the phone.
+                  s.setAllowFileAccess(false);
+                  s.setAllowContentAccess(false);
+                  s.setAllowFileAccessFromFileURLs(false);
+                  s.setAllowUniversalAccessFromFileURLs(false);
+                  s.setGeolocationEnabled(false);
+                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+                  if (Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(true);
+                  android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
+                  // The Live cam starts playing as soon as its tab opens.
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  web.addJavascriptInterface(new Bridge(), "MrtApp");
+                  // Offline: with no connection, map tiles and fonts come from the WebView's own cache.
+                  watchNetwork();
+
+                  // Full screen for the Live cam video (YouTube's full-screen button), sideways while it's shown.
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public void onShowCustomView(View view, CustomViewCallback callback) {
+                          if (fullView != null) {
+                              callback.onCustomViewHidden();
+                              return;
+                          }
+                          fullView = view;
+                          fullDone = callback;
+                          ((FrameLayout) getWindow().getDecorView()).addView(view, new FrameLayout.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                          systemBars(false);
+                          setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                      }
+
+                      @Override
+                      public void onHideCustomView() {
+                          leaveFullScreen();
+                      }
+
+                      /** No grey "play" placeholder before the video starts. */
+                      @Override
+                      public android.graphics.Bitmap getDefaultVideoPoster() {
+                          return android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888);
+                      }
+                  });
+
+                  // Keep the tracker inside the app. Web links (https/http) open in the browser or the
+                  // X/Facebook app; every other kind of link (app intents, scripts, other files) is blocked.
+                  web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                          // Frames inside the page (the Live cam player) may only go where the page's
+                          // security rules allow (the player page, then YouTube), so let them load.
+                          if (!request.isForMainFrame()) return false;
+                          Uri uri = request.getUrl();
+                          String u = uri.toString();
+                          if ("https".equals(uri.getScheme()) && CAM_HOST.equals(uri.getHost()) && (uri.getPath().startsWith("/assets/") || "/livecam.html".equals(uri.getPath()))) return false;
+                          String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(java.util.Locale.ROOT);
+                          if (scheme.equals("https") || scheme.equals("http")) {
+                              try {
+                                  Intent i = new Intent(Intent.ACTION_VIEW, uri);
+                                  i.addCategory(Intent.CATEGORY_BROWSABLE);
+                                  startActivity(i);
+                              } catch (Exception ignored) {
+                              }
+                          }
+                          return true;
+                      }
+
+                      /** Serves the Live cam player page at https://sg.mrttracker.app/livecam.html (nothing else there). */
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                          Uri uri = request.getUrl();
+                          if (!"https".equals(uri.getScheme()) || !CAM_HOST.equals(uri.getHost())) return null;
+                          java.util.Map<String, String> h = new java.util.HashMap<>();
+                          h.put("Content-Security-Policy", CAM_CSP);
+                          h.put("Referrer-Policy", "strict-origin-when-cross-origin");
+                          h.put("Cache-Control", "no-store");
+                          if ("/livecam.html".equals(uri.getPath())) {
+                              try {
+                                  return new WebResourceResponse("text/html", "utf-8", 200, "OK", h, getAssets().open("livecam.html"));
+                              } catch (Exception ignored) {
+                              }
+                          }
+                          WebResourceResponse local = assetLoader.shouldInterceptRequest(uri);
+                          if (local != null) return local;
+                          return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h,
+                                  new java.io.ByteArrayInputStream(new byte[0]));
+                      }
+
+                      @Override
+                      public void onPageFinished(WebView view, String url) {
+                          pageLoaded = true;
+                          checkForUpdate();
+                      }
+
+                      @Override
+                      public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                          pageLoaded = false;
+                          return true;
+                      }
+
+                  });
+
+                  setContentView(web);
+                  web.loadUrl(PAGE_URL);
+
+                  // Updates: check in the background every few hours, and ask once to allow notifications.
+                  Updater.schedule(this);
+                  // Notification channels (disruptions, trip reminders) and the background disruption check
+                  Alerts.channels(this);
+                  Alerts.schedule(this);
+                  if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("asked_notify", false)
+                          && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                      prefs.edit().putBoolean("asked_notify", true).apply();
+                      requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 1);
+                  }
+              }
+
+              @Override
+              protected void onNewIntent(Intent intent) {
+                  super.onNewIntent(intent);
+                  setIntent(intent);
+                  checkForUpdate();
+              }
+
+              /** Asks GitHub whether a newer version exists; if so, the page shows the update banner. */
+              private void checkForUpdate() {
+                  if (!Updater.enabled() || updating) return;
+                  new Thread(() -> {
+                      org.json.JSONObject j = Updater.newer(getApplicationContext());
+                      if (j == null) return;
+                      final String js = "window.updateAvailable && window.updateAvailable(" + JSONObject.quote(j.optString("versionName", "")) + ")";
+                      runOnUiThread(() -> { if (pageLoaded) web.evaluateJavascript(js, null); });
+                  }).start();
+              }
+
+              /** Called by the installer if an update couldn't be installed. */
+              static void reportUpdateError(String message) {
+                  MainActivity a = current.get();
+                  if (a == null) return;
+                  a.updating = false;
+                  final String js = "window.updateError && window.updateError(" + JSONObject.quote(message == null ? "" : message) + ")";
+                  a.runOnUiThread(() -> a.web.evaluateJavascript(js, null));
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  current = new java.lang.ref.WeakReference<>(this);
+                  web.onResume();
+                  if (pageLoaded) checkForUpdate();
+                  // Fresh status every time the app is opened or brought back to the front.
+                  if (pageLoaded) {
+                      web.evaluateJavascript("window.appResume && window.appResume()", null);
+                  }
+              }
+
+              /** Back from a full-screen video: put the page back as it was. */
+              private void leaveFullScreen() {
+                  if (fullView == null) return;
+                  ((FrameLayout) getWindow().getDecorView()).removeView(fullView);
+                  fullView = null;
+                  systemBars(true);
+                  setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                  if (fullDone != null) fullDone.onCustomViewHidden();
+                  fullDone = null;
+              }
+
+              // DEV:START
+              /**
+               * Train spotting: copies what's on screen inside the box (the Live cam's video, over the tracks) into a
+               * small grey picture and hands it to the page, which looks for trains in it. Nothing is saved or sent.
+               */
+              private void camCapture() {
+                  if (Build.VERSION.SDK_INT < 26 || camBox == null || camCopying || fullView != null || !pageLoaded) return;
+                  float d = getResources().getDisplayMetrics().density;
+                  int[] at = new int[2];
+                  web.getLocationInWindow(at);
+                  android.graphics.Rect r = new android.graphics.Rect(Math.round(at[0] + camBox.left * d), Math.round(at[1] + camBox.top * d),
+                          Math.round(at[0] + camBox.right * d), Math.round(at[1] + camBox.bottom * d));
+                  View root = getWindow().getDecorView();
+                  if (!r.intersect(0, 0, root.getWidth(), root.getHeight()) || r.width() < 4 || r.height() < 4) return;
+                  final int bw = 64, bh = Math.max(6, Math.min(32, Math.round(64f * r.height() / r.width())));
+                  final android.graphics.Bitmap bm = android.graphics.Bitmap.createBitmap(bw, bh, android.graphics.Bitmap.Config.ARGB_8888);
+                  camCopying = true;
+                  try {
+                      android.view.PixelCopy.request(getWindow(), r, bm, result -> {
+                          camCopying = false;
+                          if (result != android.view.PixelCopy.SUCCESS || camBox == null) {
+                              bm.recycle();
+                              return;
+                          }
+                          int[] px = new int[bw * bh];
+                          bm.getPixels(px, 0, bw, 0, 0, bw, bh);
+                          bm.recycle();
+                          byte[] g = new byte[px.length];
+                          for (int i = 0; i < px.length; i++) {
+                              int c = px[i];
+                              g[i] = (byte) ((((c >> 16) & 255) * 77 + ((c >> 8) & 255) * 150 + (c & 255) * 29) >> 8);
+                          }
+                          web.evaluateJavascript("window.camSpotFrame&&camSpotFrame('" + android.util.Base64.encodeToString(g, android.util.Base64.NO_WRAP)
+                                  + "'," + bw + "," + bh + ")", null);
+                      }, camHandler);
+                  } catch (Exception e) {
+                      camCopying = false;
+                  }
+              }
+              // DEV:END
+
+              /** Hides the status and navigation bars while a video is full screen (a swipe brings them back briefly). */
+              @SuppressWarnings("deprecation")
+              private void systemBars(boolean show) {
+                  getWindow().getDecorView().setSystemUiVisibility(show ? View.SYSTEM_UI_FLAG_VISIBLE
+                          : View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+              }
+
+              /** The answer to "Allow notifications?": tell the page so it can update its switches. */
+              @Override
+              public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                  super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+                  if (pageLoaded) web.evaluateJavascript("window.notifyPermChanged && window.notifyPermChanged()", null);
+              }
+
+              private android.net.ConnectivityManager.NetworkCallback netCallback = null;
+              private volatile boolean online = true;
+
+              private boolean onlineNow() {
+                  try {
+                      android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+                      android.net.Network n = cm == null ? null : cm.getActiveNetwork();
+                      android.net.NetworkCapabilities nc = n == null ? null : cm.getNetworkCapabilities(n);
+                      return nc != null && nc.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                  } catch (Exception e) {
+                      return true;
+                  }
+              }
+
+              /** Online: normal caching. Offline: use whatever the WebView has saved (map tiles, fonts), however old. */
+              private void netChanged(boolean on) {
+                  online = on;
+                  web.getSettings().setCacheMode(on ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                  if (pageLoaded) web.evaluateJavascript("window.netState && window.netState(" + on + ")", null);
+              }
+
+              private void watchNetwork() {
+                  netChanged(onlineNow());
+                  try {
+                      android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+                      if (cm == null) return;
+                      netCallback = new android.net.ConnectivityManager.NetworkCallback() {
+                          @Override
+                          public void onAvailable(android.net.Network n) {
+                              runOnUiThread(() -> netChanged(true));
+                          }
+
+                          @Override
+                          public void onLost(android.net.Network n) {
+                              runOnUiThread(() -> netChanged(onlineNow()));
+                          }
+                      };
+                      cm.registerDefaultNetworkCallback(netCallback);
+                  } catch (Exception ignored) {
+                      netCallback = null;
+                  }
+              }
+
+              @Override
+              protected void onDestroy() {
+                  try {
+                      if (netCallback != null) getSystemService(android.net.ConnectivityManager.class).unregisterNetworkCallback(netCallback);
+                  } catch (Exception ignored) {
+                  }
+                  netCallback = null;
+                  super.onDestroy();
+              }
+
+              /** Android's back button closes an open history card (or other panel) before leaving the app. */
+              @Override
+              public void onBackPressed() {
+                  if (fullView != null) {
+                      leaveFullScreen();
+                      return;
+                  }
+                  if (!pageLoaded) {
+                      super.onBackPressed();
+                      return;
+                  }
+                  web.evaluateJavascript("(window.appBack && window.appBack()) ? 1 : 0", v -> {
+                      if (!"1".equals(v)) MainActivity.super.onBackPressed();
+                  });
+              }
+
+              @Override
+              protected void onPause() {
+                  // The Live cam stops streaming while the app is in the background (it saves mobile data).
+                  leaveFullScreen();
+                  // DEV:START
+                  camBox = null;
+                  camHandler.removeCallbacks(camTick);
+                  // DEV:END
+                  if (pageLoaded) web.evaluateJavascript("window.appPause && window.appPause()", null);
+                  web.onPause();
+                  super.onPause();
+              }
+
+              /** Methods the tracker page can call as window.MrtApp.*. */
+              private class Bridge {
+
+                  @JavascriptInterface
+                  public boolean hasKey() {
+                      return !ltaKey().isEmpty();
+                  }
+
+                  /** LTA's official train timetable, packed into the app at build time ("" if this build has none). */
+                  @JavascriptInterface
+                  public String getTimetable() {
+                      try (InputStream in = getAssets().open("timetable.json")) {
+                          return readAll(in);
+                      } catch (Exception e) {
+                          return "";
+                      }
+                  }
+
+                  /** Building outlines and heights near stations (OpenStreetMap), packed at build time ("" if none). */
+                  @JavascriptInterface
+                  public String getBuildings() {
+                      try (InputStream in = getAssets().open("buildings.json")) {
+                          return readAll(in);
+                      } catch (Exception e) {
+                          return "";
+                      }
+                  }
+
+                  /** Station exits and the places near each one (OpenStreetMap), packed at build time ("" if none). */
+                  @JavascriptInterface
+                  public String getExits() {
+                      try (InputStream in = getAssets().open("exits.json")) {
+                          return readAll(in);
+                      } catch (Exception e) {
+                          return "";
+                      }
+                  }
+
+                  /** Real track shapes for the RTS Link and the Sentosa Express (OpenStreetMap), packed when GitHub builds the app. */
+                  @JavascriptInterface
+                  public String getTracks() {
+                      try (InputStream in = getAssets().open("tracks.json")) {
+                          return readAll(in);
+                      } catch (Exception e) {
+                          return "";
+                      }
+                  }
+
+                  /** Downloads and installs the new version. Progress and errors go back to the page. */
+                  @JavascriptInterface
+                  public void installUpdate() {
+                      if (updating || !Updater.enabled()) return;
+                      // Android asks once for permission to install updates from this app.
+                      if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+                          runOnUiThread(() -> {
+                              web.evaluateJavascript("window.updateNeedsPermission && window.updateNeedsPermission()", null);
+                              try {
+                                  startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                          Uri.parse("package:" + getPackageName())));
+                              } catch (Exception ignored) {
+                              }
+                          });
+                          return;
+                      }
+                      updating = true;
+                      new Thread(() -> {
+                          try {
+                              Updater.downloadAndInstall(getApplicationContext(), pct -> runOnUiThread(() ->
+                                      web.evaluateJavascript("window.updateProgress && window.updateProgress(" + pct + ")", null)));
+                              runOnUiThread(() -> web.evaluateJavascript("window.updateProgress && window.updateProgress(100)", null));
+                          } catch (Exception e) {
+                              String msg = e.getMessage();
+                              if (msg == null || msg.trim().isEmpty()) msg = e.getClass().getSimpleName();
+                              // Keep the message short and useful; this is primarily for diagnosing update failures.
+                              if (msg.length() > 180) msg = msg.substring(0, 180);
+                              final String detail = "Update failed: " + msg;
+                              reportUpdateError(detail);
+                          } finally {
+                              updating = false;
+                          }
+                      }).start();
+                  }
+
+                  /** True when a Claude API key was built into the app, so the Ask tab can use Claude. */
+                  @JavascriptInterface
+                  public boolean hasAi() {
+                      return !aiKey().isEmpty();
+                  }
+
+                  /**
+                   * Sends one Ask-tab request to the Claude API and returns the reply to the page.
+                   * The key is added here and never given to the page. Whatever the page sends, the app
+                   * only uses its own model and caps the answer length, so a request can't run up costs.
+                   */
+                  @JavascriptInterface
+                  public void askAi(final String id, final String request) {
+                      new Thread(() -> {
+                          int code = 0;
+                          String body = "";
+                          HttpURLConnection conn = null;
+                          try {
+                              String key = aiKey();
+                              if (key.isEmpty()) throw new SecurityException("No Claude key in this build");
+                              JSONObject req = new JSONObject(request);
+                              req.put("model", AI_MODEL);
+                              req.put("max_tokens", Math.max(1, Math.min(req.optInt("max_tokens", 800), 1024)));
+                              req.remove("stream");
+                              byte[] out = req.toString().getBytes(StandardCharsets.UTF_8);
+                              if (out.length > 200000) throw new java.io.IOException("Request too large");
+                              conn = (HttpURLConnection) new URL(AI_URL).openConnection();
+                              conn.setRequestMethod("POST");
+                              conn.setDoOutput(true);
+                              conn.setConnectTimeout(15000);
+                              conn.setReadTimeout(60000);
+                              conn.setRequestProperty("content-type", "application/json");
+                              conn.setRequestProperty("x-api-key", key);
+                              conn.setRequestProperty("anthropic-version", "2023-06-01");
+                              conn.setFixedLengthStreamingMode(out.length);
+                              try (java.io.OutputStream os = conn.getOutputStream()) {
+                                  os.write(out);
+                              }
+                              code = conn.getResponseCode();
+                              InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+                              body = in == null ? "" : readAll(in);
+                          } catch (Exception e) {
+                              code = 0;
+                              body = "";
+                          } finally {
+                              if (conn != null) conn.disconnect();
+                          }
+                          final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
+                          runOnUiThread(() -> web.evaluateJavascript(js, null));
+                      }).start();
+                  }
+
+                  /**
+                   * Finds a YouTube channel's live stream for the Live cam tab (RailCam Singapore, @railcamsg):
+                   * opens the channel's /live page, which is the live video's page while the channel is live.
+                   * When it isn't live, also lists the channel's latest videos. Reply (JSON):
+                   * {"video":"id","live":bool,"upcoming":bool,"title":"...","start":"...","channel":"UC...",
+                   *  "latest":[{"video":"id","title":"...","published":"..."}]}
+                   */
+                  @JavascriptInterface
+                  public void liveLookup(final String id, final String handle) {
+                      new Thread(() -> {
+                          int code = 200;
+                          JSONObject out = new JSONObject();
+                          try {
+                              if (handle == null || !handle.matches("@[A-Za-z0-9._-]{3,30}")) throw new SecurityException("Bad channel");
+                              String page = youtubeText("https://www.youtube.com/" + handle + "/live", 6_000_000);
+                              String video = firstMatch(page, "<link rel=\"canonical\" href=\"https://www\\.youtube\\.com/watch\\?v=([A-Za-z0-9_-]{11})\"");
+                              String channel = firstMatch(page, "\"(?:externalId|channelId)\":\"(UC[A-Za-z0-9_-]{22})\"");
+                              boolean live = video != null && (page.contains("\"isLiveNow\":true") || page.contains("\"isLive\":true"));
+                              out.put("video", video == null ? "" : video);
+                              out.put("live", live);
+                              out.put("upcoming", video != null && !live && page.contains("\"isUpcoming\":true"));
+                              out.put("title", unescape(firstMatch(page, "<meta name=\"title\" content=\"([^\"]*)\"")));
+                              out.put("start", nz(firstMatch(page, "\"startTimestamp\":\"([^\"]+)\"")));
+                              out.put("channel", nz(channel));
+                              if (!live && channel != null) {
+                                  String rss = youtubeText("https://www.youtube.com/feeds/videos.xml?channel_id=" + channel, 1_000_000);
+                                  org.json.JSONArray latest = new org.json.JSONArray();
+                                  java.util.regex.Matcher m = java.util.regex.Pattern.compile("<entry>(.*?)</entry>", java.util.regex.Pattern.DOTALL).matcher(rss);
+                                  while (m.find() && latest.length() < 6) {
+                                      String e = m.group(1), v = firstMatch(e, "<yt:videoId>([A-Za-z0-9_-]{11})</yt:videoId>");
+                                      if (v == null) continue;
+                                      JSONObject item = new JSONObject();
+                                      item.put("video", v);
+                                      item.put("title", unescape(firstMatch(e, "<title>([^<]*)</title>")));
+                                      item.put("published", nz(firstMatch(e, "<published>([^<]+)</published>")));
+                                      latest.put(item);
+                                  }
+                                  out.put("latest", latest);
+                              }
+                          } catch (Exception e) {
+                              code = 0;
+                          }
+                          final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(out.toString()) + ")";
+                          runOnUiThread(() -> web.evaluateJavascript(js, null));
+                      }).start();
+                  }
+
+                  // DEV:START
+                  /**
+                   * Train spotting on the Live cam (MRT Tracker): {"x","y","w","h"} is the box over the tracks in the page's
+                   * CSS pixels, "every" how often to look (ms); {} stops. False if this phone can't (Android 8 or newer is needed).
+                   */
+                  @JavascriptInterface
+                  public boolean camWatch(final String json) {
+                      if (Build.VERSION.SDK_INT < 26) return false;
+                      android.graphics.RectF box = null;
+                      int every = 200;
+                      try {
+                          JSONObject j = new JSONObject(json == null ? "{}" : json);
+                          double x = j.optDouble("x", 0), y = j.optDouble("y", 0), w = j.optDouble("w", 0), h = j.optDouble("h", 0);
+                          every = Math.max(100, Math.min(1000, j.optInt("every", 200)));
+                          if (w > 2 && h > 2) box = new android.graphics.RectF((float) x, (float) y, (float) (x + w), (float) (y + h));
+                      } catch (Exception ignored) {
+                      }
+                      final android.graphics.RectF b = box;
+                      final int ev = every;
+                      runOnUiThread(() -> {
+                          camBox = b;
+                          camEvery = ev;
+                          camHandler.removeCallbacks(camTick);
+                          if (b != null) camHandler.post(camTick);
+                      });
+                      return true;
+                  }
+                  // DEV:END
+
+                  /** Checks for a new version now (the Settings button). Reply: {"available":bool,"version":"..."} */
+                  @JavascriptInterface
+                  public void checkUpdateNow(final String id) {
+                      new Thread(() -> {
+                          org.json.JSONObject j = Updater.newer(getApplicationContext());
+                          String body = "{\"available\":" + (j != null) + ",\"version\":" + JSONObject.quote(j == null ? "" : j.optString("versionName", ""))
+                                  + ",\"enabled\":" + Updater.enabled() + "}";
+                          final String js = "window.__native(" + JSONObject.quote(id) + ",200," + JSONObject.quote(body) + ")";
+                          runOnUiThread(() -> web.evaluateJavascript(js, null));
+                      }).start();
+                  }
+
+                  /** True when the LTA key was built into the app, so nobody needs to enter one. */
+                  @JavascriptInterface
+                  public boolean builtInKey() {
+                      return !ltaKey().isEmpty();
+                  }
+
+
+                  /** Which app this is: "beta" (MRT Tracker) or "dev" (MRT Tracker, for trying new features). */
+                  @JavascriptInterface
+                  public String getChannel() {
+                      return BuildConfig.CHANNEL;
+                  }
+
+                  /** The installed app's version, e.g. 2026.11.05-1310 (the build date and time). */
+                  @JavascriptInterface
+                  public String getVersion() {
+                      try {
+                          return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                      } catch (Exception e) {
+                          return "";
+                      }
+                  }
+
+                  /** The home screen widget's data: the first saved station's next trains (small JSON from Home). */
+                  @JavascriptInterface
+                  public void widgetData(String json) {
+                      if (json == null || json.length() > 16000) return;
+                      TrainWidget.save(getApplicationContext(), json);
+                  }
+
+                  /** "on", "ask" (Android may still ask the person) or "off" (blocked: only Settings can turn it on). */
+                  @JavascriptInterface
+                  public String notifyState() {
+                      if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                          return !prefs.getBoolean("asked_notify", false) || shouldShowRequestPermissionRationale("android.permission.POST_NOTIFICATIONS") ? "ask" : "off";
+                      }
+                      return Alerts.allowed(getApplicationContext()) ? "on" : "off";
+                  }
+
+                  @JavascriptInterface
+                  public void askNotify() {
+                      runOnUiThread(() -> {
+                          if (Build.VERSION.SDK_INT < 33) {
+                              if (pageLoaded) web.evaluateJavascript("window.notifyPermChanged && window.notifyPermChanged()", null);
+                              return;
+                          }
+                          prefs.edit().putBoolean("asked_notify", true).apply();
+                          requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 2);
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public void openNotifySettings() {
+                      runOnUiThread(() -> {
+                          try {
+                              Intent i = Build.VERSION.SDK_INT >= 26
+                                      ? new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName())
+                                      : new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
+                              startActivity(i);
+                          } catch (Exception ignored) {
+                          }
+                      });
+                  }
+
+                  /** A disruption on a saved line (sig names it, so each one notifies once); "" means all clear. */
+                  @JavascriptInterface
+                  public void disruption(String sig, String title, String text) {
+                      Alerts.disruption(getApplicationContext(), sig, title, text);
+                  }
+
+                  /** Which LTA lines to watch in the background, and whether disruption alerts are on. */
+                  @JavascriptInterface
+                  public void setAlertLines(String json) {
+                      if (json == null || json.length() > 2000) return;
+                      Alerts.setLines(getApplicationContext(), json);
+                  }
+
+                  /** Trip reminders: [{at: epoch ms, title, text}], from the planned timetable. */
+                  @JavascriptInterface
+                  public void tripRemind(String json) {
+                      if (json == null || json.length() > 8000) return;
+                      Alerts.tripSchedule(getApplicationContext(), json);
+                  }
+
+                  @JavascriptInterface
+                  public void tripCancel() {
+                      Alerts.tripCancel(getApplicationContext());
+                  }
+
+                  /** Android's share sheet for plain text (the Spotter's log export). */
+                  @JavascriptInterface
+                  public void share(final String text) {
+                      if (text == null || text.length() > 200000) return;
+                      runOnUiThread(() -> {
+                          try {
+                              Intent s = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                                      .putExtra(Intent.EXTRA_SUBJECT, "My MRT Spotter's log");
+                              startActivity(Intent.createChooser(s, "Share Spotter's log"));
+                          } catch (Exception ignored) {
+                          }
+                      });
+                  }
+
+                  /** LTA's live train feeds (GTFS Realtime), kind "trips" or "alerts"; the answer comes back through window.__native as base64. */
+                  @JavascriptInterface
+                  public void gtfsRealtime(final String id, final String kind) {
+                      gtfsRealtimeFetch(id, kind);
+                  }
+
+                  @JavascriptInterface
+                  public boolean isOnline() {
+                      return online;
+                  }
+
+                  @JavascriptInterface
+                  public void fetch(final String id, final String url, final boolean withKey) {
+                      new Thread(() -> {
+                          int code = 0;
+                          String body = "";
+                          HttpURLConnection conn = null;
+                          try {
+                              URL u = new URL(url);
+                              // LTA, Google News and NEA weather only.
+                              String host = u.getHost().toLowerCase(java.util.Locale.ROOT);
+                              boolean allowed = ALLOWED_HOSTS.contains(host);
+                              if (!"https".equals(u.getProtocol()) || !allowed) {
+                                  throw new SecurityException("Host not allowed");
+                              }
+                              conn = (HttpURLConnection) u.openConnection();
+                              conn.setConnectTimeout(10000);
+                              conn.setReadTimeout(15000);
+                              conn.setRequestProperty("User-Agent", "MRTTracker/1.0 (Android)");
+                              conn.setRequestProperty("Accept", "application/json, application/rss+xml, text/xml");
+                              // The LTA key is only ever sent to LTA.
+                              if (withKey && host.equals("datamall2.mytransport.sg")) conn.setRequestProperty("AccountKey", ltaKey());
+                              code = conn.getResponseCode();
+                              InputStream in = code >= 400 ? conn.getErrorStream() : conn.getInputStream();
+                              body = in == null ? "" : readAll(in);
+                          } catch (Exception e) {
+                              code = 0;
+                              body = "";
+                          } finally {
+                              if (conn != null) conn.disconnect();
+                          }
+                          final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
+                          runOnUiThread(() -> web.evaluateJavascript(js, null));
+                      }).start();
+                  }
+
+              }
+
+              /** The LTA DataMall key, unscrambled in memory from the build setting LTA_KEY_X. */
+              private synchronized String ltaKey() {
+                  if (cachedKey == null) cachedKey = unscramble(BuildConfig.LTA_KEY_X);
+                  return cachedKey;
+              }
+
+              /** The Claude API key for the Ask tab, from the build setting AI_KEY_X ("" if none was set). */
+              private synchronized String aiKey() {
+                  if (cachedAiKey == null) cachedAiKey = unscramble(BuildConfig.AI_KEY_X);
+                  return cachedAiKey;
+              }
+
+              /** Keys are stored scrambled with a mask made from the app's original package name (the same for MRT Tracker). */
+              static String unscramble(String hx) {
+                  try {
+                      if (hx == null || hx.isEmpty()) return "";
+                      byte[] mask = java.security.MessageDigest.getInstance("SHA-256").digest("sg.mrttracker.app".getBytes(StandardCharsets.UTF_8));
+                      byte[] out = new byte[hx.length() / 2];
+                      for (int i = 0; i < out.length; i++) {
+                          out[i] = (byte) (Integer.parseInt(hx.substring(i * 2, i * 2 + 2), 16) ^ mask[i % mask.length]);
+                      }
+                      return new String(out, StandardCharsets.UTF_8).trim();
+                  } catch (Exception e) {
+                      return "";
+                  }
+              }
+
+
+
+              /**
+               * LTA's live train feeds (GTFS Realtime): "trips" (delays and cancellations) or "alerts" (service alerts).
+               * Asks LTA for the temporary link, downloads the feed and hands it to the page as base64.
+               */
+              void gtfsRealtimeFetch(final String id, final String kind) {
+                  new Thread(() -> {
+                      int code = 0;
+                      String body = "";
+                      try {
+                          if (ltaKey().isEmpty()) throw new java.io.IOException("no key");
+                          String ep = "alerts".equals(kind) ? "GTFSRealTimeTrainServiceAlerts" : "GTFSRealtimeTrainTripUpdates";
+                          HttpURLConnection c = open("https://datamall2.mytransport.sg/ltaodataservice/" + ep, true);
+                          int status = c.getResponseCode();
+                          if (status != 200) { c.disconnect(); code = status; throw new java.io.IOException("LTA returned " + status); }
+                          String json = readAll(c.getInputStream());
+                          c.disconnect();
+                          JSONObject root = new JSONObject(json);
+                          Object v = root.opt("value");
+                          JSONObject item = v instanceof org.json.JSONArray ? ((org.json.JSONArray) v).getJSONObject(0)
+                                  : v instanceof JSONObject ? (JSONObject) v : root;
+                          URL lu = new URL(item.optString("link", item.optString("Link", "")));
+                          if (!"https".equals(lu.getProtocol()) || !LTA_FILES_HOST.equals(lu.getHost())) throw new java.io.IOException("Unexpected link");
+                          HttpURLConnection d = (HttpURLConnection) lu.openConnection();
+                          d.setConnectTimeout(10000);
+                          d.setReadTimeout(20000);
+                          code = d.getResponseCode();
+                          if (code == 200) {
+                              java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                              try (InputStream in = d.getInputStream()) {
+                                  byte[] buf = new byte[16384];
+                                  int n, total = 0;
+                                  while ((n = in.read(buf)) > 0) {
+                                      total += n;
+                                      if (total > 8 * 1024 * 1024) throw new java.io.IOException("Feed too large");
+                                      bo.write(buf, 0, n);
+                                  }
+                              }
+                              body = android.util.Base64.encodeToString(bo.toByteArray(), android.util.Base64.NO_WRAP);
+                          }
+                          d.disconnect();
+                      } catch (Exception e) {
+                          if (code == 200) code = 0;
+                          body = "";
+                      }
+                      final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
+                      runOnUiThread(() -> web.evaluateJavascript(js, null));
+                  }).start();
+              }
+
+              private HttpURLConnection open(String url, boolean withKey) throws java.io.IOException {
+                  HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+                  conn.setConnectTimeout(10000);
+                  conn.setReadTimeout(20000);
+                  conn.setRequestProperty("User-Agent", "MRTTracker/1.0 (Android)");
+                  conn.setRequestProperty("Accept", "application/json");
+                  if (withKey) conn.setRequestProperty("AccountKey", ltaKey());
+                  return conn;
+              }
+
+              /** Reads a YouTube page (www.youtube.com only), up to `max` bytes, as a browser would ask for it. */
+              private static String youtubeText(String url, int max) throws java.io.IOException {
+                  URL u = new URL(url);
+                  if (!"https".equals(u.getProtocol()) || !"www.youtube.com".equals(u.getHost())) throw new SecurityException("Host not allowed");
+                  HttpURLConnection c = (HttpURLConnection) u.openConnection();
+                  try {
+                      c.setConnectTimeout(10000);
+                      c.setReadTimeout(20000);
+                      c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36");
+                      c.setRequestProperty("Accept-Language", "en-SG,en;q=0.9");
+                      c.setRequestProperty("Cookie", "SOCS=CAI; CONSENT=YES+");   // skips the cookie-consent page some countries get
+                      if (c.getResponseCode() != 200) throw new java.io.IOException("YouTube returned " + c.getResponseCode());
+                      ByteArrayOutputStream out = new ByteArrayOutputStream();
+                      byte[] buf = new byte[16384];
+                      int n;
+                      try (InputStream in = c.getInputStream()) {
+                          while ((n = in.read(buf)) > 0 && out.size() < max) out.write(buf, 0, n);
+                      }
+                      return out.toString(StandardCharsets.UTF_8.name());
+                  } finally {
+                      c.disconnect();
+                  }
+              }
+
+              private static String firstMatch(String text, String regex) {
+                  java.util.regex.Matcher m = java.util.regex.Pattern.compile(regex).matcher(text);
+                  return m.find() ? m.group(1) : null;
+              }
+
+              private static String nz(String s) {
+                  return s == null ? "" : s;
+              }
+
+              /** "Trains &amp; more" → "Trains & more". */
+              private static String unescape(String s) {
+                  if (s == null) return "";
+                  return android.text.Html.fromHtml(s, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim();
+              }
+
+              private static void copy(InputStream in, java.io.OutputStream out) throws java.io.IOException {
+                  byte[] buf = new byte[16384];
+                  int n;
+                  while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+              }
+
+              private static String readAll(InputStream in) throws java.io.IOException {
+                  ByteArrayOutputStream out = new ByteArrayOutputStream();
+                  byte[] buf = new byte[8192];
+                  int n;
+                  while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                  in.close();
+                  return out.toString(StandardCharsets.UTF_8.name());
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/TrainWidget.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+          
+          import android.app.AlarmManager;
+          import android.app.PendingIntent;
+          import android.appwidget.AppWidgetManager;
+          import android.appwidget.AppWidgetProvider;
+          import android.content.ComponentName;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.graphics.Color;
+          import android.os.SystemClock;
+          import android.view.View;
+          import android.widget.RemoteViews;
+          
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+          
+          /**
+           * Home screen widget: the first station saved on Home, its next trains each way, any disruption,
+           * and when the app last updated it. The app pushes the times; the widget counts them down.
+           */
+          public class TrainWidget extends AppWidgetProvider {
+              private static final String PREFS = "widget";
+              private static final String TICK = "sg.mrttracker.app.WIDGET_TICK";
+              private static final int[] ROW = {R.id.w_r0, R.id.w_r1, R.id.w_r2, R.id.w_r3};
+              private static final int[] BAR = {R.id.w_b0, R.id.w_b1, R.id.w_b2, R.id.w_b3};
+              private static final int[] DST = {R.id.w_d0, R.id.w_d1, R.id.w_d2, R.id.w_d3};
+              private static final int[] TIM = {R.id.w_t0, R.id.w_t1, R.id.w_t2, R.id.w_t3};
+          
+              static void save(Context c, String json) {
+                  c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("data", json).apply();
+                  updateAll(c);
+              }
+          
+              static void updateAll(Context c) {
+                  try {
+                      AppWidgetManager m = AppWidgetManager.getInstance(c);
+                      int[] ids = m.getAppWidgetIds(new ComponentName(c, TrainWidget.class));
+                      if (ids == null || ids.length == 0) return;
+                      RemoteViews v = build(c);
+                      for (int id : ids) m.updateAppWidget(id, v);
+                      tick(c, true);
+                  } catch (Exception ignored) {
+                  }
+              }
+          
+              @Override
+              public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
+                  RemoteViews v = build(c);
+                  for (int id : ids) m.updateAppWidget(id, v);
+                  tick(c, true);
+              }
+          
+              @Override
+              public void onEnabled(Context c) {
+                  tick(c, true);
+              }
+          
+              @Override
+              public void onDisabled(Context c) {
+                  tick(c, false);
+              }
+          
+              @Override
+              public void onReceive(Context c, Intent intent) {
+                  if (TICK.equals(intent.getAction())) updateAll(c);
+                  else super.onReceive(c, intent);
+              }
+          
+              /** Counts the minutes down every few minutes while the screen is on (inexact and not waking the phone). */
+              private static void tick(Context c, boolean on) {
+                  AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+                  if (am == null) return;
+                  Intent it = new Intent(c, TrainWidget.class).setAction(TICK);
+                  PendingIntent pi = PendingIntent.getBroadcast(c, 4100, it, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                  if (on) am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 60_000, 5 * 60_000, pi);
+                  else am.cancel(pi);
+              }
+          
+              static RemoteViews build(Context c) {
+                  RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_trains);
+                  Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                  v.setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(c, 4000, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+                  JSONObject j = null;
+                  try {
+                      j = new JSONObject(c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("data", "{}"));
+                  } catch (Exception ignored) {
+                  }
+                  String st = j == null ? "" : j.optString("st", "");
+                  JSONArray rows = j == null ? null : j.optJSONArray("rows");
+                  long at = j == null ? 0 : j.optLong("at", 0), now = System.currentTimeMillis();
+                  if (st.isEmpty() || rows == null) {
+                      v.setTextViewText(R.id.w_title, c.getString(R.string.app_name));
+                      v.setTextViewText(R.id.w_upd, "");
+                      v.setTextViewText(R.id.w_msg, "Open the app and save a station on Home to see its next trains here.");
+                      v.setViewVisibility(R.id.w_msg, View.VISIBLE);
+                      for (int r : ROW) v.setViewVisibility(r, View.GONE);
+                      v.setViewVisibility(R.id.w_dis, View.GONE);
+                      return v;
+                  }
+                  v.setViewVisibility(R.id.w_msg, View.GONE);
+                  v.setTextViewText(R.id.w_title, st);
+                  boolean any = false;
+                  for (int i = 0; i < ROW.length; i++) {
+                      JSONObject r = i < rows.length() ? rows.optJSONObject(i) : null;
+                      if (r == null) {
+                          v.setViewVisibility(ROW[i], View.GONE);
+                          continue;
+                      }
+                      v.setViewVisibility(ROW[i], View.VISIBLE);
+                      try {
+                          v.setInt(BAR[i], "setBackgroundColor", Color.parseColor(r.optString("c", "#888888")));
+                      } catch (Exception e) {
+                          v.setInt(BAR[i], "setBackgroundColor", Color.GRAY);
+                      }
+                      v.setTextViewText(DST[i], r.optString("to", ""));
+                      JSONArray t = r.optJSONArray("t");
+                      StringBuilder sb = new StringBuilder();
+                      int shown = 0;
+                      if (t != null) for (int k = 0; k < t.length() && shown < 3; k++) {
+                          double m = (t.optLong(k, 0) - now) / 60000.0;
+                          if (m < -0.5) continue;
+                          if (shown == 0) sb.append(m < 0.75 ? "Now" : Math.round(m) + " min");
+                          else sb.append(" · ").append(Math.round(m));
+                          shown++;
+                      }
+                      if (shown > 0) any = true;
+                      v.setTextViewText(TIM[i], shown > 0 ? sb.toString() : (t != null && t.length() > 0 ? "–" : ""));
+                  }
+                  String dis = j.optString("dis", "");
+                  v.setViewVisibility(R.id.w_dis, dis.isEmpty() ? View.GONE : View.VISIBLE);
+                  v.setTextViewText(R.id.w_dis, dis);
+                  String hm = at > 0 ? new java.text.SimpleDateFormat("HH:mm", java.util.Locale.UK).format(new java.util.Date(at)) : "";
+                  v.setTextViewText(R.id.w_upd, !any && now - at > 20 * 60_000 ? "Tap to refresh" : hm.isEmpty() ? "" : "updated " + hm);
+                  return v;
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/TripAlarm.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+          
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          
+          /** A planned trip reminder is due: show it. */
+          public class TripAlarm extends BroadcastReceiver {
+          
+              @Override
+              public void onReceive(Context context, Intent intent) {
+                  String title = intent.getStringExtra("title");
+                  if (title == null || title.isEmpty()) return;
+                  Alerts.post(context, Alerts.CH_TRIP, intent.getIntExtra("id", 3000), title, intent.getStringExtra("text"));
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/UpdateJob.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+
+          import android.app.job.JobParameters;
+          import android.app.job.JobService;
+
+          /** Runs every few hours in the background: checks GitHub and notifies if there's a new version. */
+          public class UpdateJob extends JobService {
+
+              @Override
+              public boolean onStartJob(final JobParameters params) {
+                  new Thread(() -> {
+                      Updater.notifyIfNew(getApplicationContext());
+                      jobFinished(params, false);
+                  }).start();
+                  return true;
+              }
+
+              @Override
+              public boolean onStopJob(JobParameters params) {
+                  return true;   // try again later
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app'
+          cat > 'mrt-tracker-app/app/src/main/java/sg/mrttracker/app/Updater.java' <<'MRTAPP_EOF'
+          package sg.mrttracker.app;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.job.JobInfo;
+          import android.app.job.JobScheduler;
+          import android.content.ComponentName;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.content.pm.PackageInfo;
+          import android.content.pm.PackageInstaller;
+          import android.os.Build;
+
+          import org.json.JSONObject;
+
+          import java.io.ByteArrayOutputStream;
+          import java.io.IOException;
+          import java.io.InputStream;
+          import java.io.OutputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.nio.charset.StandardCharsets;
+          import java.util.Locale;
+
+          /**
+           * In-app updates.
+           *
+           * Every build publishes the app and a small version.json to this project's public "latest" release
+           * on GitHub (BuildConfig.UPDATE_REPO). The app checks that file when it
+           * opens and every few hours in the background, shows a notification when a newer version exists,
+           * and installs it in one tap.
+           *
+           * Safety: downloads only come from GitHub over HTTPS, and Android itself refuses to install an
+           * update that isn't signed with this app's own signing key, so a tampered file can't be installed.
+           */
+          final class Updater {
+
+              static final String CHANNEL = "updates";
+              static final int NOTIFY_ID = 1001;
+              static final int JOB_ID = 2001;
+              private static final long MAX_APK = 120L * 1024 * 1024; // allow the bundled train/audio assets to grow
+
+              private Updater() {}
+
+              static boolean enabled() {
+                  return !BuildConfig.UPDATE_REPO.isEmpty();
+              }
+
+              /** MRT Tracker (beta) takes the latest release; MRT Tracker takes the "dev" pre-release. */
+              private static boolean dev() {
+                  return "dev".equals(BuildConfig.CHANNEL);
+              }
+
+              private static String base() {
+                  return "https://github.com/" + BuildConfig.UPDATE_REPO + (dev() ? "/releases/download/dev/" : "/releases/latest/download/");
+              }
+
+              /** The version waiting on GitHub, or null if none can be read. */
+              static JSONObject latest() {
+                  if (!enabled()) return null;
+                  try {
+                      byte[] b = get(base() + "version.json", 64 * 1024, null);
+                      JSONObject j = new JSONObject(new String(b, StandardCharsets.UTF_8));
+                      return j.has("versionCode") ? j : null;
+                  } catch (Exception e) {
+                      return null;
+                  }
+              }
+
+              static long installedCode(Context c) {
+                  try {
+                      PackageInfo pi = c.getPackageManager().getPackageInfo(c.getPackageName(), 0);
+                      return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+                  } catch (Exception e) {
+                      return Long.MAX_VALUE;
+                  }
+              }
+
+              static String installedName(Context c) {
+                  try {
+                      return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+                  } catch (Exception e) {
+                      return "";
+                  }
+              }
+
+              /** Newer version info if one is available, otherwise null. */
+              static JSONObject newer(Context c) {
+                  JSONObject j = latest();
+                  if (j == null) return null;
+                  return j.optLong("versionCode", 0) > installedCode(c) ? j : null;
+              }
+
+              /* ---------- background checks and notifications ---------- */
+
+              static void schedule(Context c) {
+                  if (!enabled()) return;
+                  try {
+                      JobScheduler js = (JobScheduler) c.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                      if (js == null) return;
+                      for (JobInfo j : js.getAllPendingJobs()) if (j.getId() == JOB_ID) return;   // already scheduled
+                      JobInfo info = new JobInfo.Builder(JOB_ID, new ComponentName(c, UpdateJob.class))
+                              .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                              .setPeriodic(6L * 60 * 60 * 1000)          // about every 6 hours
+                              .setPersisted(true)                         // survives restarts
+                              .build();
+                      js.schedule(info);
+                  } catch (Exception ignored) {
+                  }
+              }
+
+              /** Posts "New version available" once per new version. */
+              static void notifyIfNew(Context c) {
+                  JSONObject j = newer(c);
+                  if (j == null) return;
+                  long code = j.optLong("versionCode", 0);
+                  SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
+                  if (p.getLong("notified_code", 0) == code) return;
+                  if (showNotification(c, j.optString("versionName", ""))) p.edit().putLong("notified_code", code).apply();
+              }
+
+              static boolean showNotification(Context c, String versionName) {
+                  try {
+                      NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                      if (nm == null) return false;
+                      if (Build.VERSION.SDK_INT >= 33 && c.checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                              != android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
+                      if (Build.VERSION.SDK_INT >= 26) {
+                          nm.createNotificationChannel(new NotificationChannel(CHANNEL, "App updates", NotificationManager.IMPORTANCE_DEFAULT));
+                      }
+                      Intent open = new Intent(c, MainActivity.class).putExtra("show_update", true)
+                              .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                      PendingIntent pi = PendingIntent.getActivity(c, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                      Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : new Notification.Builder(c);
+                      b.setSmallIcon(R.drawable.ic_stat_train)
+                              .setContentTitle("New MRT Tracker version")
+                              .setContentText(versionName.isEmpty() ? "Tap to update" : "Version " + versionName + " is ready. Tap to update.")
+                              .setContentIntent(pi)
+                              .setAutoCancel(true);
+                      nm.notify(NOTIFY_ID, b.build());
+                      return true;
+                  } catch (Exception e) {
+                      return false;
+                  }
+              }
+
+              /* ---------- download and install ---------- */
+
+              interface Progress { void on(int percent); }
+
+              /**
+               * Downloads the new app into Android's installer, then asks Android to install it.
+               * Android shows its usual "Do you want to update this app?" screen to confirm.
+               */
+              static void downloadAndInstall(Context c, Progress progress) throws Exception {
+                  PackageInstaller pi = c.getPackageManager().getPackageInstaller();
+                  PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                  params.setAppPackageName(c.getPackageName());
+                  int id = pi.createSession(params);
+                  PackageInstaller.Session s = pi.openSession(id);
+                  try {
+                      try (OutputStream out = s.openWrite("update.apk", 0, -1)) {
+                          get(base() + (dev() ? "mrt-tracker.apk" : "mrt-tracker.apk"), MAX_APK, new Sink(out, progress));
+                          s.fsync(out);
+                      }
+                      Intent i = new Intent(c, InstallReceiver.class);
+                      int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+                      PendingIntent done = PendingIntent.getBroadcast(c, id, i, flags);
+                      s.commit(done.getIntentSender());
+                  } catch (Exception e) {
+                      s.abandon();
+                      throw e;
+                  } finally {
+                      s.close();
+                  }
+              }
+
+              /* ---------- HTTPS, GitHub only ---------- */
+
+              private static final class Sink {
+                  final OutputStream out; final Progress progress;
+                  Sink(OutputStream out, Progress progress) { this.out = out; this.progress = progress; }
+              }
+
+              private static boolean allowedHost(String h) {
+                  h = h.toLowerCase(Locale.ROOT);
+                  return h.equals("github.com") || h.endsWith(".githubusercontent.com");
+              }
+
+              /** GET with redirects followed by hand, so every hop is checked against GitHub's hosts. */
+              private static byte[] get(String url, long max, Sink sink) throws IOException {
+                  for (int hop = 0; hop < 6; hop++) {
+                      URL u = new URL(url);
+                      if (!"https".equals(u.getProtocol()) || !allowedHost(u.getHost())) throw new IOException("Host not allowed");
+                      HttpURLConnection c = (HttpURLConnection) u.openConnection();
+                      c.setInstanceFollowRedirects(false);
+                      c.setConnectTimeout(15000);
+                      c.setReadTimeout(30000);
+                      c.setRequestProperty("User-Agent", "MRTTracker-Updater");
+                      c.setRequestProperty("Cache-Control", "no-cache");
+                      int code = c.getResponseCode();
+                      if (code >= 300 && code < 400) {
+                          String loc = c.getHeaderField("Location");
+                          c.disconnect();
+                          if (loc == null) throw new IOException("Bad redirect");
+                          url = new URL(u, loc).toString();
+                          continue;
+                      }
+                      if (code != 200) { c.disconnect(); throw new IOException("HTTP " + code); }
+                      long total = c.getContentLengthLong();
+                      if (total > max) { c.disconnect(); throw new IOException("Too large"); }
+                      try (InputStream in = c.getInputStream()) {
+                          ByteArrayOutputStream mem = sink == null ? new ByteArrayOutputStream() : null;
+                          OutputStream out = sink == null ? mem : sink.out;
+                          byte[] buf = new byte[32768];
+                          long got = 0; int n, last = -1;
+                          while ((n = in.read(buf)) > 0) {
+                              got += n;
+                              if (got > max) throw new IOException("Too large");
+                              out.write(buf, 0, n);
+                              if (sink != null && sink.progress != null && total > 0) {
+                                  int pct = (int) (got * 100 / total);
+                                  if (pct != last) { last = pct; sink.progress.on(pct); }
+                              }
+                          }
+                          return mem == null ? null : mem.toByteArray();
+                      } finally {
+                          c.disconnect();
+                      }
+                  }
+                  throw new IOException("Too many redirects");
+              }
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/drawable'
+          cat > 'mrt-tracker-app/app/src/main/res/drawable/ic_launcher_foreground.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#E9EEF4" android:pathData="M41.67,29.02H66.41A7.06,7.06 0,0 1 73.47,36.08V66.26A7.06,7.06 0,0 1 66.41,73.32H41.67A7.06,7.06 0,0 1 34.61,66.26V36.08A7.06,7.06 0,0 1 41.67,29.02Z"/>
+              <path android:fillColor="#1D2A36" android:pathData="M39.26,35.23H68.82V51.6H39.26Z"/>
+              <path android:fillColor="#E4002B" android:pathData="M34.61,57.72H73.47V60.83H34.61Z"/>
+              <path android:fillColor="#00A650" android:pathData="M34.61,60.83H73.47V63.23H34.61Z"/>
+              <path android:fillColor="#FFD65A" android:pathData="M38.48,68.47A2.99,2.99 0,1 1 44.46,68.47A2.99,2.99 0,1 1 38.48,68.47ZM63.62,68.47A2.99,2.99 0,1 1 69.59,68.47A2.99,2.99 0,1 1 63.62,68.47Z"/>
+              <path android:fillColor="#E9EEF4" android:pathData="M43.76,74.79L49.27,74.79L43,82.63L37.49,82.63ZM58.73,74.79L64.24,74.79L70.51,82.63L65,82.63Z"/>
+          </vector>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/drawable'
+          cat > 'mrt-tracker-app/app/src/main/res/drawable/ic_launcher_legacy.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="48dp" android:height="48dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="@color/icon_bg" android:pathData="M26.72,6H81.28A20.72,20.72 0,0 1 102,26.72V81.28A20.72,20.72 0,0 1 81.28,102H26.72A20.72,20.72 0,0 1 6,81.28V26.72A20.72,20.72 0,0 1 26.72,6Z"/>
+              <path android:fillColor="#E9EEF4" android:pathData="M39.09,23.81H69A8.53,8.53 0,0 1 77.53,32.34V68.81A8.53,8.53 0,0 1 69,77.34H39.09A8.53,8.53 0,0 1 30.56,68.81V32.34A8.53,8.53 0,0 1 39.09,23.81Z"/>
+              <path android:fillColor="#1D2A36" android:pathData="M36.19,31.31H71.91V51.09H36.19Z"/>
+              <path android:fillColor="#E4002B" android:pathData="M30.56,58.5H77.53V62.25H30.56Z"/>
+              <path android:fillColor="#00A650" android:pathData="M30.56,62.25H77.53V65.16H30.56Z"/>
+              <path android:fillColor="#FFD65A" android:pathData="M35.25,71.48A3.61,3.61 0,1 1 42.47,71.48A3.61,3.61 0,1 1 35.25,71.48ZM65.62,71.48A3.61,3.61 0,1 1 72.84,71.48A3.61,3.61 0,1 1 65.62,71.48Z"/>
+              <path android:fillColor="#E9EEF4" android:pathData="M41.62,79.12L48.28,79.12L40.71,88.59L34.05,88.59ZM59.72,79.12L66.38,79.12L73.95,88.59L67.29,88.59Z"/>
+          </vector>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/drawable'
+          cat > 'mrt-tracker-app/app/src/main/res/drawable/ic_stat_train.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- Small white train for the notification bar. -->
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp" android:height="24dp"
+              android:viewportWidth="24" android:viewportHeight="24">
+              <path android:fillColor="#FFFFFFFF"
+                  android:pathData="M8,3h8a3,3 0,0 1,3 3v9a3,3 0,0 1,-3 3h-8a3,3 0,0 1,-3 -3v-9a3,3 0,0 1,3 -3zM8,6v4h8v-4zM8.5,13a1.2,1.2 0,1 0,0 2.4a1.2,1.2 0,1 0,0 -2.4zM15.5,13a1.2,1.2 0,1 0,0 2.4a1.2,1.2 0,1 0,0 -2.4zM7,21l2,-2.5h1.5l-2,2.5zM17,21l-2,-2.5h-1.5l2,2.5z" />
+          </vector>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/drawable'
+          cat > 'mrt-tracker-app/app/src/main/res/drawable/widget_bg.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- The widget's dark glass panel. -->
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+              <solid android:color="#E6141A22" />
+              <stroke android:width="1dp" android:color="#33FFFFFF" />
+              <corners android:radius="22dp" />
+          </shape>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/layout'
+          cat > 'mrt-tracker-app/app/src/main/res/layout/widget_trains.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- Home screen widget: the first saved station's next trains (filled in by TrainWidget.java). -->
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/w_root"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@drawable/widget_bg"
+              android:orientation="vertical"
+              android:padding="14dp">
+          
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:gravity="center_vertical"
+                  android:orientation="horizontal">
+          
+                  <TextView
+                      android:id="@+id/w_title"
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_weight="1"
+                      android:ellipsize="end"
+                      android:maxLines="1"
+                      android:text="@string/app_name"
+                      android:textColor="#FFFFFF"
+                      android:textSize="17sp"
+                      android:textStyle="bold" />
+          
+                  <TextView
+                      android:id="@+id/w_upd"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:textColor="#AEB8C3"
+                      android:textSize="11sp" />
+              </LinearLayout>
+          
+              <TextView
+                  android:id="@+id/w_msg"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="6dp"
+                  android:text="@string/widget_empty"
+                  android:textColor="#C9D2DC"
+                  android:textSize="13sp" />
+          
+              <LinearLayout
+                  android:id="@+id/w_r0"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="6dp"
+                  android:gravity="center_vertical"
+                  android:orientation="horizontal">
+          
+                  <TextView
+                      android:id="@+id/w_b0"
+                      android:layout_width="4dp"
+                      android:layout_height="18dp"
+                      android:background="#888888" />
+          
+                  <TextView
+                      android:id="@+id/w_d0"
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:layout_weight="1"
+                      android:ellipsize="end"
+                      android:maxLines="1"
+                      android:textColor="#E8EDF2"
+                      android:textSize="13sp" />
+          
+                  <TextView
+                      android:id="@+id/w_t0"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:fontFamily="monospace"
+                      android:maxLines="1"
+                      android:textColor="#FFFFFF"
+                      android:textSize="13sp"
+                      android:textStyle="bold" />
+              </LinearLayout>
+          
+              <LinearLayout
+                  android:id="@+id/w_r1"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="6dp"
+                  android:gravity="center_vertical"
+                  android:orientation="horizontal">
+          
+                  <TextView
+                      android:id="@+id/w_b1"
+                      android:layout_width="4dp"
+                      android:layout_height="18dp"
+                      android:background="#888888" />
+          
+                  <TextView
+                      android:id="@+id/w_d1"
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:layout_weight="1"
+                      android:ellipsize="end"
+                      android:maxLines="1"
+                      android:textColor="#E8EDF2"
+                      android:textSize="13sp" />
+          
+                  <TextView
+                      android:id="@+id/w_t1"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:fontFamily="monospace"
+                      android:maxLines="1"
+                      android:textColor="#FFFFFF"
+                      android:textSize="13sp"
+                      android:textStyle="bold" />
+              </LinearLayout>
+          
+              <LinearLayout
+                  android:id="@+id/w_r2"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="6dp"
+                  android:gravity="center_vertical"
+                  android:orientation="horizontal">
+          
+                  <TextView
+                      android:id="@+id/w_b2"
+                      android:layout_width="4dp"
+                      android:layout_height="18dp"
+                      android:background="#888888" />
+          
+                  <TextView
+                      android:id="@+id/w_d2"
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:layout_weight="1"
+                      android:ellipsize="end"
+                      android:maxLines="1"
+                      android:textColor="#E8EDF2"
+                      android:textSize="13sp" />
+          
+                  <TextView
+                      android:id="@+id/w_t2"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:fontFamily="monospace"
+                      android:maxLines="1"
+                      android:textColor="#FFFFFF"
+                      android:textSize="13sp"
+                      android:textStyle="bold" />
+              </LinearLayout>
+          
+              <LinearLayout
+                  android:id="@+id/w_r3"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="6dp"
+                  android:gravity="center_vertical"
+                  android:orientation="horizontal">
+          
+                  <TextView
+                      android:id="@+id/w_b3"
+                      android:layout_width="4dp"
+                      android:layout_height="18dp"
+                      android:background="#888888" />
+          
+                  <TextView
+                      android:id="@+id/w_d3"
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:layout_weight="1"
+                      android:ellipsize="end"
+                      android:maxLines="1"
+                      android:textColor="#E8EDF2"
+                      android:textSize="13sp" />
+          
+                  <TextView
+                      android:id="@+id/w_t3"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginStart="8dp"
+                      android:fontFamily="monospace"
+                      android:maxLines="1"
+                      android:textColor="#FFFFFF"
+                      android:textSize="13sp"
+                      android:textStyle="bold" />
+              </LinearLayout>
+          
+              <TextView
+                  android:id="@+id/w_dis"
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:layout_marginTop="8dp"
+                  android:ellipsize="end"
+                  android:maxLines="2"
+                  android:textColor="#FF8A80"
+                  android:textSize="12sp"
+                  android:visibility="gone" />
+          </LinearLayout>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/mipmap-anydpi-v26'
+          cat > 'mrt-tracker-app/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@color/icon_bg" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/mipmap'
+          cat > 'mrt-tracker-app/app/src/main/res/mipmap/ic_launcher.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <inset xmlns:android="http://schemas.android.com/apk/res/android"
+              android:drawable="@drawable/ic_launcher_legacy" />
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values-night'
+          cat > 'mrt-tracker-app/app/src/main/res/values-night/colors.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="bg">#0F1317</color>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values-night'
+          cat > 'mrt-tracker-app/app/src/main/res/values-night/themes.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+                  <item name="android:windowBackground">@color/bg</item>
+                  <item name="android:statusBarColor">@color/bg</item>
+                  <item name="android:navigationBarColor">@color/bg</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:windowLightNavigationBar">false</item>
+              </style>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values'
+          cat > 'mrt-tracker-app/app/src/main/res/values/colors.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="bg">#EEF1F4</color>
+              <!-- icon_bg comes from app/build.gradle: dark for MRT Tracker, orange for MRT Tracker -->
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values'
+          cat > 'mrt-tracker-app/app/src/main/res/values/strings.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <!-- app_name comes from app/build.gradle: MRT Tracker, or MRT Dev for the developer app -->
+              <string name="widget_desc">Next trains at your first saved station</string>
+              <string name="widget_empty">Save a station on Home to see its next trains here.</string>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/values'
+          cat > 'mrt-tracker-app/app/src/main/res/values/themes.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+                  <item name="android:windowBackground">@color/bg</item>
+                  <item name="android:statusBarColor">@color/bg</item>
+                  <item name="android:navigationBarColor">@color/bg</item>
+                  <item name="android:windowLightStatusBar">true</item>
+                  <item name="android:windowLightNavigationBar">true</item>
+              </style>
+          </resources>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/xml'
+          cat > 'mrt-tracker-app/app/src/main/res/xml/data_extraction_rules.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- Nothing from this app is copied to cloud backups or to a new phone. -->
+          <data-extraction-rules>
+              <cloud-backup>
+                  <exclude domain="root" path="." />
+                  <exclude domain="file" path="." />
+                  <exclude domain="database" path="." />
+                  <exclude domain="sharedpref" path="." />
+                  <exclude domain="external" path="." />
+              </cloud-backup>
+              <device-transfer>
+                  <exclude domain="root" path="." />
+                  <exclude domain="file" path="." />
+                  <exclude domain="database" path="." />
+                  <exclude domain="sharedpref" path="." />
+                  <exclude domain="external" path="." />
+              </device-transfer>
+          </data-extraction-rules>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/xml'
+          cat > 'mrt-tracker-app/app/src/main/res/xml/network_security_config.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- Encrypted connections (HTTPS) only, trusting only the phone's built-in certificates. -->
+          <network-security-config>
+              <base-config cleartextTrafficPermitted="false">
+                  <trust-anchors>
+                      <certificates src="system" />
+                  </trust-anchors>
+              </base-config>
+          </network-security-config>
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/app/src/main/res/xml'
+          cat > 'mrt-tracker-app/app/src/main/res/xml/train_widget_info.xml' <<'MRTAPP_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <!-- Home screen widget: about 4 x 2 cells, resizable; the app refreshes it whenever Home updates. -->
+          <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+              android:description="@string/widget_desc"
+              android:initialLayout="@layout/widget_trains"
+              android:minWidth="250dp"
+              android:minHeight="110dp"
+              android:minResizeWidth="180dp"
+              android:minResizeHeight="80dp"
+              android:previewLayout="@layout/widget_trains"
+              android:resizeMode="horizontal|vertical"
+              android:targetCellWidth="4"
+              android:targetCellHeight="2"
+              android:updatePeriodMillis="1800000"
+              android:widgetCategory="home_screen" />
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/build.gradle' <<'MRTAPP_EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/gradle.properties' <<'MRTAPP_EOF'
+          org.gradle.jvmargs=-Xmx2g
+          android.useAndroidX=true
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app'
+          cat > 'mrt-tracker-app/settings.gradle' <<'MRTAPP_EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "MRT Tracker"
+          include ':app'
+          MRTAPP_EOF
+          mkdir -p 'mrt-tracker-app/tools'
+          mkdir -p 'mrt-tracker-app/tools'
+          mkdir -p 'mrt-tracker-app/tools'
+          mkdir -p 'mrt-tracker-app/tools'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Create a signing key on the first run
+        run: |
+          mkdir -p signing
+          if [ ! -f signing/mrt-tracker.jks ]; then
+            keytool -genkeypair -v -keystore signing/mrt-tracker.jks -alias mrttracker \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass mrttracker -keypass mrttracker -dname "CN=MRT Tracker"
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add signing/mrt-tracker.jks
+            git commit -m "Add app signing key [skip ci]"
+            git push
+          fi
+
+      # Downloads LTA's official train timetable and packs it into the app.
+      # Never fails the build: without it, the app falls back to estimated times.
+      - name: Fetch LTA train timetable
+        env:
+          LTA_ACCOUNT_KEY: ${{ secrets.LTA_ACCOUNT_KEY }}
+        run: python3 mrt-tracker-app/tools/build_timetable.py mrt-tracker-app data/lta-timetable.json
+
+      # The last good timetable is kept in this repository (data/lta-timetable.json), so a build
+      # where LTA's download fails still packs LTA's timetable instead of falling back to estimates.
+      - name: Keep the timetable for next time
+        run: |
+          if [ -f data/lta-timetable.json ] && [ -n "$(git status --porcelain data/lta-timetable.json)" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add data/lta-timetable.json
+            git commit -m "Save LTA train timetable [skip ci]"
+            git pull --rebase --autostash || true
+            git push || echo "::warning::The timetable couldn't be saved to the repository this time. This version of the app still has it."
+          fi
+
+      # Building outlines and heights from OpenStreetMap near every station, for the 3D buildings on
+      # the map. A copy is kept between builds, so OpenStreetMap is only asked again once a month.
+      # Never fails the build: without it, the map just has no buildings.
+      - name: Restore saved buildings
+        uses: actions/cache/restore@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+          restore-keys: osm-buildings-v1-
+
+      - name: Fetch buildings from OpenStreetMap
+        run: python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache
+
+      - name: Fetch RTS Link and Sentosa Express tracks from OpenStreetMap
+        run: |
+          if [ -f mrt-tracker-app/tools/build_tracks.py ]; then
+            python3 mrt-tracker-app/tools/build_tracks.py mrt-tracker-app osm-cache
+          fi
+
+      # Station exits from LTA's official exit list, with the places next to each exit (OpenStreetMap).
+      # Never fails the build: without it, station pages just don't list exits.
+      - name: Fetch station exits (LTA) and nearby places (OpenStreetMap)
+        env:
+          DATA_GOV_SG_API_KEY: ${{ secrets.DATA_GOV_SG_API_KEY }}
+        run: |
+          if [ -f mrt-tracker-app/tools/build_exits.py ]; then
+            python3 mrt-tracker-app/tools/build_exits.py mrt-tracker-app osm-cache
+          fi
+
+      - name: Save buildings for next time
+        if: hashFiles('osm-fresh') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+
+      # The app's page allows its own inline script ('unsafe-inline'); there are no script fingerprints to
+      # keep in step any more, so editing the page can't make it open blank. If the policy ever names a
+      # fingerprint again it's put back to 'unsafe-inline' here; and if the script itself has a mistake
+      # that stops it running, the build stops and says where.
+      - name: Check the app page's script
+        run: |
+          python3 - mrt-tracker-app/app/src/main/assets/index.html <<'PY'
+          import os, re, subprocess, sys, tempfile
+          path = sys.argv[1]
+          page = open(path, encoding="utf-8").read()
+          def say(text):
+              print(text)
+              if os.environ.get("GITHUB_STEP_SUMMARY"):
+                  open(os.environ["GITHUB_STEP_SUMMARY"], "a").write("## App page check\n\n" + text + "\n")
+          scripts = re.findall(r"<script>(.*?)</script>", page, re.S)
+          have = re.search(r"script-src ([^;\"]*);", page)
+          if not scripts or not have:
+              say("⚠️ The page has no script or no security policy; nothing to check.")
+          elif have.group(1).strip() != "'unsafe-inline'":
+              page = page[:have.start(1)] + "'unsafe-inline'" + page[have.end(1):]
+              open(path, "w", encoding="utf-8").write(page)
+              say("🔧 The page's script policy was set back to 'unsafe-inline' for this build.")
+          else:
+              say("✅ The page's script policy is 'unsafe-inline' (no fingerprint needed).")
+          try:
+              with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+                  f.write("\n".join(scripts))
+              r = subprocess.run(["node", "--check", f.name], capture_output=True, text=True, timeout=120)
+              if r.returncode != 0:
+                  err = r.stderr.splitlines()
+                  line = err[0].rsplit(":", 1)[-1] if err else "?"
+                  col = next((l.index("^") for l in err[2:4] if "^" in l and not l.replace("^", "").strip()), 0)
+                  msg = next((l.strip() for l in err if "Error" in l and not l.strip().startswith("at ")), "SyntaxError")
+                  near = err[1][max(0, col - 70):col + 50] if len(err) > 1 else ""
+                  say(f"❌ The page's script has a mistake, so the app wouldn't work: {msg}, at line {line} of the script, here:\n\n```\n{near}\n```")
+                  sys.exit(1)
+          except (FileNotFoundError, subprocess.TimeoutExpired):
+              print("Node isn't available; skipped checking the script for mistakes.")
+          PY
+
+      - name: Build the app
+        env:
+          # Claude API key for the Ask tab (optional). Without it, the Ask tab gives built-in answers.
+          ORG_GRADLE_PROJECT_aiKey: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ORG_GRADLE_PROJECT_aiKey" ]; then
+            echo "🤖 **Ask tab:** Claude answers (the ANTHROPIC_API_KEY secret is set)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "🤖 **Ask tab:** built-in answers only. Add an ANTHROPIC_API_KEY secret to let Claude answer." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # Version from the build time, so every new build installs over the last one,
+          # whatever this workflow file is called.
+          VC=$(( ( $(date +%s) - 1767225600 ) / 60 ))
+          VN=$(TZ=Asia/Singapore date +%Y.%m.%d-%H%M)
+          APK=mrt-tracker.apk
+          if [ "$CHANNEL" = "dev" ]; then VN="$VN-dev"; APK=mrt-tracker.apk; fi
+          echo "VN=$VN" >> "$GITHUB_ENV"
+          echo "APK=$APK" >> "$GITHUB_ENV"
+          # The app checks this repo's own "latest" release for updates (version.json next to the app),
+          # and downloads and installs a newer one itself. This repo is public, so no token is needed.
+          # Dev updates come from the dedicated dev pre-release.
+          UPDATE_REPO="${{ github.repository }}"
+          gradle -p mrt-tracker-app assembleRelease -Pvc=$VC -Pvn=$VN -Pchannel="$CHANNEL" -PupdateRepo="$UPDATE_REPO" -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks"
+          cp mrt-tracker-app/app/build/outputs/apk/release/app-release.apk "$APK"
+          printf '{"versionCode":%s,"versionName":"%s"}\n' "$VC" "$VN" > version.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.CHANNEL == 'dev' && 'mrt-dev-apk' || 'mrt-tracker-apk' }}
+          path: ${{ env.APK }}
+
+      - name: Publish to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # MRT Tracker goes in the "latest" release; MRT Tracker in a separate "dev" pre-release.
+          if [ "$CHANNEL" = "dev" ]; then
+            gh release delete dev --yes --cleanup-tag || true
+            gh release create dev "$APK" version.json --title "MRT Tracker $VN" --prerelease --latest=false \
+              --notes "MRT Tracker, the developer app for trying new features. Download mrt-tracker.apk on your Android phone and open it to install. It installs next to MRT Tracker and doesn't change it."
+          else
+            gh release delete latest --yes --cleanup-tag || true
+            gh release create latest "$APK" version.json --title "MRT Tracker $VN" \
+              --notes "Download mrt-tracker.apk on your Android phone and open it to install. Once installed, the app updates itself: it tells you when there's a new version and installs it in one tap."
+          fi
+
