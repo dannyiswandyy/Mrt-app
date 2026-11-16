@@ -3372,6 +3372,11 @@ jobs:
           XIiRrZ2cAdIwtmd7cQ5avxT9IHe7BgmBzVqqf0hUQJDjnXM9oU5h2IaIUOuS/37EB59ZA6nNMF2k
           Hl4dvsTplmh9mCzKToV1Uiv98YMaFnmVHVpxKYbOdvl03qNPLVqPHtHv4WIybj36XwsZFgCjeAgA
           MRTAPP_EOF
+
+          # Use the canonical page from main so MRT Dev cannot silently drift behind MRT Tracker.
+          # The large embedded fallback above remains for resilience, but current builds prefer main/web/index.html.
+          git fetch --no-tags --depth=1 origin main
+          git show FETCH_HEAD:web/index.html > 'mrt-tracker-app/app/src/main/assets/index.html'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cat > 'mrt-tracker-app/app/src/main/assets/livecam.html' <<'MRTAPP_EOF'
           <!doctype html>
@@ -6527,7 +6532,4 @@ jobs:
           gh release create latest "$APK" version.json --repo "$PUB_REPO" --title "MRT Tracker $VN" \
             --notes "Open MRT Tracker and tap Update, or download mrt-tracker.apk to install."
 
-          # Use the canonical page from main so MRT Dev cannot silently drift behind MRT Tracker.
-          # The large embedded fallback above remains for resilience, but current builds prefer main/web/index.html.
-          git fetch --no-tags --depth=1 origin main
-          git show FETCH_HEAD:web/index.html > 'mrt-tracker-app/app/src/main/assets/index.html'
+
