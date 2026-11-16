@@ -1361,6 +1361,75 @@ footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
   .alert.ok::before,.alert.off::before{grid-row:span 2;align-self:center}
   .alert.ok .sub,.alert.off .sub{margin-left:0;grid-column:2}
 }
+/* ===== Map legend and map pills (same as MRT Dev; Claude) ===== */
+.maplegend{position:absolute;right:10px;bottom:112px;left:auto;top:auto;z-index:8;font-size:12px}
+.maplegend-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);border-radius:9px;padding:5px 8px;font:600 11.5px var(--body);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.maplegend-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.maplegend-card{position:absolute;right:0;left:auto;bottom:34px;top:auto;width:min(260px,calc(100vw - 44px));padding:10px 11px;border:1px solid var(--rule);border-radius:12px;background:color-mix(in srgb,var(--panel) 96%,transparent);color:var(--fg);box-shadow:0 8px 24px rgba(0,0,0,.18);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.maplegend-card[hidden]{display:none}
+.maplegend-title{font:700 12px var(--body);margin:0 0 7px}
+.maplegend-row{display:grid;grid-template-columns:28px 1fr;gap:7px;align-items:center;padding:4px 0;font-size:11.5px;line-height:1.25;color:var(--muted)}
+.maplegend-row b{color:var(--fg);font-weight:600}
+.maplegend-mark{width:24px;height:24px;display:grid;place-items:center}
+.maplegend-arrow{width:20px;height:20px}
+.maplegend-arrow polygon{fill:var(--NSL);stroke:var(--fg);stroke-width:1.2}
+.maplegend-arrow.hollow polygon{fill:var(--panel);stroke:var(--NSL);stroke-width:1.8}
+.maplegend-ring{width:16px;height:16px;border:2px solid var(--good);border-radius:50%;box-sizing:border-box}
+.maplegend-ring.solid{border-color:var(--fg)}
+.maplegend-ring.dash{border-style:dashed;border-color:var(--fg)}
+.maplegend-bar{width:20px;height:3px;background:var(--fg);border-radius:2px}
+/* ===== Map legend: matches the other map controls (Claude) ===== */
+.maplegend{right:14px;bottom:112px;z-index:12;font-family:var(--body)}
+.maplegend-btn{height:38px;min-height:38px;padding:0 13px 0 11px;gap:7px;border-radius:11px;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);font:600 13.5px/1 var(--body);letter-spacing:.01em;box-shadow:var(--shadow-soft,0 2px 8px rgba(0,0,0,.12));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.maplegend-btn svg{width:16px;height:16px;stroke-width:2.2}
+.maplegend-btn:hover{background:var(--soft)}
+.maplegend-btn[aria-expanded="true"]{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.maplegend-card{bottom:46px;width:min(300px,calc(100vw - 52px));max-height:min(62vh,440px);overflow:auto;padding:6px 14px 8px;border-radius:16px;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 96%,transparent);box-shadow:var(--shadow-float,0 10px 30px rgba(0,0,0,.25))}
+.maplegend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0 8px;border-bottom:1px solid var(--rule)}
+.maplegend-title{margin:0;font:600 14px/1.2 var(--display);letter-spacing:.01em;color:var(--fg)}
+.maplegend-x{width:30px;height:30px;min-height:30px;display:grid;place-items:center;flex:none;padding:0;border:0;border-radius:9px;background:var(--soft);color:var(--muted);cursor:pointer}
+.maplegend-x svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+.maplegend-row{grid-template-columns:30px 1fr;gap:10px;padding:9px 0;font-family:var(--body);border-bottom:1px solid var(--rule)}
+.maplegend-row:last-child{border-bottom:0}
+.maplegend-mark{width:30px;height:30px;border-radius:9px;background:var(--soft)}
+.maplegend-text{display:grid;gap:2px;min-width:0}
+.maplegend-text b{font:600 13px/1.25 var(--body);color:var(--fg)}
+.maplegend-text small{font:500 12px/1.35 var(--body);color:var(--muted)}
+/* ===== Left map pills stack under the train count, no gaps; compact legend (Claude) ===== */
+.mapstack{position:absolute;left:14px;top:14px;right:68px;z-index:6;display:flex;flex-direction:column;align-items:flex-start;gap:8px;pointer-events:none}
+.mapstack>*{position:static!important;left:auto!important;top:auto!important;margin:0!important;pointer-events:auto;max-width:100%}
+.mapstack>.mapcount{pointer-events:none}
+.mapstack>.mapcrowd,.mapstack>.maproute{height:36px;min-height:36px;padding:0 12px;gap:7px;border-radius:11px!important;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);font:600 13px/1 var(--body);box-shadow:var(--shadow-soft)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);white-space:nowrap}
+.mapstack>.mapcrowd[aria-pressed="true"]{background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);border-color:var(--accent,var(--fg))}
+.mapstack>.mapcrowd[aria-pressed="true"] svg{color:var(--accent,var(--fg))}
+.mapstack>.mapcrowd .k{gap:8px;font-weight:500;color:var(--muted);padding-left:8px;margin-left:1px;border-left:1px solid var(--rule)}
+.mapstack>.mapcrowd .k i{width:7px;height:7px;margin-right:3px}
+.mapstack>.maproute[aria-pressed="true"]{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.maplegend-btn{width:38px;height:38px;padding:0;justify-content:center;gap:0}
+.maplegend-btn svg{width:18px;height:18px}
+.maplegend-card{width:min(256px,calc(100vw - 52px));padding:4px 12px 6px;border-radius:14px}
+.maplegend-head{padding:6px 0 6px}
+.maplegend-title{font-size:13px}
+.maplegend-x{width:26px;height:26px;min-height:26px}
+.maplegend-row{grid-template-columns:22px 1fr;gap:9px;padding:6px 0;align-items:start}
+.maplegend-mark{width:22px;height:22px;border-radius:7px}
+.maplegend-arrow{width:16px;height:16px}
+.maplegend-ring{width:12px;height:12px}
+.maplegend-bar{width:14px}
+.maplegend-text{display:block;font-size:12px;line-height:1.35}
+.maplegend-text b{font-size:12px;margin-right:4px}
+.maplegend-text small{font-size:12px;display:inline}
+/* ===== Legend lives in the map's button column; weather pill matches (Claude) ===== */
+.mapctl{z-index:12}
+.mapctl .maplegend{position:static!important;inset:auto!important;right:auto!important;bottom:auto!important;z-index:auto}
+.mapctl .maplegend-btn{display:grid!important;place-items:center;padding:0!important}
+.mapctl .maplegend-btn[aria-expanded="true"]{background:var(--fg)!important;color:var(--panel)!important;border-color:var(--fg)!important}
+.mapctl .maplegend-card{position:absolute;right:calc(100% + 8px);left:auto;top:0;bottom:auto;max-height:min(56vh,380px);z-index:13}
+@media (max-width:1023px){body.trip-on .mapctl .maplegend-card{max-height:max(220px,calc(40dvh - 40px))}}
+.mapctl .maplegend-x{width:26px!important;height:26px!important;min-height:26px!important;border:0!important;border-radius:8px!important;background:var(--soft)!important;color:var(--muted)!important;box-shadow:none!important;font-size:0!important;transform:none!important}
+.mapwx{height:36px;min-height:36px;padding:0 12px;gap:7px;border-radius:11px!important;background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);font:600 13px/1 var(--body)}
+.mapwx[aria-expanded="true"]{background:var(--fg);color:var(--panel)}
+.maplegend-ring.dash{border-style:dotted}
 </style>
 
 <div class="wrap">
@@ -1441,21 +1510,37 @@ footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
 <canvas class="m3d-cv" id="m3dCv" hidden aria-hidden="true"></canvas>
 <canvas class="m3d-ov" id="m3dOv" hidden aria-label="3D map of the lines and trains. Drag to move; two fingers to zoom, turn and tilt."></canvas>
 <!--DEV:END-->
+        <div class="mapstack" id="mapStack">
         <div class="mapcount" id="mapCount"></div>
+        <button type="button" class="mapcrowd" id="mapCrowd" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/></svg>Crowds
+          <span class="k"><span><i style="background:var(--good)"></i>Low</span><span><i style="background:var(--warn)"></i>Mod</span><span><i style="background:var(--bad)"></i>High</span></span>
+        </button>
+        <!--DEV:START--><button type="button" class="maproute" id="mapRoute" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>Plan a trip</button><!--DEV:END-->
+        </div>
         <div class="mapctl">
           <button type="button" id="mapIn" aria-label="Zoom in" title="Zoom in">+</button>
           <button type="button" id="mapOut" aria-label="Zoom out" title="Zoom out">−</button>
           <button type="button" id="mapReset" aria-label="Show whole network" title="Reset map">⤢</button>
           <button type="button" id="map3d" class="m3d" aria-pressed="true" aria-label="3D buildings" title="3D buildings" hidden>3D</button><!--DEV:START--><button type="button" id="map3dN" class="m3dn" aria-label="Point north" title="Point north" hidden>N</button><!--DEV:END-->
+        <div class="maplegend" id="mapLegend">
+          <button type="button" class="maplegend-btn" id="mapLegendBtn" aria-expanded="false" aria-controls="mapLegendCard" aria-label="Map legend" title="Map legend">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><path d="M12 7.5h.01"/></svg>
+          </button>
+          <div class="maplegend-card" id="mapLegendCard" role="dialog" aria-label="Map legend" hidden>
+            <div class="maplegend-head"><p class="maplegend-title">Train arrows &amp; markers</p><button type="button" class="maplegend-x" id="mapLegendClose" aria-label="Close legend"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+            <div class="maplegend-row"><span class="maplegend-mark"><svg class="maplegend-arrow" viewBox="0 0 24 24" aria-hidden="true"><polygon points="20,12 6,5 8,12 6,19"/></svg></span><span class="maplegend-text"><b>Solid arrow</b><small>A normal train, pointing the way it is going.</small></span></div>
+            <div class="maplegend-row"><span class="maplegend-mark"><svg class="maplegend-arrow hollow" viewBox="0 0 24 24" aria-hidden="true"><polygon points="20,12 6,5 8,12 6,19"/></svg></span><span class="maplegend-text"><b>Hollow arrow</b><small>A short-running or special-bound train.</small></span></div>
+            <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-bar"></i></span><span class="maplegend-text"><b>Bar at the tip</b><small>The last train of the night on that service.</small></span></div>
+            <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-ring solid"></i></span><span class="maplegend-text"><b>Solid ring</b><small>A train reported by a spotter.</small></span></div>
+            <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-ring dash"></i></span><span class="maplegend-text"><b>Dotted ring</b><small>A train a spotter confirmed.</small></span></div>
+          </div>
+        </div>
         </div>
         <div class="mapattr" id="mapAttr" hidden></div>
         <button type="button" class="mapwx" id="mapWx" aria-expanded="false" aria-controls="wxCard" hidden></button>
         <div class="wxcard" id="wxCard" hidden></div>
-        <!--DEV:START--><button type="button" class="maproute" id="mapRoute" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg>Plan a trip</button><!--DEV:END-->
-        <button type="button" class="mapcrowd" id="mapCrowd" aria-pressed="false" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/></svg>Crowds
-          <span class="k"><span><i style="background:var(--good)"></i>Low</span><span><i style="background:var(--warn)"></i>Mod</span><span><i style="background:var(--bad)"></i>High</span></span>
-        </button>
+        
       </div>
       <div class="mapinfo" id="mapInfo"></div>
     </section>
@@ -4470,6 +4555,19 @@ function mapTap(x, y){
     select(lines.includes(current) ? current : lines[0], bs.name);
   }
 }
+$("mapLegendBtn").onclick = e => {
+  e.stopPropagation();
+  const b = $("mapLegendBtn"), card = $("mapLegendCard"), open = card.hidden;
+  card.hidden = !open; b.setAttribute("aria-expanded", String(open));
+};
+$("mapLegendClose").onclick = e => {
+  e.stopPropagation();
+  $("mapLegendCard").hidden = true; $("mapLegendBtn").setAttribute("aria-expanded","false");
+};
+document.addEventListener("pointerdown", e => {
+  const root = $("mapLegend"); if (!root || root.contains(e.target)) return;
+  const card = $("mapLegendCard"); if (!card.hidden){ card.hidden = true; $("mapLegendBtn").setAttribute("aria-expanded","false"); }
+});
 $("mapIn").onclick = () => zoomAt(mW / 2, mH / 2, 1.6);
 $("mapOut").onclick = () => zoomAt(mW / 2, mH / 2, 1 / 1.6);
 $("mapReset").onclick = () => { const v0 = {...view}; mapFit(); const t = {...view}; view = v0; flyTo((mW / 2 - t.tx) / t.s, (mH / 2 - t.ty) / t.s, t.s); };
