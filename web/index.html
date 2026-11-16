@@ -2016,8 +2016,16 @@ const realNow = Date.now.bind(Date);
 const SIM = {time: false, base: 0, realBase: 0, speed: 1, est: false, crowd: null, alert: null, weather: null};
 const simNow = () => SIM.time ? SIM.base + (realNow() - SIM.realBase) * SIM.speed : realNow();
 const simOn = () => SIM.time || SIM.est || !!(SIM.crowd || SIM.alert || SIM.weather);
+/* sgNow() is called thousands of times a frame (every run of every line), so the answer for the same millisecond
+   is kept and reused. Callers only read it. */
+let sgNowMs = NaN, sgNowVal = null;
 function sgNow(){
-  const d = new Date(simNow() + 8*3600e3);           // shift to UTC+8, then read UTC fields
+  const ms = simNow();
+  if (ms === sgNowMs && sgNowVal) return sgNowVal;
+  sgNowMs = ms; return sgNowVal = sgNowAt(ms);
+}
+function sgNowAt(ms){
+  const d = new Date(ms + 8*3600e3);           // shift to UTC+8, then read UTC fields
   let mins = d.getUTCHours()*60 + d.getUTCMinutes() + d.getUTCSeconds()/60 + d.getUTCMilliseconds()/60000;
   let day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   if (mins < 180){ mins += 1440; day = new Date(day - 864e5); }  // before 3am belongs to yesterday's service day
@@ -2535,6 +2543,7 @@ function ttState(r, sec){
    the LRT's IDs carry none, so there it's the first run leaving that station after the train gets in.
    Gives {next: Map(run → its next run), prev: Map(run → the run before it)}, worked out once per day's list. */
 const TT_LAYOVER_MAX = 15 * 60;            // a longer wait than this: the train goes off to the depot instead
+const TT_LONG_AGO = 90 * 60;              // a run that ended more than this long ago (plus a layover) is skipped straight away
 const TT_LAYOVER_EARLY = 6 * 60;           // the next run can start a little before this one gets in (slower trains, see SLOW)
 const TT_TURN_MIN = 46;                    // a train stays at the end of its run at least as long as ttState shows it there (45 s), and a second more
 function ttSlotOf(tid){
@@ -2622,8 +2631,10 @@ function ttTrainsOn(code, now, list){
   const early = mv ? Math.min(0, ...mv.values()) * 60 : 0, last = now.mins * 60 - Math.min(late[0], late[1]) - early;
   const links = ttLinks(list), runId = r => `${code}t${r.s}p${r.pi}`;
   const schedOf = r => ttSched(code, r, now.mins * 60 - late[r.p.d > 0 ? 0 : 1], mv), secOf = r => schedOf(r).sec;
+  const gone = now.mins * 60 - TT_LONG_AGO, maxLate = mv && mv.size ? Math.max(0, ...mv.values()) * 60 : 0;
   for (const r of list){
     if (r.s > last) break;
+    if (r.s + r.p.end + TT_LAYOVER_MAX + maxLate < gone) continue;   // ended long ago: can't be on the map any more
     const sc = schedOf(r), sec = sc.sec, st = ttState(r, sec), pr = links.prev.get(r);
     if (!st){
       // the run is over: if the same train does another run from here, it stays at the platform, now facing
@@ -3652,11 +3663,8 @@ function buildURAMatches(){
     if (best && best.d <= 210*210*3) URA_MATCHED.push({pts, c:best.ref.c, d:best.d});
   }
 }
-fetch("ura-rail-geometry.geojson").then(r => r.json()).then(g => {
-  URA_RAIL = (g.features || []).map(f => f.geometry?.coordinates || []).filter(p => p.length >= 2);
-  buildURAMatches();
-  mDirty = true;
-}).catch(() => {});
+/* URA rail geometry (ura-rail-geometry.geojson) isn't built or shipped for this app and site, so it isn't asked for;
+   drawURARail does nothing without it. */
 
 function drawURARail(ctx){
   if (!URA_MATCHED.length) return;
@@ -8839,11 +8847,9 @@ function learnedDwell(line,station){let q=S.observations.filter(x=>id(x.line||li
 window.mrtTimetablePolicy={dwell:DWELL,dwellFor,terminalDwellProfile,terminals:TERMINALS,learnedDwell};
 window.mrtIntelligence={state:S,record,anchor,ingestTimetable:ingest,dwellFor,terminalDwellProfile,acceptInference:(t,s,src,c,ts)=>{let a=anchor(t);return a&&a.confidence>=95&&a.ts>(ts||n())-1800000?{station:a.station,source:a.source,confidence:a.confidence,anchored:true}:{station:s,source:src||"inferred",confidence:c||0,anchored:false}},plausible:(t,s,ts)=>{let z=S.observations.filter(x=>x.trainId==id(t)).sort((a,b)=>b.ts-a.ts)[0],g=z&&S.graph[sn(z.station)];return !z||!g||n()-(ts||n())>1200000||g.next[sn(s)]||g.prev[sn(s)]?{ok:true,penalty:0}:{ok:false,penalty:70}},scheduled,position,learnedDwell};
 
-fetch("timetable.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(ingest).catch(()=>{});
-fetch("intelligence-timetable.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(ingest).catch(()=>{});
 
 function discover(){for(let i=0;i<localStorage.length;i++){let k=localStorage.key(i)||"";if(!/(spot|sight|train.*log|log.*train)/i.test(k))continue;try{let v=JSON.parse(localStorage.getItem(k)),a=Array.isArray(v)?v:v?.items||[];a.slice(-50).forEach(x=>{let t=x.trainId||x.train||x.r||x.run,st=x.station||x.stationName||x.stn,tm=x.time||x.timestamp||x.ts;if(t&&st&&!S.observations.some(o=>o.trainId==id(t)&&sn(o.station)==sn(st)&&String(o.time)==String(tm)))record({trainId:t,station:st,time:tm,source:"manual",event:x.event||"sighting"})})}catch(_){}}}
-discover();addEventListener("storage",discover);setInterval(discover,2500);
+discover();addEventListener("storage",discover);setInterval(()=>{if(!document.hidden)discover()},30000);
 window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),observations:S.observations.slice(-20),journeys:S.journeys.length,graphStations:Object.keys(S.graph).length,timetableLines:Object.keys(S.timetable?.lines||{}).length,timetableLoadedAt:S.loadedAt});
 })();
 </script>
