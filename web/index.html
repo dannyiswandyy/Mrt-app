@@ -2547,12 +2547,23 @@ function ttLinks(list){
      If a trip is absent from the graph, keep the original slot/station fallback below. */
   const graphLine = window.mrtRunGraphToday && list.code ? window.mrtRunGraphToday.lines && window.mrtRunGraphToday.lines[list.code] : null;
   if (graphLine && graphLine.runs && graphLine.runs.length){
-    const byTid = new Map(list.map(r => [String(r.tid || ""), r]));
-    const nextG = new Map(), prevG = new Map();
+    // One LTA trip can be more than one piece here: a Circle Line trip round the loop is split where it passes the
+    // end of the line. Keep every piece in time order, link the pieces of a trip to each other, and link the last
+    // piece of a trip to the first piece of the next one. (Taking just one piece per trip linked a train to the
+    // last few minutes of its next trip, so it showed a second time, "waiting" at Promenade for up to an hour.)
+    const byTid = new Map();
+    for (const r of list){ const k = String(r.tid || ""); if (!byTid.has(k)) byTid.set(k, []); byTid.get(k).push(r); }
+    for (const ps of byTid.values()) ps.sort((x, y) => x.s - y.s);
+    const nextG = new Map(), prevG = new Map(), gets = r => r.s + r.p.end;
+    const link = (a, b) => {
+      const w = b.s - gets(a);                               // a long gap: the train goes off to the depot instead
+      if (a !== b && !nextG.has(a) && !prevG.has(b) && w >= -TT_LAYOVER_EARLY && w <= TT_LAYOVER_MAX){ nextG.set(a, b); prevG.set(b, a); }
+    };
+    for (const ps of byTid.values()) for (let i = 0; i + 1 < ps.length; i++) link(ps[i], ps[i + 1]);
     for (const gr of graphLine.runs){
       for (let i = 0; i + 1 < gr.trips.length; i++){
-        const a = byTid.get(String(gr.trips[i].tid || "")), b = byTid.get(String(gr.trips[i + 1].tid || ""));
-        if (a && b){ nextG.set(a, b); prevG.set(b, a); }
+        const A = byTid.get(String(gr.trips[i].tid || "")), B = byTid.get(String(gr.trips[i + 1].tid || ""));
+        if (A && B) link(A[A.length - 1], B[0]);
       }
     }
     if (nextG.size || prevG.size) return list.links = {next: nextG, prev: prevG, source: "LTA GTFS run graph"};
@@ -2625,6 +2636,9 @@ function ttTrainsOn(code, now, list){
       }
       continue;
     }
+    // the same train's next run has already left on LTA's time: this one is over (slower trains, see SLOW, get
+    // in a little after LTA's time), so it isn't shown twice, arriving here and leaving there
+    { const nx = links.next.get(r); if (nx && secOf(nx) >= nx.s) continue; }
     const p = r.p, nk = st.at ? st.k : st.k + 1;
     out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
       next: p.f + p.d * nk, eta: Math.max(0, (r.s + p.arr[nk] - sec) / 60 / sc.rate), atStation: st.at});
