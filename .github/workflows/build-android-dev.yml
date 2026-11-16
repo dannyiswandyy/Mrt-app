@@ -6526,3 +6526,8 @@ jobs:
           gh release delete latest --repo "$PUB_REPO" --yes --cleanup-tag || true
           gh release create latest "$APK" version.json --repo "$PUB_REPO" --title "MRT Tracker $VN" \
             --notes "Open MRT Tracker and tap Update, or download mrt-tracker.apk to install."
+
+          # Use the canonical page from main so MRT Dev cannot silently drift behind MRT Tracker.
+          # The large embedded fallback above remains for resilience, but current builds prefer main/web/index.html.
+          git fetch --no-tags --depth=1 origin main
+          git show FETCH_HEAD:web/index.html > 'mrt-tracker-app/app/src/main/assets/index.html'
