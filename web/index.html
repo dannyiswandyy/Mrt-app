@@ -2535,8 +2535,15 @@ if (TT){
         const at = arr[arr.length - 1] + Math.round(SEG.CCL["CC34-CC4"][0] * 60);
         arr = arr.concat(at); dep = dep.concat(at); if (h === ccLast - 1) h = -1;
       }
-      const x = SLOW[ln] ? slowPerStop(ln, d > 0 ? 0 : 1) * 60 : 0;     // slower trains: extra seconds per stop travelled
-      if (x){ arr = arr.map((t, k) => t + k * x); dep = dep.map((t, k) => t + k * x); }
+      // slower trains: extra seconds per stop, counted from the end of the line the train comes from, not from where
+      // this run starts, so every train passing a station is the same amount later and LTA's gaps between them stay.
+      // (Counting from the run's own first stop put a train starting partway, like one out of Bishan depot, about two
+      // minutes ahead of the train it's timetabled to follow, so the two ran on top of each other: a double arrow.)
+      const x = SLOW[ln] ? slowPerStop(ln, d > 0 ? 0 : 1) * 60 : 0;
+      if (x){
+        const nA = activeStations(LINES[ln], sgNow().iso).length, o = k => (d > 0 ? f + k : nA - 1 - (f - k)) * x;
+        arr = arr.map((t, k) => t + o(k)); dep = dep.map((t, k) => t + o(k));
+      }
       // where the run is headed: the trip's destination as LTA gives it (-2: a full loop, so the usual
       // end), else where this run ends. Older saved timetables don't say, and their Circle Line runs
       // break where the loop joins, so there the usual end is shown too.
@@ -2697,7 +2704,7 @@ function rtLivePosition(line, r, sec){
 /* Where a scheduled run is at a given time (seconds since the service day began). */
 function ttState(r, sec){
   const p = r.p, e = sec - r.s;
-  if (e < 0 || e > p.end + 45) return null;
+  if (e < p.arr[0] || e > p.end + 45) return null;   // arr[0] > 0: a run starting partway along the North-South Line (SLOW)
   const live = (typeof rtLivePosition === "function") ? rtLivePosition(r._line || "", r, sec) : null;
   if (live) return live;
   let k = 0;
