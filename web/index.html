@@ -2527,6 +2527,86 @@ function ttExtend(code, iso, list, ext){
   return add.length ? list.concat(add).sort((a, b) => a.s - b.s) : list;
 }
 const usesTT = code => !!ttTrips(code, sgNow().iso);
+/* Re-anchor a timetable run to LTA's live StopTimeUpdates.
+   Use measured/predicted stop times when available so temporary slow running,
+   early departures and dwell changes do not leave the map ahead of the train. */
+function rtLivePosition(line, r, sec){
+  try{
+    if (!r || !r.tid || !rtState || !rtState.trips || !rtState.trips[r.tid]) return null;
+    if (!rtState.at || Date.now() - rtState.at > 3 * 60e3) return null;
+    const u = rtState.trips[r.tid], ss = Array.isArray(u.s) ? u.s : [];
+    if (!ss.length) return null;
+    const L = LINES[line], act = L && L.stations, p = r.p;
+    if (!L || !act || !p || !p.arr || p.arr.length < 2) return null;
+    const norm = x => String(x == null ? "" : x).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const candidates = q => {
+      const z = norm(q), out = [];
+      if (!z) return out;
+      for (let i = 0; i < act.length; i++) if (norm(act[i] && act[i][0]) === z) out.push(i);
+      return out;
+    };
+    const mapped = [];
+    let lastIdx = null;
+    for (let qn = 0; qn < ss.length; qn++){
+      const q = ss[qn] || [], cand = candidates(q[0]);
+      let idx = null;
+      if (cand.length){
+        idx = cand.reduce((best, x) => {
+          if (best == null) return x;
+          const expected = p.f + p.d * qn;
+          return Math.abs(x - expected) < Math.abs(best - expected) ? x : best;
+        }, null);
+      } else {
+        const x = p.f + p.d * qn;
+        if (x >= 0 && x < act.length) idx = x;
+      }
+      if (idx != null && (lastIdx == null || Math.abs(idx - lastIdx) <= 2 || qn === 0)) lastIdx = idx;
+      else if (idx == null) idx = lastIdx;
+      if (idx == null) continue;
+      mapped.push({q, idx, order: qn});
+    }
+    if (mapped.length < 2) return null;
+    const epoch = q => {
+      const a = Number(q && q[5]), d = Number(q && q[6]);
+      return {arr:Number.isFinite(a) && a > 0 ? a : null, dep:Number.isFinite(d) && d > 0 ? d : null};
+    };
+    const now = Date.now() / 1000;
+    const events = mapped.map(x => Object.assign({}, x, epoch(x.q))).filter(x => x.arr != null || x.dep != null);
+    if (events.length < 2) return null;
+    for (let i = 0; i < events.length; i++){
+      const a = events[i], at = a.arr != null ? a.arr : a.dep, dt = a.dep != null ? a.dep : a.arr;
+      if (dt != null && now >= at - 2 && now <= dt + 2){
+        return {idx:a.idx, k:Math.max(0, a.idx - p.f), at:true, live:true, rtAnchored:true};
+      }
+      const b = events[i + 1];
+      if (!b) continue;
+      const depart = a.dep != null ? a.dep : a.arr;
+      const arrive = b.arr != null ? b.arr : b.dep;
+      if (depart == null || arrive == null || arrive <= depart) continue;
+      if (now >= depart && now < arrive){
+        const f = Math.max(0, Math.min(1, (now - depart) / (arrive - depart)));
+        return {idx:a.idx + (b.idx - a.idx) * f, k:Math.max(0, a.idx - p.f), at:false, live:true, rtAnchored:true};
+      }
+    }
+    let latest = null;
+    for (const e of events){
+      const t = e.dep != null ? e.dep : e.arr;
+      if (t != null && t <= now + 2 && (!latest || t > latest.t)) latest = {t, e};
+    }
+    if (latest){
+      const ni = events.findIndex(x => x === latest.e), b = events[ni + 1];
+      if (b){
+        const arrive = b.arr != null ? b.arr : b.dep;
+        if (arrive != null && arrive > latest.t){
+          const f = Math.max(0, Math.min(1, (now - latest.t) / (arrive - latest.t)));
+          return {idx:latest.e.idx + (b.idx - latest.e.idx) * f, k:Math.max(0, latest.e.idx - p.f), at:false, live:true, rtAnchored:true};
+        }
+      }
+      return {idx:latest.e.idx, k:Math.max(0, latest.e.idx - p.f), at:true, live:true, rtAnchored:true};
+    }
+    return null;
+  }catch(e){ return null; }
+}
 /* Where a scheduled run is at a given time (seconds since the service day began). */
 function ttState(r, sec){
   const p = r.p, e = sec - r.s;
