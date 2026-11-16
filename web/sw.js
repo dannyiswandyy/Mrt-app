@@ -2,7 +2,7 @@
    and kept, so the site still opens offline (with timetable estimates). Other sites (map tiles, fonts, LTA via
    the relay, YouTube) are never stored here. */
 const CACHE = "mrt-web-v1";
-const SHELL = ["./", "index.html", "config.js", "livecam.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png"];
+const SHELL = ["./", "index.html", "config.js", "livecam.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "fonts/LTAIdentity-Medium.woff2"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

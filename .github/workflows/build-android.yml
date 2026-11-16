@@ -260,6 +260,8 @@ jobs:
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cp 'web/index.html' 'mrt-tracker-app/app/src/main/assets/index.html'
           cp 'web/run-graph.js' 'mrt-tracker-app/app/src/main/assets/run-graph.js'
+          mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
+          cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cat > 'mrt-tracker-app/app/src/main/assets/livecam.html' <<'MRTAPP_EOF'
           <!doctype html>

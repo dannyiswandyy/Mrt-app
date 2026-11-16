@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://server.arcgisonline.com https://i.ytimg.com; connect-src 'self' https://api-open.data.gov.sg https://*.workers.dev; media-src 'none'; object-src 'none'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://server.arcgisonline.com https://i.ytimg.com; connect-src 'self' https://api-open.data.gov.sg https://*.workers.dev; media-src 'none'; object-src 'none'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -16,11 +16,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
+@font-face{font-family:"LTA Identity";src:url("fonts/LTAIdentity-Medium.woff2") format("woff2");font-style:normal;font-weight:500;font-display:swap}
 :root{
   --bg:#eef1f4; --panel:#ffffff; --fg:#14181d; --muted:#5b6672; --rule:#d6dce3;
   --track:#c7cfd8; --soft:#e3e8ee; --chip:#14181d; --chipfg:#ffffff; --warn:#a35c00; --warnbg:#fff2dc;
-  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"LTA Identity","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --body:"LTA Identity","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   --NSL:#d42e12; --EWL:#009645; --CG:#009645; --NEL:#9900aa; --CCL:#fa9e0d; --DTL:#005ec4; --TEL:#9d5b25; --RTS:#00919e; --SEN:#d63384;
   --BP:#748477; --SE:#748477; --SW:#748477; --PE:#748477; --PW:#748477;
@@ -1204,8 +1205,8 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
 /* ===== Polish: one type family, calmer colours, consistent cards, controls and headings =====
    Visual only. Later rules here win over the earlier layers above. */
 :root{
-  --display:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"LTA Identity","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --body:"LTA Identity","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --bg:#f3f5f8; --panel:#ffffff; --fg:#111827; --muted:#5d6876; --rule:#e1e6ec; --soft:#eef1f5; --track:#cfd6de;
   --accent:#0b63ce;
   --shadow-soft:0 1px 2px rgba(16,24,40,.04),0 2px 6px rgba(16,24,40,.05);
@@ -4204,7 +4205,7 @@ function mapDraw(){
   // labels: interchanges and ends first; more appear as you zoom in
   if (zoom >= 1.6){
     const fs = clampN(9 + zoom * 0.35, 10, 13), placed = [];
-    ctx.font = `600 ${fs}px Barlow, system-ui, sans-serif`; ctx.textBaseline = "middle";
+    ctx.font = `600 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle";
     const order = MSTN.slice().sort((a, b) => (b.ix * 2 + b.term) - (a.ix * 2 + a.term));
     const selName = mSel && mSel.type === "station" ? mSel.name : null;
     if (selName) order.sort((a, b) => (b.name === selName) - (a.name === selName));
@@ -4214,7 +4215,7 @@ function mapDraw(){
       const x = sx(e.x), y = sy(e.y), off = r * 1.6 + 3;
       if (x < -50 || x > mW + 50 || y < -20 || y > mH + 20) continue;
       const all = e.name === selName || (e.ix && zoom >= 5) ? e.codes.map(c => [c.line, c.code]) : null, pfs = fs - 1.5;
-      ctx.font = `600 ${fs}px Barlow, system-ui, sans-serif`;
+      ctx.font = `600 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`;
       const tw = ctx.measureText(e.name).width;
       label: for (const codes of all ? [all, null] : [null]){           // no room for the pills: just the name, as before
         const pw = codes ? canvasPills(ctx, codes, 0, 0, pfs, false) + 5 : 0, ph = codes ? pfs + 8 : fs, w = tw + pw;
@@ -4222,7 +4223,7 @@ function mapDraw(){
           const bx = align === "left" ? lx : lx - w, box = [bx - 2, y - ph / 2 - 1, bx + w + 2, y + ph / 2 + 1];
           if (placed.some(q => box[0] < q[2] && box[2] > q[0] && box[1] < q[3] && box[3] > q[1])) continue;
           placed.push(box);
-          ctx.font = `600 ${fs}px Barlow, system-ui, sans-serif`; ctx.textAlign = "left";
+          ctx.font = `600 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textAlign = "left";
           ctx.lineWidth = 3; ctx.strokeStyle = MC.bg; ctx.strokeText(e.name, bx, y);
           ctx.fillStyle = MC.fg; ctx.fillText(e.name, bx, y);
           if (codes) canvasPills(ctx, codes, bx + tw + 5, y, pfs);
@@ -4277,7 +4278,7 @@ function mapDraw(){
 function drawSpotTag(ctx, x, y, r, tag, fs, avoid){
   const ride = tag.kind === "ride", txt = tag.model || (ride ? "Rode" : "Spotted");
   ctx.save();
-  ctx.font = `700 ${fs}px Barlow, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  ctx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
   const ic = fs * 0.95, h = Math.round(fs + 7), w = Math.ceil(ctx.measureText(txt).width) + ic + 14;
   // up-right of the arrow by default; if a station label (or another tag) is there, try the other three corners
   const o = r * 0.7 + 4, spots = [[1, -1], [-1, -1], [1, 1], [-1, 1]];
@@ -4310,7 +4311,7 @@ function drawSpotTag(ctx, x, y, r, tag, fs, avoid){
 /* the same pills drawn on a map canvas; draw = false only measures. Returns the width. */
 function canvasPills(ctx, list, x, y, fs, draw = true){
   const groups = pillGroups(list), h = Math.round(fs + 6), pad = fs * 0.5, link = fs * 0.7;
-  ctx.save(); ctx.font = `700 ${fs}px Barlow, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  ctx.save(); ctx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
   let cx = x;
   groups.forEach((g, gi) => {
     if (gi){
@@ -4845,7 +4846,7 @@ function mapEmergencyDraw(){
   }
   if (zoom >= 1.6){
     const fs = clampN(9 + zoom * 0.35, 10, 13);
-    ctx.font = `600 ${fs}px Barlow, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.fillStyle = MC.fg;
+    ctx.font = `600 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.fillStyle = MC.fg;
     for (const e of MSTN){
       if (!e.ix && !e.term && zoom < 3.2) continue;
       const x = sx(e.x), y = sy(e.y); if (x < -80 || x > mW + 80 || y < -30 || y > mH + 30) continue;
@@ -7626,7 +7627,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
     }
     // names: nearest and most important first, never on top of each other
     const fs = clampN(15 - Math.log2(c.d / 1500) * 1.5, 11, 16);
-    octx.font = `700 ${fs}px Barlow, system-ui, sans-serif`; octx.textBaseline = "middle";
+    octx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; octx.textBaseline = "middle";
     const order = shown.slice().sort((a, b) => (b.e.ix * 2 + b.e.term) - (a.e.ix * 2 + a.e.term) || a.q[2] - b.q[2]);
     for (const s of order){
       const {e, q} = s;
@@ -7636,7 +7637,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
       let codes = (mSel && mSel.type === "station" && mSel.name === e.name) || (e.ix && c.d <= 2500 && s.far < 2.5) ? e.codes.map(x => [x.line, x.code]) : null;
       const pfs = fs - 3, tw = octx.measureText(e.name).width, h = fs + 9, x = q[0] + s.r + 6, y = q[1];
       const pw = codes ? canvasPills(octx, codes, 0, 0, pfs, false) : 0, ph = pfs + 10;      // pills sit just under the name
-      octx.font = `700 ${fs}px Barlow, system-ui, sans-serif`;
+      octx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`;
       const fits = (w, hh) => !(x + w > W - 62 || x < 4) && !placed.some(b => x < b[2] && x + w > b[0] && y - h / 2 < b[3] && y - h / 2 + hh > b[1]);
       if (codes && !fits(Math.max(tw + 14, pw + 4), h + ph)) codes = null;    // no room for the pills: just the name, as before
       const w = tw + 14;
@@ -8114,7 +8115,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     }
     // start, changes and end, with their names
     const pulse = reduce ? 0 : (Math.sin(t / 260) + 1) / 2;
-    ctx.font = `700 ${clampN(lw * 2.3, 12, 15)}px Barlow, system-ui, sans-serif`; ctx.textBaseline = "middle";
+    ctx.font = `700 ${clampN(lw * 2.3, 12, 15)}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle";
     const boxes = [];
     for (const m of RT.marks){
       const q = P(m.x, m.y); if (!q) continue;
