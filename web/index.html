@@ -5411,6 +5411,12 @@ var PCD_LINES = ["NSL", "EWL", "CGL", "NEL", "CCL", "CEL", "DTL", "TEL", "BPL", 
 var CROWD_TEXT = {l: "Low", m: "Moderate", h: "High"}, CROWD_RANK = {l: 1, m: 2, h: 3};
 var PEOPLE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/></svg>';
 var crowd = store.get("mrt.crowd", null), crowdBusy = false, crowdLayer = store.get("mrt.crowdLayer", false) === true;
+/* LTA updates platform crowd data every 10 minutes. Keep a per-line timestamp so the app
+   never bursts all 11 PCDRealTime calls together (which can trigger DataMall rate limits).
+   Two lines are refreshed per cycle; a full pass therefore takes about 6 minutes. */
+var crowdLineAt = store.get("mrt.crowdLineAt", {});
+const CROWD_REFRESH_MS = 10 * 60e3;
+const CROWD_BATCH = 2;
 /* LTA's figures cover a 10-minute window; anything older than 40 minutes isn't shown. */
 function crowdFresh(){ return !!(crowd && crowd.end && Date.now() - Date.parse(crowd.end) < 40 * 60e3); }
 function crowdOf(code){ return crowdFresh() ? crowd.levels[code] || null : null; }
@@ -5441,23 +5447,45 @@ function paintCrowd(){
 async function refreshCrowd(force){
   if (SIM.crowd) return;                                   // test mode is showing fake crowds
   if (!APP || !hasKey() || crowdBusy) return;
-  if (!force && crowd && crowd.at && Date.now() - crowd.at < 5 * 60e3) return;
+
+  const now = Date.now();
+  /* Only fetch lines whose own 10-minute cache has expired. On a fresh install this
+     deliberately starts with just two lines instead of 11 simultaneous requests. */
+  const due = PCD_LINES
+    .map((line, i) => ({line, at: Number(crowdLineAt[line]) || 0, i}))
+    .filter(x => force || !x.at || now - x.at >= CROWD_REFRESH_MS)
+    .sort((a,b) => a.at - b.at || a.i - b.i)
+    .slice(0, CROWD_BATCH);
+
+  if (!due.length) return;
+
   crowdBusy = true;
-  const levels = {}; let start = "", end = "", ok = 0;
-  // one line at a time is retried once; a failed line (or a network error) can't stop the others or leave this stuck
+  const levels = {...((crowd && crowd.levels) || {})};
+  let start = crowd?.start || "", end = crowd?.end || "";
+  let ok = 0;
+
+  /* One request per line, no retry storm. LTA's PCD feed is updated every 10 minutes,
+     so retrying a 500 immediately only makes rate limiting worse. */
   const one = async l => {
-    for (let tries = 0; tries < 2; tries++){
-      try {
-        const {code, body} = await nativeGet("https://datamall2.mytransport.sg/ltaodataservice/PCDRealTime?TrainLine=" + l, true);
-        if (code === 200) return JSON.parse(body).value || [];
-      } catch(e){}
-      await new Promise(r => setTimeout(r, 800));
-    }
+    try {
+      const {code, body} = await nativeGet("https://datamall2.mytransport.sg/ltaodataservice/PCDRealTime?TrainLine=" + l, true);
+      if (code === 200){
+        const rows = JSON.parse(body).value || [];
+        return rows;
+      }
+    } catch(e){}
     return null;
   };
+
   try {
-    for (const rows of await Promise.all(PCD_LINES.map(one))){
+    for (const x of due) {
+      const rows = await one(x.line);
+      /* Mark the attempt so a DataMall failure doesn't cause the app to hammer the same
+         endpoint again on every foreground/visibility event. A failed line is retried
+         naturally after the 10-minute window. */
+      crowdLineAt[x.line] = Date.now();
       if (!rows) continue;
+
       ok++;
       for (const r of rows){
         const c = ({CE1: "CC34", CE2: "CC33"})[r.Station] || String(r.Station || "").trim();
@@ -5466,7 +5494,12 @@ async function refreshCrowd(force){
         if (r.EndTime && String(r.EndTime) > end){ end = String(r.EndTime); start = String(r.StartTime || ""); }
       }
     }
-    if (ok && end){ crowd = {at: Date.now(), start, end, levels}; store.set("mrt.crowd", crowd); }
+
+    store.set("mrt.crowdLineAt", crowdLineAt);
+    if (ok && end){
+      crowd = {at: Date.now(), start, end, levels};
+      store.set("mrt.crowd", crowd);
+    }
   } finally {
     crowdBusy = false;
     paintCrowd();
