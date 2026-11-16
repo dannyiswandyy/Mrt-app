@@ -3311,7 +3311,7 @@ window.appResume = () => { refreshAll(); rtRefresh(); };     // called by the ap
    shown on the Updates tab. The feeds only list trains and alerts when there's something to say,
    so most of the time they're empty and nothing changes. Checked every minute while the app is open. */
 let rtState = store.get("mrt.rt", null);      // {at, feedAt, trips: {tripId: {d: delay s, x: cancelled}}, alerts: [...], err}
-const RT_EVERY = 60e3;
+const RT_EVERY = 30e3;
 function pbFields(b){                         // protocol buffers: {field: [values]}; varints as BigInt, bytes as Uint8Array
   const out = {}; let i = 0;
   const vint = () => { let x = 0n, s = 0n, c; do { c = b[i++]; x |= BigInt(c & 127) << s; s += 7n; } while (c & 128 && i < b.length); return x; };
