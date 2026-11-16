@@ -2498,7 +2498,7 @@ function ttTrips(code, iso){
   const k = code + iso;
   if (ttDayCache[k]) return ttDayCache[k];
   const on = ttServices(iso), Ln = TT.lines[code];
-  let list = Ln.trips.filter(t => on.has(t[2])).map(t => ({s: t[0], p: Ln.P[t[1]], pi: t[1], tid: t[3]}));
+  let list = Ln.trips.filter(t => on.has(t[2])).map(t => ({s: t[0], p: Ln.P[t[1]], pi: t[1], tid: t[3], _line: code}));
   if (list.length && EXT_LAST[iso] && EXT_LAST[iso][code]) list = ttExtend(code, iso, list, EXT_LAST[iso][code]);
   list.code = code;                                          // which line, for the Live cam's corrections
   return ttDayCache[k] = list.length ? list : null;
@@ -2531,6 +2531,8 @@ const usesTT = code => !!ttTrips(code, sgNow().iso);
 function ttState(r, sec){
   const p = r.p, e = sec - r.s;
   if (e < 0 || e > p.end + 45) return null;
+  const live = (typeof rtLivePosition === "function") ? rtLivePosition(r._line || "", r, sec) : null;
+  if (live) return live;
   let k = 0;
   while (k < p.arr.length - 1 && p.arr[k + 1] <= e) k++;
   if (k === p.arr.length - 1 || e < p.dep[k]) return {idx: p.f + p.d * k, k, at: true};
@@ -2621,7 +2623,9 @@ function ttSched(code, r, sec, mv){
 }
 /* When a run gets to the stop `k` stops along it, in clock time (seconds): the other way round from ttSched. */
 function ttAt(code, r, k, mv){
-  const m = mv && mv.get(`${code}t${r.s}p${r.pi}`);
+  const live = typeof rtTimesFor === "function" ? rtTimesFor(code, r) : null;
+  if (live && live.arr[k] != null) return live.arr[k];
+  const m = mv && mv.get(code + "t" + r.s + "p" + r.pi);
   if (m) return r.s + r.p.arr[k] + m * 60;
   const tl = r.tl || 0;
   return tl ? r.s + tl + r.p.arr[k] * (r.p.end - tl) / r.p.end : r.s + r.p.arr[k];
@@ -2652,7 +2656,7 @@ function ttTrainsOn(code, now, list){
     { const nx = links.next.get(r); if (nx && secOf(nx) >= nx.s) continue; }
     const p = r.p, nk = st.at ? st.k : st.k + 1;
     out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
-      next: p.f + p.d * nk, eta: Math.max(0, (r.s + p.arr[nk] - sec) / 60 / sc.rate), atStation: st.at});
+      next: p.f + p.d * nk, eta: Math.max(0, (((typeof rtTimesFor === "function" && rtTimesFor(code,r)?.arr[nk] != null) ? rtTimesFor(code,r).arr[nk] : r.s + p.arr[nk]) - now.mins*60) / 60), atStation: st.at});
   }
   return out;
 }
@@ -3257,12 +3261,20 @@ function rtParse(b64, kind){
       if (!id) continue;
       const rel = trip[4] ? pbInt(trip[4][0]) : 0;            // 3 = cancelled
       let d = tu[5] ? pbInt(tu[5][0]) : null;
-      for (const s of tu[2] || []){                             // the first stop with a delay
-        const u = pbFields(s);
-        for (const ev of [u[2], u[3]]) if (d == null && ev){ const x = pbFields(ev[0]); if (x[1]) d = pbInt(x[1][0]); }
-        if (d != null) break;
+      const ss = [];
+      for (const rawStop of tu[2] || []){
+        const u = pbFields(rawStop);
+        const ev = f => {
+          if (!f) return [null, null];
+          const x = pbFields(f[0]);
+          return [x[1] ? pbInt(x[1][0]) : null, x[2] ? pbInt(x[2][0]) : null];
+        };
+        const [ad, at] = ev(u[2]), [dd, dt] = ev(u[3]);
+        if (d == null && (ad != null || dd != null)) d = ad != null ? ad : dd;
+        ss.push([pbStr((u[4] || [])[0]), u[1] ? pbInt(u[1][0]) : null, ad, dd, u[5] ? pbInt(u[5][0]) : 0, at, dt]);
       }
-      res.trips[id] = {d: d || 0, x: rel === 3 ? 1 : 0, route: pbStr((trip[5] || [])[0])};
+      res.trips[id] = {d: d || 0, x: rel === 3 ? 1 : 0, route: pbStr((trip[5] || [])[0]), s: ss,
+        timestamp: tu[4] ? pbInt(tu[4][0]) * 1000 : 0};
     }
     if (kind === "alerts" && e[5]){
       const a = pbFields(e[5][0]);
@@ -3301,6 +3313,73 @@ async function rtRefresh(){
 setInterval(() => { if (Date.now() - rtLast >= RT_EVERY - 1000) rtRefresh(); }, 15e3);
 /* LTA's delays as minutes to move each of today's timetable runs by (cancelled: never shown). */
 const rtMapCache = {};
+const rtPosCache = {};
+function rtServiceSec(iso, ms){
+  const z = Date.parse(String(iso) + "T00:00:00+08:00");
+  return Number.isFinite(z) ? (ms - z) / 1000 : null;
+}
+/* Stop-level GTFS-RT correction: more specific stop predictions override trip-level delay when placing a train. */
+function rtTimesFor(code, r){
+  try{
+    if (!r || !r.tid || (typeof SIM !== "undefined" && (SIM.time || SIM.est))) return null;
+    const st=rtState, fresh=st && st.at && Date.now()-st.at<=10*60e3, u=fresh&&st.trips&&st.trips[r.tid];
+    if(!u || u.x || !Array.isArray(u.s) || !u.s.length) return null;
+    const iso=sgNow().iso, key=code+"|"+iso+"|"+r.s+"|"+r.pi+"|"+(st.at||0);
+    if(rtPosCache[key]) return rtPosCache[key];
+    const p=r.p, ba=p.arr||[], bd=p.dep||[], N=ba.length, stations=(LINES[code]&&LINES[code].stations)||[];
+    if(!N) return null;
+    const known=new Map();
+    for(const q of u.s){
+      const sid=String(q[0]||"").trim().toUpperCase(), seq=Number(q[1]);
+      let k=Number.isFinite(seq)&&seq>0 ? seq-1 : null;
+      if(sid){
+        const cand=[];
+        for(let i=0;i<stations.length;i++) if(String(stations[i][0]||"").toUpperCase()===sid) cand.push(i);
+        if(cand.length){
+          const expected=k==null ? p.f : p.f+p.d*k;
+          cand.sort((a,b)=>Math.abs(a-expected)-Math.abs(b-expected));
+          const kk=(cand[0]-p.f)*p.d;
+          if(Number.isFinite(kk)&&kk>=0&&kk<N) k=kk;
+        }
+      }
+      if(k==null||k<0||k>=N) continue;
+      const at=q[5]!=null?rtServiceSec(iso,Number(q[5])*1000):null, dt=q[6]!=null?rtServiceSec(iso,Number(q[6])*1000):null;
+      const ad=q[2]!=null?Number(q[2]):null, dd=q[3]!=null?Number(q[3]):null;
+      const a=Number.isFinite(at)?at:(ad!=null?r.s+ba[k]+ad:null);
+      const d=Number.isFinite(dt)?dt:(dd!=null?r.s+bd[k]+dd:null);
+      if(a!=null||d!=null) known.set(k,{a,d,skip:q[4]===1});
+    }
+    if(!known.size) return null;
+    const arr=ba.map(v=>r.s+v), dep=bd.map(v=>r.s+v), pts=[...known.keys()].sort((a,b)=>a-b);
+    const deltaAt=k=>{
+      const z=known.get(k);
+      if(z){const aa=z.a!=null?z.a-arr[k]:null, dd=z.d!=null?z.d-dep[k]:null; return aa!=null?aa:dd;}
+      if(k<pts[0]) return Number(u.d||0);
+      if(k>pts[pts.length-1]){const q=known.get(pts[pts.length-1]); return q?(q.d!=null?q.d-dep[pts[pts.length-1]]:q.a-arr[pts[pts.length-1]])||0:0;}
+      let lo=pts[0],hi=pts[pts.length-1];
+      for(let i=1;i<pts.length;i++) if(pts[i]>=k){hi=pts[i];lo=pts[i-1];break;}
+      const dl=deltaAt(lo),dh=deltaAt(hi),f=(k-lo)/Math.max(1,hi-lo); return dl+(dh-dl)*f;
+    };
+    for(let k=0;k<N;k++){const d=deltaAt(k);arr[k]+=d;dep[k]+=d;}
+    return rtPosCache[key]={arr,dep,known,source:"GTFS-RT stop times",feedAt:st.at};
+  }catch(e){return null;}
+}
+function rtStateAt(code,r,sec){
+  const x=rtTimesFor(code,r); if(!x) return null;
+  const p=r.p,N=p.arr.length;
+  if(sec<x.arr[0]-1) return null;
+  for(let k=0;k<N-1;k++){
+    if(sec<x.arr[k]) return null;
+    if(sec<x.dep[k]) return {idx:p.f+p.d*k,k,at:true,live:true};
+    if(sec<x.arr[k+1]){
+      const frac=(sec-x.dep[k])/Math.max(1,x.arr[k+1]-x.dep[k]);
+      return {idx:p.f+p.d*(k+Math.max(0,Math.min(1,frac))),k,at:false,live:true};
+    }
+  }
+  if(sec<x.dep[N-1]+45) return {idx:p.f+p.d*(N-1),k:N-1,at:true,live:true};
+  return null;
+}
+window.rtLivePosition=(code,r,sec)=>rtStateAt(code,r,sec);
 window.rtShifts = (code, iso) => {
   if (!rtState || !rtState.trips || Date.now() - rtState.at > 10 * 60e3) return null;     // older than 10 minutes: ignore
   const k = code + iso; if (rtMapCache[k] !== undefined) return rtMapCache[k];
