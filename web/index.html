@@ -2118,7 +2118,11 @@ function headway(L, t, weekend, code, dir = 0, day){
   if (isPeak(t, weekend)) return L.peak;
   return L.off;
 }
-function activeStations(L, iso){ return L.stations.filter(s => !s[2] || iso >= s[2]); }
+function activeStations(L, iso){
+  if (window.MRT_DEV_FEATURES && window.mrtDevScenario && window.mrtDevScenario.type === "testing" &&
+      (L === LINES.DTL || L === LINES.TEL)) return L.stations.slice();
+  return L.stations.filter(s => !s[2] || iso >= s[2]);
+}
 /* When a station that isn't open yet opens: a date ("2026-12-26"), or "TBA" with the line's expected month. */
 const LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function opensText(L, st, short){
@@ -2443,7 +2447,26 @@ function cutTrain(t, c, n){
   return Object.assign({}, t, {dir: nd, idx: p, next, to: nd ? 0 : n - 1, eta: Math.abs(next - p) * 2, atStation: at, turned: turnAt});
 }
 function trainsOn(code, now, noReports){
-  const list = trainsOnRaw(code, now, noReports), cuts = lineCuts(code, now.iso);
+function devTestingTrains(code, now){
+  if (!window.MRT_DEV_FEATURES || !window.mrtDevScenario || window.mrtDevScenario.type !== "testing") return [];
+  if (code !== "DTL" && code !== "TEL") return [];
+  const armed = Number(window.mrtDevScenario.armedAt) || Date.now();
+  const elapsed = Math.max(0, (Date.now() - armed) / 60000);
+  const L = LINES[code], n = L.stations.length;
+  const boundary = n - 3;
+  const travel = 6, turnaround = 9.5, cycle = travel + turnaround + travel + turnaround;
+  const x = elapsed % cycle;
+  let idx, dir, atStation = false, layover = false, turning = false, phaseEta = 0;
+  if (x < travel){ dir=0; idx=boundary+(x/travel)*(n-1-boundary); phaseEta=travel-x; }
+  else if (x < travel+turnaround){ dir=0; idx=n-1; atStation=true; layover=true; turning=true; phaseEta=travel+turnaround-x; }
+  else if (x < 2*travel+turnaround){ dir=1; const y=x-travel-turnaround; idx=n-1-(y/travel)*(n-1-boundary); phaseEta=travel-y; }
+  else { dir=1; idx=boundary; atStation=true; layover=true; turning=true; phaseEta=cycle-x; }
+  const next=dir===0?Math.min(n-1,Math.ceil(idx)):Math.max(boundary,Math.floor(idx));
+  return [{id:"DEV-"+code+"-TEST-001",code,dir,dep:now.mins,a:boundary,b:n-1,to:n-1,idx,next,eta:Math.max(0,phaseEta),
+    atStation,layover,turning,testing:true,nonRevenue:true,passengerService:false,
+    devScenario:"TEL5/DTL3e systems integration test",testBoundary:boundary,testTerminal:n-1}];
+}
+  const list = trainsOnRaw(code, now, noReports).concat(devTestingTrains(code, now)), cuts = lineCuts(code, now.iso);
   if (!cuts.length) return list;
   const n = activeStations(LINES[code], now.iso).length, out = [];
   for (let t of list){
