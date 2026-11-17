@@ -2835,6 +2835,7 @@ function ttFirstTrain(code, now){
 }
 
 const fmt = m => m < 0.75 ? `<strong class="trip-now">THIS TRIP</strong>` : Math.round(m) + " min";
+const boardMins = m => m < 0.75 ? "Now" : Math.round(m) + " min";
 /* Minutes since the service day began → "5:31am". */
 const clockText = m => { m = Math.round(m) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
 
@@ -3060,7 +3061,7 @@ function tick(){
     // a special-bound next train shows the code of the station it ends at
     const sbc = (d, arr) => arr.length && isShortTo(L, d, act, arr.to[0]) ? `<i class="sbc" title="Ends at ${esc(act[arr.to[0]][1])}">→${act[arr.to[0]][0]}</i>` : "";
     const lc = (d, arr) => arr.length && isLastCall(current, i, d, now, arr[0]) ? lastTag : "";
-    setHTML(nx, `<span>${a.length ? "↓ <em>"+fmt(a[0])+"</em>"+sbc(0, a)+lc(0, a) : "&nbsp;"}</span><span>${b.length ? "↑ <em>"+fmt(b[0])+"</em>"+sbc(1, b)+lc(1, b) : "&nbsp;"}</span>`);
+    setHTML(nx, `<span>${a.length ? "↓ <em>"+boardMins(a[0])+"</em>"+sbc(0, a)+lc(0, a) : "&nbsp;"}</span><span>${b.length ? "↑ <em>"+boardMins(b[0])+"</em>"+sbc(1, b)+lc(1, b) : "&nbsp;"}</span>`);
     row.classList.toggle("open", i === openIdx);
     if (i === openIdx){
       dt.hidden = false;
@@ -3072,7 +3073,7 @@ function tick(){
         arr.forEach((m, k) => {
           const sb = isShortTo(L, d, act, arr.to[k]), name = sb ? endsName(L, d, act, arr.to[k]) : dest(L, d, act);
           let g = groups.find(x => x.name === name); if (!g) groups.push(g = {name, sb, ms: []});
-          g.ms.push(fmt(m) + (isLastCall(current, i, d, now, m) ? lastTag : "")); if (sb) anyShort = true;
+          g.ms.push(boardMins(m) + (isLastCall(current, i, d, now, m) ? lastTag : "")); if (sb) anyShort = true;
         });
         return groups.map(g => `<div${g.sb ? ' class="sbrow"' : ""}><span>${esc(toW(g.name))}${g.sb && !L.bound ? `<span class="sb">special-bound</span>` : ""}</span><span class="t">${g.ms.join(" · ")}</span></div>`).join("");
       };
