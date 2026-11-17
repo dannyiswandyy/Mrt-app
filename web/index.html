@@ -3326,7 +3326,7 @@ function tick(){
     const wetHTML = wetNote(current, s) ? `<small class="posnote">${wetNote(current, s)}</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
       <div>${trainSVG(s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${wetHTML}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${wetHTML}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
       <span class="eta">${s.atStation ? "Boarding" : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min"}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
@@ -4678,6 +4678,7 @@ function mapInfoHTML(){
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
       <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mrtRunDayHTML(tid)}
       ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
+      ${window.smartTrainNote && smartTrainNote(mSel.line, t) ? `<div class="mi-row">${smartTrainNote(mSel.line, t)}</div>` : ""}
       <div class="mi-act"><button class="btn ghost" type="button" data-act="line">Open on Line Board</button></div>`;
   }
   const e = MSTN.find(x => x.name === mSel.name);
@@ -8069,6 +8070,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return `<div class="rt-alert" role="status"><b>Disruption on your usual route</b><span>${what}</span><span>${say}</span>${msg ? `<details><summary>LTA's message</summary><p>${esc(msg)}</p></details>` : ""}${D.usual ? `<details><summary>Usual route (affected): ${Math.round(D.usual.mins)} min, ${D.usual.changes ? D.usual.changes + " change" + (D.usual.changes > 1 ? "s" : "") : "no changes"}</summary><p>${D.usual.legs.filter(l => l.line).map(l => `${esc(lineName(l.line))}: ${esc(l.from)} to ${esc(l.to)}`).join(" → ")}</p></details>` : ""}</div>`;
   }
   function tripHTML(){
+    window.mrtTripRoute = () => RT.route;           // for the smart layer's "Arrive by" (smart.js)
     const r = RT.route, kind = RT.f.fare, fare = fareFor(r.km, kind, r.early), conc = kind !== "adult" && kind !== "workfare";
     const steps = [];
     let first = true, prev = null, prevCode = null;
@@ -8086,7 +8088,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const last = r.legs[r.legs.length - 1];
     steps.push(`<li class="rt-end"><span class="rt-dot"></span><div>Arrive <b>${esc(r.to)}</b>${last && last.toCode ? ` ${codePills([[last.line, last.toCode]], "lg")}` : ""} about ${clockText(r.arrive)}${window.tripTip ? tripTip(r.to, "dest") : ""}</div></li>`);
     const noTrain = r.firstWait == null;
-    return `<div class="mi-h"><b>${esc(r.from)} → ${esc(r.to)}</b><button class="mi-x" type="button" data-act="rt-close" aria-label="Close">×</button></div>${disruptHTML(r)}
+    return `<div class="mi-h"><b>${esc(r.from)} → ${esc(r.to)}</b><button class="mi-x" type="button" data-act="rt-close" aria-label="Close">×</button></div>${disruptHTML(r)}${window.tripSmart ? tripSmart(r) : ""}
       <div class="rt-sum">
         <div class="rt-big">${Math.round(r.mins)}<small>min</small></div>
         <div class="rt-mid"><b>${noTrain ? "No more trains today" : `Arrive about ${clockText(r.arrive)}`}</b><span>${r.changes ? `${r.changes} change${r.changes > 1 ? "s" : ""}` : "No changes"} · ${r.stops} stops · ${r.km.toFixed(1)} km</span></div>
@@ -9160,4 +9162,4 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
 <script src="run-graph.js"></script>
 <script src="gtfs-lab.js"></script>
 <script src="disruption-engine.js"></script>
-<script src="spotter-planner.js"></script><script src="ops-lab.js"></script>
+<script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script>
