@@ -8,6 +8,7 @@
      GET  /lta/PCDRealTime?TrainLine=NSL  LTA platform crowd levels, one line (adds the key)
      GET  /lta/BusArrival?BusStopCode=83139  LTA bus arrivals at one stop (adds the key)
      GET  /lta/BusStops?$skip=0         LTA's bus stops, 500 at a time (adds the key; cached a day)
+     GET  /lta/BusRoutes?$skip=0        LTA's bus routes, 500 at a time (adds the key; cached a day)
      GET  /news?q=…&hl=…&gl=…&ceid=…      Google News RSS search
      GET  /wx/two-hr-forecast …            NEA weather (data.gov.sg), cached so visitors share one request
      GET  /yt?handle=@railcamsg           which RailCam Singapore stream is live, and its latest videos
@@ -75,6 +76,11 @@ async function route(request, env, ctx) {
     if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
     const skip = Math.max(0, Math.min(20000, parseInt(url.searchParams.get("$skip") || "0", 10) || 0));
     return upstream(LTA + "BusStops?$skip=" + skip, {AccountKey: env.LTA_KEY, accept: "application/json"}, 86400);
+  }
+  if (request.method === "GET" && path === "/lta/BusRoutes") {            // every stop of every bus service, 500 at a time
+    if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
+    const skip = Math.max(0, Math.min(60000, parseInt(url.searchParams.get("$skip") || "0", 10) || 0));
+    return upstream(LTA + "BusRoutes?$skip=" + skip, {AccountKey: env.LTA_KEY, accept: "application/json"}, 86400);
   }
   if (request.method === "GET" && path === "/news") {
     const q = new URLSearchParams();

@@ -22,7 +22,8 @@ function init(){
 if (W.mrtBus) return;
 const on = () => W.MRT_DEV_FEATURES === true && !W.mrtBusOff;
 const STOPS_KEY = "mrt.bus.stops", STOPS_DAYS = 14, NEAR_M = 300, INT_M = 600, NAMED_M = 1500, MAX_STOPS = 4, ARR_TTL = 25e3;
-const B = {stops: null, loading: null, err: "", arr: {}, busy: {}, near: {}};
+const B = {stops: null, loading: null, err: "", arr: {}, busy: {}, near: {}, loops: null, loopsLoading: null};
+const LOOPS_KEY = "mrt.bus.loops";
 const escH = s => { try { return esc(s); } catch(e){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); } };
 const app = () => { try { return !!(typeof APP !== "undefined" && APP && typeof APP.fetch === "function" && typeof nativeGet === "function"); } catch(e){ return false; } };
 const relay = () => { try { return (W.MRT_WEB_CONFIG && W.MRT_WEB_CONFIG.proxy) || ""; } catch(e){ return ""; } };
@@ -36,7 +37,7 @@ async function lta(path){
     return JSON.parse(body);
   }
   const px = relay(); if (!px) throw new Error("no LTA access here");
-  const m = path.match(/^(?:v3\/)?(BusArrival|BusStops)\?(.*)$/); if (!m) throw new Error("not allowed");
+  const m = path.match(/^(?:v3\/)?(BusArrival|BusStops|BusRoutes)\?(.*)$/); if (!m) throw new Error("not allowed");
   const r = await fetch(`${px}/lta/${m[1]}?${m[2]}`, {cache: "no-store"});
   if (!r.ok) throw new Error("relay answered " + r.status);
   return r.json();
@@ -71,6 +72,50 @@ function index(list){
   const pts = list.map(s => { const [x, y] = wxXY(s[3], s[4]); const o = {code: s[0], desc: s[1], road: s[2], x, y, int: isInt(s[1])}; byCode.set(o.code, o); return o; });
   return {pts, byCode};
 }
+
+/* ---------- which way each loop service goes ----------
+   LTA's bus arrivals don't say, so from LTA's bus routes (DataMall Bus Routes, every stop of every service; about 50
+   requests, once, kept 14 days): for each service that starts and ends at the same stop, the stop furthest from the
+   start, and the compass direction to it. Shown as "loop · north via Bishan St 22". */
+const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+function loopsFromStore(){
+  const v = store.get(LOOPS_KEY, null);
+  return v && v.map && typeof v.map === "object" && Date.now() - v.at < STOPS_DAYS * 864e5 ? v.map : null;
+}
+function loadLoops(){
+  if (B.loops) return Promise.resolve(B.loops);
+  const kept = loopsFromStore(); if (kept){ B.loops = kept; return Promise.resolve(kept); }
+  if (B.loopsLoading) return B.loopsLoading;
+  B.loopsLoading = (async () => {
+    await loadStops();
+    const runs = new Map();                            // "service|direction" -> [[sequence, stop code]]
+    for (let skip = 0; skip < 60000; skip += 500){
+      const j = await lta("BusRoutes?$skip=" + skip), v = (j && j.value) || [];
+      for (const r of v){ const k = r.ServiceNo + "|" + r.Direction; let a = runs.get(k); if (!a) runs.set(k, a = []); a.push([+r.StopSequence, String(r.BusStopCode)]); }
+      if (v.length < 500) break;
+    }
+    if (runs.size < 100) throw new Error("LTA's bus routes came back short");
+    const map = {};
+    for (const [k, a] of runs){
+      a.sort((x, y) => x[0] - y[0]);
+      const [svc, dir] = k.split("|"), o = B.stops.byCode.get(a[0][1]);
+      if (!o || a[0][1] !== a[a.length - 1][1] || (map[svc] && dir !== "1")) continue;      // only loops; direction 1 first
+      let far = null, fd = -1;
+      for (const [, c] of a){ const st = B.stops.byCode.get(c); if (!st) continue; const d = Math.hypot(st.x - o.x, st.y - o.y); if (d > fd){ fd = d; far = st; } }
+      if (!far || fd < 150) continue;
+      const deg = (Math.atan2(far.x - o.x, -(far.y - o.y)) * 180 / Math.PI + 360) % 360;   // map y grows southward
+      map[svc] = [COMPASS[Math.round(deg / 45) % 8], far.road || far.desc, Math.round(fd / 100) / 10];
+    }
+    store.set(LOOPS_KEY, {at: Date.now(), map});
+    return B.loops = map;
+  })().catch(e => { B.loopsLoading = null; B.loopsErr = String(e && e.message || e); return null; });
+  return B.loopsLoading;
+}
+const loopText = svc => {
+  const l = B.loops && B.loops[svc];
+  if (!l){ if (!B.loops && !B.loopsLoading && !B.loopsErr) loadLoops().then(() => { if (want) paint(want); }); return "loop"; }
+  return `loop · <b>${escH(l[0])}</b> via ${escH(l[1])}`;
+};
 
 /* ---------- the stops for a station ---------- */
 function stopsNear(name){
@@ -120,7 +165,7 @@ function stopHTML(s){
     const b0 = sv.buses[0] || {}, dest = B.stops && B.stops.byCode.get(String(b0.DestinationCode || "")), orig = String(b0.OriginCode || "");
     const departs = orig === s.code, ends = !departs && String(b0.DestinationCode || "") === s.code;   // a loop service starts and ends here: it departs
     const tag = departs ? `<span class="b-tag dep">departs</span>` : ends ? `<span class="b-tag end">ends here</span>` : "";
-    return `<li><span class="b-no">${escH(sv.no)}</span><span class="b-to">${ends ? "ends here" : dest ? (departs && dest.code === s.code ? "loop" : "to " + escH(dest.desc)) : ""}${tag && !ends ? " " + tag : ""}</span><span class="b-ts">${sv.buses.length ? sv.buses.map(busTime).join("") : `<span class="b-t b-none">–</span>`}</span></li>`;
+    return `<li><span class="b-no">${escH(sv.no)}</span><span class="b-to">${ends ? "ends here" : dest ? (departs && dest.code === s.code ? loopText(sv.no) : "to " + escH(dest.desc)) : ""}${tag && !ends ? " " + tag : ""}</span><span class="b-ts">${sv.buses.length ? sv.buses.map(busTime).join("") : `<span class="b-t b-none">–</span>`}</span></li>`;
   }).join("");
   return head + `<ul class="b-list">${rows}</ul>`;
 }
@@ -230,6 +275,6 @@ css.textContent = `
 .bus-box .b-foot .b-t{min-width:0;font-size:10px;padding:0 4px}
 #hxBus[hidden]{display:none}#hxBus{padding:0 2px}`;
 (document.head || document.documentElement).appendChild(css);
-W.mrtBus = {refresh, stopsNear, arrivals, loadStops, state: B};
+W.mrtBus = {refresh, stopsNear, arrivals, loadStops, loadLoops, state: B};
 }
 })();
