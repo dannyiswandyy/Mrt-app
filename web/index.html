@@ -2301,6 +2301,133 @@ const moved = (code, iso) => {
   movedMix[code] = {r, a, b, m};
   return m;
 };
+/* --- wet rails: trains a little slower in the rain ---
+   On the North-South and East-West lines and the Changi Airport branch, the signalling (CBTC) switches trains to a
+   gentler wet-weather braking profile when the rails are wet (Land Transport Guru, "Communications-based train
+   control"; The Straits Times, "Must trains move slower on rainy days?"), so the open-air stretches take a little
+   longer in the rain. Tunnels stay dry. SMRT and LTA don't say how much, so the amount is the app's own estimate
+   (POSSIBLE): WET_STOP seconds per stretch plus WET_FRAC of its running time, on stretches above ground where NEA's
+   rain gauges show rain, until WET_DRY after the last rain seen there (rails take a while to dry). A stretch running
+   into a tunnel counts half. A stretch only counts for trains that run it while it's wet, so a train already past it
+   doesn't jump back when the rain starts. Trains LTA's live feed, a sighting or the Live cam already place don't get
+   it: what they show includes any slowdown. Off with "Wet-rail slowdown" in the weather card. */
+const WET_LINES = ["NSL", "EWL", "CG"], WET_STOP = 4, WET_FRAC = 0.03, WET_DRY = 20 * 60, WET_RAIN = 0.12;
+/* Stations in tunnels on these lines: rails there stay dry. */
+const WET_UNDER = new Set("NS18 NS19 NS20 NS21 NS22 NS23 NS24 NS25 NS26 NS27 NS28 EW11 EW12 EW13 EW14 EW15 EW16 EW17 CG2".split(" "));
+const wetUnder = (code, st) => WET_UNDER.has(st);
+const WET = {iso: "", got: 0, checked: 0, legs: {}, ver: 0, est: new Map(), estVer: -1};
+let wetOn = true;                                   // read from the settings when the page has them (wetLoad)
+const wetLoad = () => { try { if (!WET.loaded){ wetOn = store.get("mrt.wetSlow", true) !== false; WET.loaded = true; } } catch(e){} };
+/* Adds this weather reading's rain to each above-ground stretch's wet spells ([from, until] in seconds of the
+   service day). */
+function wetUpdate(){
+  const ms = Date.now(); if (ms - WET.checked < 5000) return;
+  WET.checked = ms;
+  const now = sgNow();
+  if (WET.iso !== now.iso){ WET.iso = now.iso; WET.legs = {}; WET.got = 0; WET.ver++; }
+  if (!wx || !wx.grid || wx.got === WET.got || !wxFresh()) return;
+  WET.got = wx.got;
+  const t = now.mins * 60 - Math.max(0, ms - wx.got) / 1000, rainAt = p => wxRainAt(p[0], p[1]);
+  for (const code of WET_LINES){
+    const L = LINES[code]; if (!L) continue;
+    const m = WET.legs[code] || (WET.legs[code] = new Map());
+    for (let i = 0; i < L.stations.length - 1; i++){
+      const a = L.stations[i][0], b = L.stations[i + 1][0];
+      const w = ((wetUnder(code, a) ? 0 : 1) + (wetUnder(code, b) ? 0 : 1)) / 2; if (!w) continue;
+      const pa = MAP.stations[a], pb = MAP.stations[b]; if (!pa || !pb) continue;
+      if (Math.max(rainAt(pa), rainAt(pb), rainAt([(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2])) <= WET_RAIN) continue;
+      let e = m.get(a + "-" + b);
+      if (!e){ e = {w, a, b, spans: []}; m.set(a + "-" + b, e); m.set(b + "-" + a, e); }
+      const last = e.spans[e.spans.length - 1];
+      if (last && t <= last[1]) last[1] = Math.max(last[1], t + WET_DRY); else e.spans.push([t, t + WET_DRY]);
+    }
+  }
+  WET.ver++;
+}
+/* The wet stretches of a line ("NS1-NS2" -> {w: share above ground, spans}), or null when there are none. */
+function wetSpans(code){
+  try {
+    wetLoad(); if (!wetOn || !WET_LINES.includes(code)) return null;
+    wetUpdate();
+    const m = WET.legs[code]; return m && m.size ? m : null;
+  } catch(e){ return null; }                     // still starting (the weather or the map isn't set up yet)
+}
+/* Extra seconds a train takes on a stretch (e, from wetSpans) running `run` seconds, leaving it at `t`. */
+const wetExtra = (e, run, t) => e && e.spans.some(s => t >= s[0] && t <= s[1]) ? e.w * (WET_STOP + WET_FRAC * Math.max(0, run)) : 0;
+/* A timetable run (LTA) on wet rails: W[k] = seconds later than its timetable at stop k, and R / S its arrive
+   and leave times at each stop, wet and timetabled (the same shape ttProfSched takes), or null when it's dry. */
+const wetRunCache = new WeakMap();
+function wetRun(code, r){
+  try {
+    if (!r || !r.p || r.added) return null;
+    if (typeof rtTimesFor === "function" && rtTimesFor(code, r)) return null;   // LTA's live times already include any slowdown
+    const p = r.p, m = wetSpans(code); if (!m || camAdj(code, p.d > 0 ? 0 : 1)) return null;
+    const c = wetRunCache.get(r); if (c && c.v === WET.ver) return c.x;
+    const st = LINES[code].stations, n = p.arr.length, W = [0], R = [p.arr[0], p.dep[0]], S = [p.arr[0], p.dep[0]];
+    let any = false;
+    for (let k = 1; k < n; k++){
+      const a = st[p.f + p.d * (k - 1)], b = st[p.f + p.d * k];
+      const x = a && b ? wetExtra(m.get(a[0] + "-" + b[0]), p.arr[k] - p.dep[k - 1], r.s + p.dep[k - 1] + W[k - 1]) : 0;
+      if (x) any = true;
+      W.push(W[k - 1] + x); R.push(p.arr[k] + W[k], p.dep[k] + W[k]); S.push(p.arr[k], p.dep[k]);
+    }
+    const x = any ? {W, R, S} : null;
+    wetRunCache.set(r, {v: WET.ver, x});
+    return x;
+  } catch(e){ return null; }
+}
+/* An estimated run (no LTA timetable) leaving its first stop at `dep` (minutes) on wet rails: legsOf()'s
+   {off, run} with the wet stretches taking longer, or T itself when it's dry. */
+function wetLegs(code, dir, n, T, dep){
+  try {
+    const m = wetSpans(code); if (!m || camAdj(code, dir)) return T;
+    if (WET.estVer !== WET.ver){ WET.est.clear(); WET.estVer = WET.ver; }
+    const key = code + dir + n + "|" + dep; if (WET.est.has(key)) return WET.est.get(key) || T;
+    const L = LINES[code]; let act = activeStations(L, sgNow().iso); if (act.length !== n) act = L.stations.slice(0, n);
+    const off = [0], run = []; let add = 0;
+    for (let i = 0; i < n - 1; i++){
+      const a = act[dir ? n - 1 - i : i][0], b = act[dir ? n - 2 - i : i + 1][0];
+      const x = wetExtra(m.get(a + "-" + b), T.run[i] * 60, (dep + T.off[i] + add) * 60) / 60;
+      add += x; run.push(T.run[i] + x); off.push(T.off[i + 1] + add);
+    }
+    const out = add > 0 ? {off, run} : null;
+    WET.est.set(key, out);
+    return out || T;
+  } catch(e){ return T; }
+}
+/* How many seconds train t (from trainsOn) is later than its timetable by its next stop because of wet rails. */
+function wetDelay(code, t){
+  try {
+    if (!t || t.rep || t.added || t.layover || !wetSpans(code)) return 0;
+    const mv = moved(code, sgNow().iso);
+    if (t.ref && t.ref.p){
+      const r = t.ref, p = r.p, w = wetRun(code, r);
+      if (!w || r.tl || (mv && mv.get(t.id))) return 0;
+      return w.W[Math.max(0, Math.min(w.W.length - 1, Math.round((t.next - p.f) * p.d)))];
+    }
+    if (mv && mv.get(t.id)) return 0;
+    const n = activeStations(LINES[code], sgNow().iso).length, T0 = legsOf(code, t.dir, n), T = wetLegs(code, t.dir, n, T0, t.dep);
+    if (T === T0) return 0;
+    const j = Math.max(0, Math.min(n - 1, t.dir ? n - 1 - t.next : t.next));
+    return (T.off[j] - T0.off[j]) * 60;
+  } catch(e){ return 0; }
+}
+/* The above-ground stretches that are wet now: [{code, a, b}] (empty when dry or turned off). */
+function wetNow(){
+  try {
+    wetLoad(); if (!wetOn) return [];
+    wetUpdate();
+    const t = sgNow().mins * 60, out = [];
+    for (const code of WET_LINES){
+      const seen = new Set();
+      for (const e of (WET.legs[code] || new Map()).values()){
+        if (seen.has(e)) continue; seen.add(e);
+        if (e.spans.some(s => t >= s[0] && t <= s[1])) out.push({code, a: e.a, b: e.b});
+      }
+    }
+    return out;
+  } catch(e){ return []; }
+}
 /* When trains are out on a line that day (estimates): from the first one leaving to the last one arriving. */
 function serviceSpan(code, day){
   const L = LINES[code], n = activeStations(L, sgNow().iso).length;
@@ -2335,9 +2462,10 @@ function trainsOnRaw(code, now, noReports){
   const L = LINES[code], n = activeStations(L, now.iso).length, out = [];
   const stay = L.shuttle ? L.shuttle.turn : 0;                     // shuttle trains wait at the end before heading back
   for (const dir of [0,1]){
-    const T = legsOf(code, dir, n), late0 = camAdj(code, dir), mv = moved(code, now.iso);
+    const T0 = legsOf(code, dir, n), late0 = camAdj(code, dir), mv = moved(code, now.iso);
     for (const r of runsFor(code, dayOf(now), dir)){
-      const late = late0 + (mv ? mv.get(code + dir + r.t) || 0 : 0);
+      const shift = mv ? mv.get(code + dir + r.t) || 0 : 0, late = late0 + shift;
+      const T = shift ? T0 : wetLegs(code, dir, n, T0, r.t);       // slower on wet rails, unless it's been placed already
       const dep = r.t, e = now.mins - late - dep, e0 = r.a ? T.off[r.a] - L.dwell : 0, trip = T.off[r.b];
       if (code === "SEN" && e > trip + stay && e < trip + stay + TT_LAYOVER_MAX / 60){
         // a Sentosa Express run is over: it waits at the end, facing the other way, until its next run sets off (that
@@ -2378,14 +2506,15 @@ function nextArrivalsBase(code, s, dir, now, count, reach){
   const ttl = ttTrips(code, now.iso);
   if (ttl) return ttNext(ttl, s, dir, now, count, reach);
   const L = LINES[code], n = activeStations(L, now.iso).length, res = [], to = [];
-  const k = dir ? (n-1-s) : s, off = legsOf(code, dir, n).off[k] + camAdj(code, dir), rk = reach == null ? -1 : dir ? n-1-reach : reach;
-  const mv = moved(code, now.iso);
+  const k = dir ? (n-1-s) : s, T0 = legsOf(code, dir, n), cam = camAdj(code, dir), rk = reach == null ? -1 : dir ? n-1-reach : reach;
+  const mv = moved(code, now.iso), resort = mv || wetSpans(code);       // a moved or wet train can change the order
   for (const r of runsFor(code, dayOf(now), dir)){
     if (k < r.a || k >= r.b || r.b < rk) continue;
-    const a = r.t + off + (mv ? mv.get(code + dir + r.t) || 0 : 0);
-    if (a >= now.mins - 0.15){ res.push(a - now.mins); to.push(dir ? n-1-r.b : r.b); if (!mv && res.length === count) break; }
+    const shift = mv ? mv.get(code + dir + r.t) || 0 : 0;
+    const a = r.t + (shift ? T0 : wetLegs(code, dir, n, T0, r.t)).off[k] + cam + shift;     // slower on wet rails, as trainsOnRaw
+    if (a >= now.mins - 0.15){ res.push(a - now.mins); to.push(dir ? n-1-r.b : r.b); if (!resort && res.length === count) break; }
   }
-  if (mv){                                      // a moved train can change the order
+  if (resort){
     const all = res.map((m, i) => ({m, to: to[i]})).sort((x, y) => x.m - y.m).slice(0, count);
     const out = all.map(x => x.m); out.to = all.map(x => x.to); return out;
   }
@@ -2765,10 +2894,21 @@ function ttLinks(list){
 /* Where a run is in its own timetable (seconds since the service day began) at clock time `sec`, and how fast
    that timetable goes by (1: as LTA has it). LTA's live delay or a Live cam correction moves the whole run;
    otherwise a run that has to wait for its train (r.tl) leaves late and catches up by the end of the run. */
+/* Timetable time for clock time `sec` on a run whose real (R) and timetabled (S) arrive / leave times at each stop
+   are given, in seconds from its start: in between, the train makes up (or loses) time evenly. */
+function ttProfSched(r, R, S, sec){
+  const e = sec - r.s, n = R.length - 1;
+  if (e <= R[0]) return {sec: r.s + e - (R[0] - S[0]), rate: 1};
+  if (e >= R[n]) return {sec: r.s + e - (R[n] - S[n]), rate: 1};
+  let j = 0; while (j < n - 1 && R[j + 1] <= e) j++;
+  const w = R[j + 1] - R[j], rate = w > 0 ? (S[j + 1] - S[j]) / w : 1;
+  return {sec: r.s + (w > 0 ? S[j] + (e - R[j]) * rate : S[j + 1]), rate: rate || 1};
+}
 function ttSched(code, r, sec, mv){
   const m = mv && mv.get(`${code}t${r.s}p${r.pi}`);
   if (m) return {sec: sec - m * 60, rate: 1};
-  const tl = r.tl || 0; if (!tl) return {sec, rate: 1};
+  const tl = r.tl || 0;
+  if (!tl){ const w = wetRun(code, r); return w ? ttProfSched(r, w.R, w.S, sec) : {sec, rate: 1}; }   // slower on wet rails (wetRun)
   const e = sec - r.s, rate = r.p.end / (r.p.end - tl);
   return {sec: r.s + (e < tl ? e - tl : (e - tl) * rate), rate};
 }
@@ -2779,6 +2919,7 @@ function ttAt(code, r, k, mv){
   const m = mv && mv.get(code + "t" + r.s + "p" + r.pi);
   if (m) return r.s + r.p.arr[k] + m * 60;
   const tl = r.tl || 0;
+  if (!tl){ const w = wetRun(code, r); if (w) return r.s + r.p.arr[k] + w.W[k]; }   // as ttSched has it
   return tl ? r.s + tl + r.p.arr[k] * (r.p.end - tl) / r.p.end : r.s + r.p.arr[k];
 }
 function ttTrainsOn(code, now, list){
@@ -2807,7 +2948,7 @@ function ttTrainsOn(code, now, list){
     { const nx = links.next.get(r); if (nx && secOf(nx) >= nx.s) continue; }
     const p = r.p, nk = st.at ? st.k : st.k + 1;
     out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
-      next: p.f + p.d * nk, eta: Math.max(0, (((typeof rtTimesFor === "function" && rtTimesFor(code,r)?.arr[nk] != null) ? rtTimesFor(code,r).arr[nk] : r.s + p.arr[nk]) - now.mins*60) / 60), atStation: st.at});
+      next: p.f + p.d * nk, eta: Math.max(0, (((typeof rtTimesFor === "function" && rtTimesFor(code,r)?.arr[nk] != null) ? rtTimesFor(code,r).arr[nk] : r.s + p.arr[nk] + (!r.tl && !(mv && mv.get(runId(r))) && wetRun(code, r) ? wetRun(code, r).W[nk] : 0)) - now.mins*60) / 60), atStation: st.at});
   }
   return out;
 }
@@ -3135,9 +3276,10 @@ function tick(){
   } else {
     const stop = act[s.next][1];
     const where = s.atStation ? `Now at <b>${stop}</b>` : `Next stop <b>${stop}</b>`;
+    const wetHTML = wetNote(current, s) ? `<br><small class="posnote">${wetNote(current, s)}</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
       <div>${trainSVG(s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${wetHTML}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
       <span class="eta">${s.atStation ? "Boarding" : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min"}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
@@ -4463,6 +4605,7 @@ function mapInfoHTML(){
     const trainMeta = slot || run ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot || "—")}</b>${run ? ` · run ${esc(run)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
       <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mrtRunDayHTML(tid)}
+      ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
       <div class="mi-act"><button class="btn ghost" type="button" data-act="line">Open on Line Board</button></div>`;
   }
   const e = MSTN.find(x => x.name === mSel.name);
@@ -4761,6 +4904,19 @@ async function refreshWeather(force){
 setTimeout(() => refreshWeather(true), 1500);
 setInterval(() => { if (!document.hidden) refreshWeather(false); }, 60e3);
 { const prev = window.appResume; window.appResume = () => { if (prev) prev(); refreshWeather(false); }; }
+/* The weather card's line about wet rails on the North-South and East-West lines. */
+function wetCardHTML(){
+  wetLoad(); if (!wetOn) return "";
+  const w = wetNow(); if (!w.length) return "";
+  const name = {NSL: "North-South Line", EWL: "East-West Line", CG: "Changi Airport branch"};
+  const lines = [...new Set(w.map(x => x.code))].map(c => name[c]);
+  return `<p>🌧️ <b>Wet rails</b> on ${w.length} above-ground stretch${w.length > 1 ? "es" : ""} of the ${esc(lines.length > 1 ? lines.slice(0, -1).join(", ") + " and " + lines[lines.length - 1] : lines[0])}: trains there are shown a few seconds slower per station, braking gently on wet rails. <b>POSSIBLE</b> <span class="muted">(rain from NEA's gauges; SMRT doesn't publish the slowdown, so the amount is the app's estimate)</span></p>`;
+}
+/* A line for a train's details: how much slower it's shown on wet rails, labelled as the estimate it is. */
+function wetNote(code, t){
+  const s = Math.round(wetDelay(code, t));
+  return s >= 5 ? `🌧️ Wet rails: about ${s < 90 ? s + " s" : Math.round(s / 60) + " min"} slower than timetable · <b>POSSIBLE</b> <span class="muted">(NEA shows rain on its above-ground stretches; the amount is the app's estimate)</span>` : "";
+}
 
 /* --- the weather chip and card on the map --- */
 const WX_ICON = {
@@ -4793,7 +4949,9 @@ function paintWx(){
     <p>${w.rainNow != null ? `Rain now: ${esc(w.rainText)}${w.rainNow > 0 ? ` (${w.rainNow} mm in 5 min at ${esc(w.gauge)})` : ` at ${esc(w.gauge)}`}` : "No rain gauge nearby"}${w.lightningNearby ? " · <b>lightning nearby</b>" : ""}</p>
     <p>${w.temp != null ? `${w.temp.toFixed(1)}°C` : ""}${wind ? `${w.temp != null ? " · " : ""}wind ${wind.knots} knots from the ${wxFrom(wind.from)}` : ""}</p>
     ${I ? `<p class="muted">Across Singapore: ${I.wetAreas.length ? `showers or rain forecast in ${I.wetAreas.length} of ${I.areas} areas` : "no rain forecast"}${I.rainingGauges ? `, rain at ${I.rainingGauges} gauges` : ""}${I.lightning ? `, lightning detected` : ""}.</p>` : ""}
+    ${wetCardHTML()}
     <button type="button" class="btn ghost" data-wx="anim" aria-pressed="${wxAnim}">${wxAnim ? "Weather on map: on" : "Weather on map: off"}</button>
+    <button type="button" class="btn ghost" data-wx="wet" aria-pressed="${wetOn}">${wetOn ? "Wet-rail slowdown: on" : "Wet-rail slowdown: off"}</button>
     <p class="wx-src">National Environment Agency, via data.gov.sg · updated ${esc(wxClock(wx.at) || clockText((Date.now() + 8 * 3600e3) % 864e5 / 60e3))}</p>`);
 }
 $("mapWx").onclick = () => { wxOpen = !wxOpen; paintWx(); };
@@ -4801,6 +4959,7 @@ $("wxCard").addEventListener("click", ev => {
   const b = ev.target.closest("[data-wx]"); if (!b) return;
   if (b.dataset.wx === "close"){ wxOpen = false; paintWx(); }
   if (b.dataset.wx === "anim"){ wxAnim = !wxAnim; store.set("mrt.wxAnim", wxAnim); paintWx(); mDirty = true; }
+  if (b.dataset.wx === "wet"){ wetOn = !wetOn; store.set("mrt.wetSlow", wetOn); WET.ver++; paintWx(); mDirty = true; tick(); }
 });
 /* A line for the station panel. */
 function wxLine(e){
