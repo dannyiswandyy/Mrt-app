@@ -110,7 +110,7 @@
 
   function render(){
     const host = document.getElementById("favList");
-    if (!host || !window.MRT_DEV_ENGINEERING) return;
+    if (!host || !window.MRT_ENGINEERING) return;
     let card = document.getElementById("engIntel");
     if (!card){
       card=document.createElement("section");
@@ -129,7 +129,7 @@
   }
 
   window.mrtEngineeringSnapshot=snapshot;
-  window.MRT_DEV_ENGINEERING=true;
+  window.MRT_ENGINEERING=true;
   window.mrtEngineeringRender=render;
   setInterval(()=>{ if(document.hidden) return; try{render();}catch(e){} },30000);
   setTimeout(()=>{try{render();}catch(e){}},0);
