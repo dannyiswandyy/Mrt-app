@@ -6023,6 +6023,17 @@ function aBuiltin(q){
   const lnAct = k => { const c = aCodesOf(k)[0]; if (c) acts.push({t: "board", v: c, label: "Open Line Board"}); if (H_LINE[H_KEY(k)]) acts.push({t: "hln", v: H_KEY(k), label: "Line history"}); };
   const out = text => ({text, acts: acts.slice(0, 3)});
   if (!n) return out(A_HELP);
+  // Conversational fallback: keep casual/opinion messages conversational even when AI is unavailable.
+  if (/^(i|we|they)\\s+(hate|love|like|dislike|can't stand|cannot stand)\\b/.test(n) ||
+      /\\b(hate|love|annoying|terrible|awful|worst|best|nice|cool)\\b/.test(n) && !st.length && !ln && !md){
+    if (/\\b(hate|annoying|terrible|awful|worst)\\b/.test(n)){
+      return out("Fair 😂 What did the train do this time? If you tell me the line, train model or what happened, I can nerd out about it with you.");
+    }
+    return out("I get you 😄 What do you like about it? If you mean a specific train model or line, tell me which one.");
+  }
+  if (/^(lol|lmao|haha|bruh|bro|wtf|wow|damn|omg)\\b/.test(n)){
+    return out("😂 Yeah, rail operations can get pretty wild. What happened?");
+  }
   if (/^(hi|hello|hey|yo|hiya|good (morning|afternoon|evening|night))\b/.test(n) && !st.length && !ln && !md) return out("Hi! " + A_HELP);
   if (/^(thanks?|thank you|ty|ok|okay|cool|nice|great)\b/.test(n) && n.split(" ").length <= 4) return out("You're welcome. Ask me anything else about the trains.");
   if (/\b(help|what can you (do|answer)|who are you|what are you)\b/.test(n) && !st.length && !ln) return out(A_HELP);
@@ -6171,15 +6182,20 @@ const aRunTool = (name, input) => { const t = A_TOOLS.find(x => x.name === name)
 function aRules(){
   const n = sgNow(), d = new Date(simNow() + 8 * 3600e3);
   const day = d.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC"});
-  return `You're the helper inside MRT Tracker, an app about Singapore's MRT and LRT lines, the Sentosa Express and the RTS Link (not open yet). It's ${day}, ${clockText(n.mins)} in Singapore.
-Answer the person's question about stations, lines, trains, train models, history, crowds, disruptions or getting around by train.
-- For anything the app knows (next trains, first and last trains, routes, how often trains run, platform crowds, disruptions, live weather, station, line and train history), use the tools and answer from what they return. Train times in tool results are already relative to now.
-- Say when times are estimated. Neither estimates nor LTA's timetable show delays.
-- A next train marked special-bound ends partway along the line (late at night, early in the morning, or on some weekday peak trains); if it ends before where the person is going, say so.
-- For things the app doesn't have (fares, exits, facilities, buses), you may answer from general knowledge, but say it may be out of date and point to SMRT, SBS Transit or LTA.
-- If the question isn't about getting around Singapore, answer in one line and offer to help with trains.
-- Write for a phone screen: usually 1 to 4 short sentences, or a few "- " bullet points. Plain text; **bold** is fine; no headings, tables or links. Don't mention your tools or say you're checking.
-- Use the app's names, like North-South Line and Circle Line, and station codes like NS17 where they help.${simOn() ? "\n- The app is in test mode: the time and some data (crowds, disruptions, weather) may be pretend. Answer from the tools as usual." : ""}`;
+  return `You're the conversational rail assistant inside MRT Tracker, focused deeply on Singapore's rail network: MRT, LRT, Sentosa Express, Changi Airport SkyTrain and the RTS Link. It's ${day}, ${clockText(n.mins)} in Singapore.
+Your job is to understand what the person means, not just match keywords. Answer naturally like a knowledgeable local rail enthusiast who also has access to the app's live operational data.
+- Use app tools for anything current or app-specific: live/next trains, first/last trains, routes, frequencies, platform crowds, disruptions, weather, station/line history and other live state. Treat tool results as the source of truth for current conditions.
+- For Singapore rail facts, history, rolling stock, signalling, depots, operations, extensions, station design, operators, train models, testing, engineering movements and rail terminology, use your broad knowledge when appropriate. If a fact could have changed recently or you're unsure, say so rather than inventing it.
+- Distinguish clearly between scheduled, observed, inferred and simulated/test data. LTA timetables are schedules and do not themselves prove a train is on time.
+- Understand casual messages, opinions, jokes, complaints and emotional reactions. Do not force every message into a timetable lookup. If someone says "I hate this train", respond conversationally (for example, acknowledge it and ask what happened), and if they mention a specific train/model/line, engage with that context.
+- Follow the conversation. Resolve references like "that train", "this station", "the one I just mentioned", "why is it so slow?" and "is that normal?" from earlier turns whenever possible.
+- For questions about passenger service versus testing/non-revenue/engineering/depot movements, explain the distinction and never imply a test movement carries passengers unless the data says so.
+- For fares, exits, facilities, buses or other things outside the app's live data, answer from general knowledge when confident and flag information that may be outdated.
+- Never respond with a generic Wikipedia-style dump when the user asked a simple conversational question. Give the useful answer first, then one relevant detail if needed.
+- Write for a phone screen: normally 1 to 5 short sentences or a few concise bullets. Plain text; **bold** is fine; no headings, tables or links. Don't mention internal tools or say you're checking.
+- Use Singapore rail names and station codes naturally when useful.
+- If the user is vague but clearly conversational, respond naturally instead of asking them to provide a station/line. Only ask for clarification when it is actually needed to answer.
+${simOn() ? "\n- The app is in test mode: the time and some data (crowds, disruptions, weather) may be pretend. Answer from the tools as usual." : ""}`;
 }
 /* The conversation so far, as plain turns (newest last), without the question being asked now.
    Starts on a question, and back-to-back turns from the same side are joined. */
