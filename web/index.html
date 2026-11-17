@@ -1365,6 +1365,7 @@ footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
 .maplegend-ring.solid{border-color:var(--fg)}
 .maplegend-ring.dash{border-style:dashed;border-color:var(--fg)}
 .maplegend-bar{width:20px;height:3px;background:var(--fg);border-radius:2px}
+.maplegend-wet{width:20px;height:7px;border-radius:4px;background:repeating-linear-gradient(90deg,#3d9bff 0 5px,#dff0ff 5px 7px);box-shadow:0 0 6px #3d9bff}
 /* ===== Map legend: matches the other map controls (Claude) ===== */
 .maplegend{right:14px;bottom:112px;z-index:12;font-family:var(--body)}
 .maplegend-btn{height:38px;min-height:38px;padding:0 13px 0 11px;gap:7px;border-radius:11px;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);font:600 13.5px/1 var(--body);letter-spacing:.01em;box-shadow:var(--shadow-soft,0 2px 8px rgba(0,0,0,.12));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
@@ -1522,6 +1523,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
             <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-bar"></i></span><span class="maplegend-text"><b>Bar at the tip</b><small>The last train of the night on that service.</small></span></div>
             <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-ring solid"></i></span><span class="maplegend-text"><b>Solid ring</b><small>A train reported by a spotter.</small></span></div>
             <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-ring dash"></i></span><span class="maplegend-text"><b>Dotted ring</b><small>A train a spotter confirmed.</small></span></div>
+            <div class="maplegend-row"><span class="maplegend-mark"><i class="maplegend-wet"></i></span><span class="maplegend-text"><b>Blue glow on the track</b><small>Wet rails: NEA shows rain there, so trains are shown a little slower.</small></span></div>
           </div>
         </div>
         </div>
@@ -2320,6 +2322,7 @@ const WET_LINES = ["NSL", "EWL", "CG"], WET_STOP = 4, WET_FRAC = 0.03, WET_DRY =
 /* Stations in tunnels on these lines: rails there stay dry. */
 const WET_UNDER = new Set("NS18 NS19 NS20 NS21 NS22 NS23 NS24 NS25 NS26 NS27 NS28 EW11 EW12 EW13 EW14 EW15 EW16 EW17 CG2".split(" "));
 const wetUnder = (code, st) => WET_UNDER.has(st);
+const WET_BLUE = "#3d9bff";                         // the map's colour for wet rails
 const WET = {iso: "", got: 0, checked: 0, legs: {}, ver: 0, est: new Map(), estVer: -1};
 let wetOn = true;                                   // read from the settings when the page has them (wetLoad)
 const wetLoad = () => { try { if (!WET.loaded){ wetOn = store.get("mrt.wetSlow", true) !== false; WET.loaded = true; } } catch(e){} };
@@ -4450,6 +4453,31 @@ function mapDraw(){
     }
   }
   try { drawExits(ctx, zoom); } catch(e){}
+  // wet rails: above-ground NSL / EWL / Changi branch stretches where NEA's gauges show rain (wetNow) get a
+  // rain-blue glow with droplets running along the track, so you can see where trains are shown slower
+  try {
+    const wet = wetNow();
+    if (wet.length){
+      const t = performance.now(), byLine = {};
+      for (const w of wet){
+        const L = LINES[w.code]; if (!L || !MSEG[w.code]) continue;
+        for (let i = 0; i < L.stations.length - 1; i++){
+          const a = L.stations[i][0], b = L.stations[i + 1][0];
+          if ((a === w.a && b === w.b) || (a === w.b && b === w.a)){ (byLine[w.code] = byLine[w.code] || []).push(i); break; }
+        }
+      }
+      ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+      for (const c in byLine){
+        const segs = byLine[c];
+        ctx.strokeStyle = WET_BLUE; ctx.globalAlpha = 0.3; ctx.lineWidth = Math.max(5, lw * 2.6); ctx.setLineDash([]);
+        ctx.beginPath(); for (const i of segs) path(c, i); ctx.stroke();
+        ctx.globalAlpha = 0.95; ctx.strokeStyle = "#dff0ff"; ctx.lineWidth = Math.max(1.2, lw * 0.32);
+        ctx.setLineDash([0.1, Math.max(5, lw * 1.9)]); ctx.lineDashOffset = -t / 70;
+        ctx.beginPath(); for (const i of segs) path(c, i); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  } catch(e){}
   // stations
   const r = clampN(lw * 0.62, 2, 5);
   for (const e of MSTN){
