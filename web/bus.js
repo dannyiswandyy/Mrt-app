@@ -7,7 +7,8 @@
    - how full each bus is (seats / standing / limited standing) and double-deck or bendy buses,
    - a time in italics when LTA has no GPS on that bus (scheduled, not live).
    Which stops: LTA's list of bus stops (DataMall Bus Stops), fetched once and kept for 14 days; stops within about
-   300 m of the station, nearest first (up to 4), plus any bus interchange within about 600 m.
+   300 m of the station, nearest first (up to 4), plus any bus interchange within about 600 m, plus stops named
+   after the station up to 1.5 km away (Changi Airport's are at the terminals: PTB1, PTB2…).
    Hidden unless window.MRT_DEV_FEATURES is true (test builds), while it's being tried out. In the phone app the app adds the
    LTA key (window.MrtApp); on the website it goes through the data relay (worker/: /lta/BusArrival, /lta/BusStops). */
 (() => {
@@ -20,7 +21,7 @@ let tries = 0;
 function init(){
 if (W.mrtBus) return;
 const on = () => W.MRT_DEV_FEATURES === true && !W.mrtBusOff;
-const STOPS_KEY = "mrt.bus.stops", STOPS_DAYS = 14, NEAR_M = 300, INT_M = 600, MAX_STOPS = 4, ARR_TTL = 25e3;
+const STOPS_KEY = "mrt.bus.stops", STOPS_DAYS = 14, NEAR_M = 300, INT_M = 600, NAMED_M = 1500, MAX_STOPS = 4, ARR_TTL = 25e3;
 const B = {stops: null, loading: null, err: "", arr: {}, busy: {}, near: {}};
 const escH = s => { try { return esc(s); } catch(e){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); } };
 const app = () => { try { return !!(typeof APP !== "undefined" && APP && typeof APP.fetch === "function" && typeof nativeGet === "function"); } catch(e){ return false; } };
@@ -77,9 +78,15 @@ function stopsNear(name){
   const e = aByName(name); if (!e || !B.stops) return [];
   const here = [[e.x, e.y], ...(e.pts || [])];
   const d = s => Math.min(...here.map(p => Math.hypot(s.x - p[0], s.y - p[1])));
-  const all = B.stops.pts.map(s => ({s, d: d(s)})).filter(x => x.d <= INT_M).sort((a, b) => a.d - b.d);
-  const ints = all.filter(x => x.s.int).slice(0, 2), near = all.filter(x => !x.s.int && x.d <= NEAR_M).slice(0, MAX_STOPS);
-  return B.near[name] = [...ints, ...near].slice(0, MAX_STOPS + 1).map(x => ({...x.s, dist: Math.round(x.d)}));
+  // stops named after the station count from further away (Changi Airport's are at the terminals: "Changi Airport PTB1")
+  const nm = name.toLowerCase().replace(/\s*\(.*\)\s*/g, "").trim(), named = st => nm.length >= 4 && st.desc.toLowerCase().includes(nm);
+  const all = B.stops.pts.map(s => ({s, d: d(s)})).filter(x => x.d <= (named(x.s) ? NAMED_M : INT_M)).sort((a, b) => a.d - b.d);
+  const ints = all.filter(x => x.s.int).slice(0, 2);
+  const byName = all.filter(x => !x.s.int && named(x.s) && x.d > NEAR_M).slice(0, 4);
+  const near = all.filter(x => !x.s.int && x.d <= NEAR_M).slice(0, MAX_STOPS);
+  const seen = new Set(), out = [];
+  for (const x of [...ints, ...near, ...byName]) if (!seen.has(x.s.code)){ seen.add(x.s.code); out.push(x); }
+  return B.near[name] = out.slice(0, 8).map(x => ({...x.s, dist: Math.round(x.d)}));
 }
 
 /* ---------- arrivals at a stop ---------- */
