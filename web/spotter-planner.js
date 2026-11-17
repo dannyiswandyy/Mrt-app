@@ -72,14 +72,16 @@
 `;
   document.head.appendChild(style);
 
-  const btn = document.createElement("button");
+  const btn = document.querySelector("#splBtn") || document.createElement("button");
   btn.id = "splBtn"; btn.type = "button"; btn.setAttribute("aria-haspopup", "dialog");
   const tiles = document.querySelector("#viewHome .tiles");
-  if (tiles){
-    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="3.5"/><path d="M4 8h3l2-3h6l2 3h3v11H4z"/></svg>Spotter planner<span>' +
-      (PREVIEW ? "Public app preview" : "When trains pass a station") + "</span>";
-    tiles.appendChild(btn);
-  } else { btn.className = "btn"; btn.textContent = "Spotter planner"; document.body.appendChild(btn); }
+  if (!btn.parentNode){
+    if (tiles){
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="3.5"/><path d="M4 8h3l2-3h6l2 3h3v11H4z"/></svg>Spotter planner<span>' +
+        (PREVIEW ? "Public app preview" : "When trains pass a station") + "</span>";
+      tiles.appendChild(btn);
+    } else { btn.className = "btn"; btn.textContent = "Spotter planner"; document.body.appendChild(btn); }
+  }
 
   const mask = document.createElement("div");
   mask.id = "splMask"; mask.setAttribute("role", "presentation");
