@@ -694,6 +694,8 @@ jobs:
           import java.util.Arrays;
           import java.util.HashSet;
           import java.util.Set;
+          import java.util.concurrent.ExecutorService;
+          import java.util.concurrent.Executors;
 
           public class MainActivity extends Activity {
 
@@ -729,6 +731,8 @@ jobs:
               private SharedPreferences prefs;
               private boolean pageLoaded = false;
               private boolean updating = false;
+              /** Shared bounded pool for native network/update work; avoids creating a fresh thread per request. */
+              private final ExecutorService io = Executors.newFixedThreadPool(3);
               /** A video shown full screen (the Live cam's full-screen button), and how to hand it back. */
               private View fullView = null;
               private WebChromeClient.CustomViewCallback fullDone = null;
@@ -768,13 +772,6 @@ jobs:
                   WebSettings s = web.getSettings();
                   s.setJavaScriptEnabled(true);
                   s.setDomStorageEnabled(true);
-                  s.setAllowFileAccess(false);
-                  s.setAllowContentAccess(false);
-                  s.setAllowFileAccessFromFileURLs(false);
-                  s.setAllowUniversalAccessFromFileURLs(false);
-                  s.setGeolocationEnabled(false);
-                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-                  // The page only needs its own bundled file; it may not read other files on the phone.
                   s.setAllowFileAccess(false);
                   s.setAllowContentAccess(false);
                   s.setAllowFileAccessFromFileURLs(false);
@@ -900,12 +897,12 @@ jobs:
               /** Asks GitHub whether a newer version exists; if so, the page shows the update banner. */
               private void checkForUpdate() {
                   if (!Updater.enabled() || updating) return;
-                  new Thread(() -> {
+                  io.execute(() -> {
                       org.json.JSONObject j = Updater.newer(getApplicationContext());
                       if (j == null) return;
                       final String js = "window.updateAvailable && window.updateAvailable(" + JSONObject.quote(j.optString("versionName", "")) + ")";
                       runOnUiThread(() -> { if (pageLoaded) web.evaluateJavascript(js, null); });
-                  }).start();
+                  });
               }
 
               /** Called by the installer if an update couldn't be installed. */
@@ -1045,6 +1042,17 @@ jobs:
                   } catch (Exception ignored) {
                   }
                   netCallback = null;
+                  io.shutdownNow();
+                  try {
+                      if (web != null) {
+                          web.stopLoading();
+                          web.loadUrl("about:blank");
+                          web.removeAllViews();
+                          web.destroy();
+                          web = null;
+                      }
+                  } catch (Exception ignored) {
+                  }
                   super.onDestroy();
               }
 
@@ -1142,7 +1150,7 @@ jobs:
                           return;
                       }
                       updating = true;
-                      new Thread(() -> {
+                      io.execute(() -> {
                           try {
                               Updater.downloadAndInstall(getApplicationContext(), pct -> runOnUiThread(() ->
                                       web.evaluateJavascript("window.updateProgress && window.updateProgress(" + pct + ")", null)));
@@ -1157,7 +1165,7 @@ jobs:
                           } finally {
                               updating = false;
                           }
-                      }).start();
+                      });
                   }
 
                   /** True when a Claude API key was built into the app, so the Ask tab can use Claude. */
@@ -1173,7 +1181,7 @@ jobs:
                    */
                   @JavascriptInterface
                   public void askAi(final String id, final String request) {
-                      new Thread(() -> {
+                      io.execute(() -> {
                           int code = 0;
                           String body = "";
                           HttpURLConnection conn = null;
@@ -1209,7 +1217,7 @@ jobs:
                           }
                           final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
                           runOnUiThread(() -> web.evaluateJavascript(js, null));
-                      }).start();
+                      });
                   }
 
                   /**
@@ -1221,7 +1229,7 @@ jobs:
                    */
                   @JavascriptInterface
                   public void liveLookup(final String id, final String handle) {
-                      new Thread(() -> {
+                      io.execute(() -> {
                           int code = 200;
                           JSONObject out = new JSONObject();
                           try {
@@ -1256,7 +1264,7 @@ jobs:
                           }
                           final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(out.toString()) + ")";
                           runOnUiThread(() -> web.evaluateJavascript(js, null));
-                      }).start();
+                      });
                   }
 
                   // DEV:START
@@ -1291,13 +1299,13 @@ jobs:
                   /** Checks for a new version now (the Settings button). Reply: {"available":bool,"version":"..."} */
                   @JavascriptInterface
                   public void checkUpdateNow(final String id) {
-                      new Thread(() -> {
+                      io.execute(() -> {
                           org.json.JSONObject j = Updater.newer(getApplicationContext());
                           String body = "{\"available\":" + (j != null) + ",\"version\":" + JSONObject.quote(j == null ? "" : j.optString("versionName", ""))
                                   + ",\"enabled\":" + Updater.enabled() + "}";
                           final String js = "window.__native(" + JSONObject.quote(id) + ",200," + JSONObject.quote(body) + ")";
                           runOnUiThread(() -> web.evaluateJavascript(js, null));
-                      }).start();
+                      });
                   }
 
                   /** True when the LTA key was built into the app, so nobody needs to enter one. */
@@ -1416,7 +1424,7 @@ jobs:
 
                   @JavascriptInterface
                   public void fetch(final String id, final String url, final boolean withKey) {
-                      new Thread(() -> {
+                      io.execute(() -> {
                           int code = 0;
                           String body = "";
                           HttpURLConnection conn = null;
@@ -1446,7 +1454,7 @@ jobs:
                           }
                           final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
                           runOnUiThread(() -> web.evaluateJavascript(js, null));
-                      }).start();
+                      });
                   }
 
               }
@@ -1485,7 +1493,7 @@ jobs:
                * Asks LTA for the temporary link, downloads the feed and hands it to the page as base64.
                */
               void gtfsRealtimeFetch(final String id, final String kind) {
-                  new Thread(() -> {
+                  io.execute(() -> {
                       int code = 0;
                       String body = "";
                       try {
@@ -1526,7 +1534,7 @@ jobs:
                       }
                       final String js = "window.__native(" + JSONObject.quote(id) + "," + code + "," + JSONObject.quote(body) + ")";
                       runOnUiThread(() -> web.evaluateJavascript(js, null));
-                  }).start();
+                  });
               }
 
               private HttpURLConnection open(String url, boolean withKey) throws java.io.IOException {
