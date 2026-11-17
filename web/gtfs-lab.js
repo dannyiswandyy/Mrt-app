@@ -227,6 +227,15 @@
     const prev = window.appBack;
     window.appBack = () => close() || (typeof prev === "function" ? prev() : false);
     // the comparison builds every line once: after start-up, off the busy first seconds
-    setTimeout(() => { try { checkFeed(); } catch (e) { diag("error", "Timetable comparison failed: " + (e && e.message || e)); } }, 8000);
+    // one line at a time when the phone is idle, so building them never freezes a tap (it took ~0.7 s in one go)
+    setTimeout(() => {
+      let codes = []; try { const T = tt(); codes = T && T.lines ? Object.keys(T.lines) : []; } catch (e) {}
+      const later = f => (window.requestIdleCallback ? requestIdleCallback(f, {timeout: 3000}) : setTimeout(f, 120));
+      const step = () => {
+        if (codes.length){ try { lineGraph(codes.shift()); } catch (e) {} later(step); return; }
+        try { checkFeed(); } catch (e) { diag("error", "Timetable comparison failed: " + (e && e.message || e)); }
+      };
+      later(step);
+    }, 8000);
   });
 })();

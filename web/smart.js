@@ -351,11 +351,17 @@ W.tripSmart = r => {
     const def = (() => { const t = Math.ceil((now.mins % 1440 + 45) / 15) * 15; return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; })();
     return `<div class="rt-smart">
       ${delayWhy.length ? `<p><b>Expect about ${Math.max(1, Math.round(pad - Math.max(0, legs.length - 1)))} min extra</b>: ${esc2(delayWhy.join("; "))}.</p>` : ""}
-      <div class="rt-arr"><label>Arrive by <input type="time" data-smart-by value="${def}"></label><button type="button" class="btn ghost" data-smart-leave>When to leave</button></div>
-      <p class="rt-smart-out" data-smart-out></p>
+      <div class="rt-arr"><label>Arrive by <input type="time" data-smart-by value="${S.by || def}"></label><button type="button" class="btn ghost" data-smart-leave>When to leave</button></div>
+      <p class="rt-smart-out" data-smart-out>${S.by && S.byRoute === r.from + ">" + r.to ? (() => { try { return W.tripSmartLeave(r, byMins(S.by)); } catch(e){ return ""; } })() : ""}</p>
     </div>`;
   } catch(e){ return ""; }
 };
+function byMins(v){
+  const m = String(v || "").match(/^(\d{1,2}):(\d{2})/); if (!m) return null;
+  let by = +m[1] * 60 + +m[2]; const nowM = sgNow().mins;
+  if (by < nowM % 1440 - 60) by += 1440;                                                    // after midnight
+  return by + nowM - nowM % 1440;
+}
 W.tripSmartLeave = (r, by) => {
   const legs = r.legs, first = legs.find(l => l.line); if (!first) return "No train on this route.";
   const now = sgNow();
@@ -371,11 +377,9 @@ document.addEventListener("click", ev => {
   const b = ev.target.closest && ev.target.closest("[data-smart-leave]"); if (!b) return;
   try {
     const box = b.closest(".rt-smart"), inp = box.querySelector("[data-smart-by]"), out = box.querySelector("[data-smart-out]");
-    const v = String(inp.value || ""), m = v.match(/^(\d{1,2}):(\d{2})/); if (!m){ out.textContent = "Pick a time."; return; }
-    let by = +m[1] * 60 + +m[2]; const nowM = sgNow().mins;
-    if (by < nowM % 1440 - 60) by += 1440;                                                  // after midnight
-    by += nowM - nowM % 1440;
+    const v = String(inp.value || ""), by = byMins(v); if (by == null){ out.textContent = "Pick a time."; return; }
     const r = W.mrtTripRoute ? W.mrtTripRoute() : null;
+    if (r){ S.by = v; S.byRoute = r.from + ">" + r.to; }
     out.innerHTML = r ? W.tripSmartLeave(r, by) : "Show a route first.";
   } catch(e){}
 });

@@ -1018,7 +1018,7 @@ body.on-map .hx-sheet{max-height:58vh}
 .rt-trains{font-size:12px;color:var(--muted);margin:-2px 0 0;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .rt-trains .code{font-size:10.5px;padding:0 4px}
 .rt-trains b{font-weight:600;color:var(--fg)}
-@media (max-width:1023px){ body.trip-on .mapwrap{height:40dvh!important;min-height:260px!important} }
+@media (max-width:1023px){ body.trip-on .mapwrap{height:34dvh!important;min-height:220px!important;margin-bottom:0!important} #mapInfo{scroll-margin-top:12px;scroll-margin-bottom:104px} }
 
 /* Adaptive shell: phones, tablets and desktop */
 :root{
@@ -3033,7 +3033,8 @@ function ttFirstTrain(code, now){
   const list = ttTrips(code, now.iso); return list && list.length ? list[0].s / 60 : null;
 }
 
-const fmt = m => m < 0.75 ? `<strong class="trip-now">THIS TRIP</strong>` : Math.round(m) + " min";
+// next-train times: phones show the THIS TRIP badge for a train that's here; tablets and computers show "Arriving"
+const fmt = m => m < 0.75 ? (matchMedia("(min-width:701px)").matches ? "Arriving" : `<strong class="trip-now">THIS TRIP</strong>`) : Math.round(m) + " min";
 const boardMins = m => m < 0.75 ? "Now" : Math.round(m) + " min";
 /* Minutes since the service day began → "5:31am". */
 const clockText = m => { m = Math.round(m) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
@@ -8088,14 +8089,14 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const last = r.legs[r.legs.length - 1];
     steps.push(`<li class="rt-end"><span class="rt-dot"></span><div>Arrive <b>${esc(r.to)}</b>${last && last.toCode ? ` ${codePills([[last.line, last.toCode]], "lg")}` : ""} about ${clockText(r.arrive)}${window.tripTip ? tripTip(r.to, "dest") : ""}</div></li>`);
     const noTrain = r.firstWait == null;
-    return `<div class="mi-h"><b>${esc(r.from)} → ${esc(r.to)}</b><button class="mi-x" type="button" data-act="rt-close" aria-label="Close">×</button></div>${disruptHTML(r)}${window.tripSmart ? tripSmart(r) : ""}
+    return `<div class="mi-h"><b>${esc(r.from)} → ${esc(r.to)}</b><button class="mi-x" type="button" data-act="rt-close" aria-label="Close">×</button></div>${disruptHTML(r)}
       <div class="rt-sum">
         <div class="rt-big">${Math.round(r.mins)}<small>min</small></div>
         <div class="rt-mid"><b>${noTrain ? "No more trains today" : `Arrive about ${clockText(r.arrive)}`}</b><span>${r.changes ? `${r.changes} change${r.changes > 1 ? "s" : ""}` : "No changes"} · ${r.stops} stops · ${r.km.toFixed(1)} km</span></div>
         <div class="rt-fare"><b>${money(fare + (r.sentosa ? (conc ? 200 : 400) : 0))}</b><span>${esc(FARES[kind].name)}</span></div>
       </div>
       ${rideHTML(r)}
-      <ol class="rt-steps">${steps.join("")}</ol>
+      <ol class="rt-steps">${steps.join("")}</ol>${window.tripSmart ? tripSmart(r) : ""}
       <p class="rt-note">${r.early ? "Includes the 50¢ off for tapping in before 7.45am on a weekday. " : ""}${r.sentosa ? `Includes the Sentosa Express's ${conc ? "$2" : "$4"}, paid at VivoCity. ` : ""}Card fare by distance (LTA, from 27 Dec 2025); near a band's edge it can be a few cents out. Times follow ${TT && !SIM.est ? "LTA's timetable" : "the usual schedule"}, so delays don't show.</p>
       <div class="mi-act"><button class="btn ghost" type="button" data-act="rt-edit">Change trip</button><button class="btn ghost" type="button" data-act="rt-swapgo">Return trip</button><button class="btn ghost" type="button" data-act="rt-replay">Replay</button>${window.tripRemindBtn ? tripRemindBtn(r) : ""}</div>${window.tripRemindNote ? tripRemindNote(r) : ""}`;
   }
@@ -8228,17 +8229,36 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.fillText(label, x + 8, y + 0.5);
     }
     ctx.restore();
-    return t < 45000;       // keep moving for 45 seconds, then rest (Replay starts it again)
+    return t < 12000;       // keep moving for 12 seconds, then rest (Replay starts it again)
   }
 
   /* ---- hooks into the flat map, the 3D map and the card ---- */
   const draw2d = mapDraw;
+  /* While the trip animates, most frames only move the trip's own light and dashes, so the full map (every train,
+     building and label) is drawn about 3 times a second and kept as a picture; the frames in between copy that
+     picture and paint the trip on top. Moving or zooming the map draws it in full straight away. */
+  const sig = () => [view && view.s, view && view.tx, view && view.ty, mW, mH, mDpr, document.documentElement.dataset.theme || ""].join("|");
+  const onScreen = () => { const r = mwrap.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && !document.hidden; };
   mapDraw = function(){
-    const out = draw2d.apply(this, arguments);
-    if (RT.route && RT.view && !(typeof M3 !== "undefined" && M3.on)){
+    const trip = RT.route && RT.view && !(typeof M3 !== "undefined" && M3.on), now = performance.now();
+    let out;
+    if (trip && RT.pic && RT.picSig === sig() && now - RT.picAt < 320 && RT.pic.width === mcv.width && RT.pic.height === mcv.height){
+      mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.drawImage(RT.pic, 0, 0); mDirty = false;
+    } else {
+      out = draw2d.apply(this, arguments);
+      if (trip){
+        try {
+          if (!RT.pic) RT.pic = document.createElement("canvas");
+          if (RT.pic.width !== mcv.width || RT.pic.height !== mcv.height){ RT.pic.width = mcv.width; RT.pic.height = mcv.height; }
+          const c = RT.pic.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, RT.pic.width, RT.pic.height); c.drawImage(mcv, 0, 0);
+          RT.picSig = sig(); RT.picAt = now;
+        } catch(e){ RT.pic = null; }
+      } else RT.pic = null;
+    }
+    if (trip){
       const zoom = view.s / fitScale, lw = clampN(2.2 + zoom * 0.55, 2.6, 8);
       mctx.setTransform(mDpr, 0, 0, mDpr, 0, 0);
-      if (paint(mctx, (x, y) => [sx(x), sy(y)], mW, mH, lw) && !RT.tick) RT.tick = setTimeout(() => { RT.tick = 0; mDirty = true; }, 62);   // about 16 frames a second
+      if (paint(mctx, (x, y) => [sx(x), sy(y)], mW, mH, lw) && !RT.tick && onScreen()) RT.tick = setTimeout(() => { RT.tick = 0; mDirty = true; }, 62);   // about 16 frames a second, only while you can see it
     }
     return out;
   };
@@ -8259,6 +8279,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   $("mapInfo").addEventListener("change", e => {
     if (e.target.id === "rtFare"){ read(); save(); if (RT.route) mapInfo(); }
   });
+  $("mapInfo").addEventListener("focusin", e => { const t = e.target; if (t && (t.id === "rtFrom" || t.id === "rtTo") && t.value){ const v0 = t.value; setTimeout(() => { try { if (t.value === v0 && document.activeElement === t) t.select(); } catch(_){} }, 0); } });
   $("mapInfo").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest(".rt-form")){ e.preventDefault(); read(); show(); } });
   $("mapInfo").addEventListener("click", e => {
     const b = e.target.closest("[data-act^='rt-']"); if (!b) return;
@@ -8286,13 +8307,16 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     else { RT.view = true; if (!RT.f.from && mSel && mSel.type === "station") RT.f.from = mSel.name; mSel = null; RT.route = null; RT.err = ""; }
     mapInfo(); mDirty = true;
     $("mapRoute").setAttribute("aria-pressed", RT.view);
-    if (RT.view) setTimeout(() => { const i = $(RT.f.from ? "rtTo" : "rtFrom"); if (i) i.focus(); }, 30);
+    if (RT.view) setTimeout(() => { const i = $(RT.f.from ? "rtTo" : "rtFrom"); if (i) i.focus({preventScroll: true}); if (!isDesktop()) $("mapInfo").scrollIntoView({block: "nearest", behavior: "smooth"}); }, 60);
   };
   // the next trains move on: work the trip out again about every 25 seconds while it's showing
   setInterval(() => {
     if (!RT.route || !RT.view || mSel || Date.now() - RT.route.at < 24000) return;
     const a = find(RT.route.a), b = find(RT.route.b), r = a && b ? trip(a, b) : null;
-    if (r && r !== RT.route){ RT.route = r; prep(); mapInfo(); }
+    if (r && r !== RT.route){
+      const same = (x, y) => Math.round(x.arrive) === Math.round(y.arrive) && x.legs.length === y.legs.length && x.legs.every((l, i) => l.line === y.legs[i].line && Math.round(l.board || 0) === Math.round(y.legs[i].board || 0));
+      const changed = !same(r, RT.route); RT.route = r; prep(); if (changed) mapInfo();
+    }
   }, 25000);
   window.tripPlan = (from, to) => { RT.f.from = from; RT.f.to = to; RT.view = true; show(); };
 })();
@@ -8624,7 +8648,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const other = which === "from" ? RT.f.to : which === "to" ? RT.f.from : null;
     syncTrip();
     if (which && other && other !== name && window.tripPlan) tripPlan(RT.f.from, RT.f.to);
-    else { if (which) RT.route = null; else if (RT.route) RT.t0 = performance.now(); mapInfo(); mDirty = true; }
+    else { if (which) RT.route = null; else if (RT.route) RT.t0 = performance.now(); mapInfo(); mDirty = true; if (!RT.route) setTimeout(() => { if (!isDesktop()) $("mapInfo").scrollIntoView({block: "nearest", behavior: "smooth"}); }, 120); }
     window.scrollTo(0, 0);
   }
   function tripHide(){ try { if (RT.view){ RT.view = false; $("mapRoute").setAttribute("aria-pressed", false); mDirty = true; mapInfo(); } } catch(e){} }
