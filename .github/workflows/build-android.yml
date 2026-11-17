@@ -264,6 +264,17 @@ jobs:
           cp 'web/trainset-intelligence.js' 'mrt-tracker-app/app/src/main/assets/trainset-intelligence.js'
           cp 'web/disruption-intelligence.js' 'mrt-tracker-app/app/src/main/assets/disruption-intelligence.js'
           cp 'web/spotter-planner.js' 'mrt-tracker-app/app/src/main/assets/spotter-planner.js'
+          cp web/diagnostics.js mrt-tracker-app/app/src/main/assets/diagnostics.js
+          cp web/rt-capture.js mrt-tracker-app/app/src/main/assets/rt-capture.js
+          cp web/ui-refresh-v3.js mrt-tracker-app/app/src/main/assets/ui-refresh-v3.js
+          cp web/mrt-intelligence.js mrt-tracker-app/app/src/main/assets/mrt-intelligence.js
+          cp web/depot-transfers.js mrt-tracker-app/app/src/main/assets/depot-transfers.js
+          cp web/engineering-intelligence.js mrt-tracker-app/app/src/main/assets/engineering-intelligence.js
+          cp web/operating-history.js mrt-tracker-app/app/src/main/assets/operating-history.js
+          cp web/gtfs-lab.js mrt-tracker-app/app/src/main/assets/gtfs-lab.js
+          cp web/disruption-engine.js mrt-tracker-app/app/src/main/assets/disruption-engine.js
+          cp web/spotter-schedule.js mrt-tracker-app/app/src/main/assets/spotter-schedule.js
+          cp web/skytrain.js mrt-tracker-app/app/src/main/assets/skytrain.js
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
