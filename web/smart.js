@@ -37,7 +37,9 @@ const short = c => c === "CG" ? "CGL" : c;
 const fmtDelay = s => { const a = Math.abs(s); return a < 90 ? `${Math.round(a / 5) * 5} s` : `${Math.round(a / 60)} min`; };
 const safeAlert = () => { try { return alertState; } catch(e){ return null; } };
 const safeRt = () => { try { return rtState; } catch(e){ return null; } };
-const liveFresh = () => { const r = safeRt(); return !!(r && r.trips && r.at && Date.now() - r.at < 5 * 60e3); };
+// live means LTA's feed answered lately AND listed trains: an empty feed is valid but says nothing about delays,
+// so then the learned delays and the timetable are used instead
+const liveFresh = () => { const r = safeRt(); return !!(r && r.trips && r.at && Date.now() - r.at < 5 * 60e3 && Object.keys(r.trips).length && !r.held); };
 const wetLines = () => { try { return new Set(typeof wetNow === "function" ? wetNow().map(w => w.code) : []); } catch(e){ return new Set(); } };
 const esc2 = s => { try { return esc(s); } catch(e){ return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); } };
 
