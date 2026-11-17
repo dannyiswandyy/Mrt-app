@@ -8530,8 +8530,16 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const slot = parsed && parsed.run != null ? String(parsed.run) : (typeof ttSlotOf === "function" ? ttSlotOf(tid) : "");
     const tripNo = parsed && parsed.tripNo != null ? String(parsed.tripNo) : "";
     const trainMeta = slot ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot)}</b>${tripNo ? ` · trip ${esc(tripNo)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
+    let trainsetHTML = "";
+    if (slot && window.mrtTrainsetExplain) {
+      const ex = window.mrtTrainsetExplain(x.line, slot, T.now.iso);
+      if (ex && !/^No independent/i.test(ex)) trainsetHTML = `<div class="mi-intel"><p class="hsub">Trainset intelligence</p><p class="hint" style="margin:0">${esc(ex)}</p></div>`;
+    }
+    const disruptionHTML = window.mrtDisruptionHTML ? mrtDisruptionHTML(x.line) : "";
     return `<div class="tsum" style="--c:var(--${x.line})">${trainSVG(t.dir)}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span></div></div>
       ${trainMeta}
+      ${trainsetHTML}
+      ${disruptionHTML}
       ${casualDayTripHTML(x, T)}
       <div class="hfacts">
         <div><span>Bound</span><b>${esc(full)}</b><small>direction of travel</small></div>
