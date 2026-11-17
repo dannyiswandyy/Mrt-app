@@ -8164,7 +8164,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       const trips = cur.run.trips.filter(t => t.service === cur.service);
       if (trips.length < 2) return "";
       const idx = Math.max(0, trips.indexOf(cur));
-      const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now">Now</span>` : ""}</li>`).join("");
+      const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now" style="background:var(--${x.line});color:#fff;font-weight:800;letter-spacing:.04em">THIS TRIP</span>` : ""}</li>`).join("");
       const current = `<div class="cdt-current"><span>Today’s journey</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today</small></div>`;
       return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">Based on LTA’s timetable. This groups scheduled trips together; it does not identify the physical trainset.</p></details></div>`;
     }catch(e){ return ""; }
