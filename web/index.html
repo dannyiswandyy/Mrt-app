@@ -1141,6 +1141,9 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
   #lineView,#viewUpdates,#viewHist,#viewAsk,#viewCam{contain:layout paint}
 }
 
+/* Current-trip badge: match the Dev trip-sheet treatment in production. */
+.trip-now{display:inline-block!important;padding:3px 8px!important;border-radius:7px!important;background:#e43d1c!important;color:#fff!important;font-family:var(--display)!important;font-size:10px!important;line-height:1.1!important;font-style:normal!important;font-weight:800!important;letter-spacing:.04em!important;white-space:nowrap!important;vertical-align:middle!important}
+.trip-now strong{font-weight:800!important}
 /* Casual train-day view: useful to riders, without exposing run-analysis vocabulary. */
 .casual-daytrip{border:1px solid var(--rule);border-radius:12px;background:var(--panel);overflow:hidden}
 .cdt-current{display:grid;gap:3px;padding:11px 12px}
@@ -2808,7 +2811,7 @@ function ttFirstTrain(code, now){
   const list = ttTrips(code, now.iso); return list && list.length ? list[0].s / 60 : null;
 }
 
-const fmt = m => m < 0.75 ? "Now" : Math.round(m) + " min";
+const fmt = m => m < 0.75 ? `<strong class="trip-now">THIS TRIP</strong>` : Math.round(m) + " min";
 /* Minutes since the service day began → "5:31am". */
 const clockText = m => { m = Math.round(m) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
 
