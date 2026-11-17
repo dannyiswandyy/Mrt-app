@@ -2464,10 +2464,35 @@ jobs:
       # Replace simplified MRT/LRT pieces with the official URA Master Plan rail alignment.
       # The builder falls back per-piece when a safe URA match cannot be made.
       - name: Apply URA rail geometry
+        env:
+          DATA_GOV_SG_API_KEY: ${{ secrets.DATA_GOV_SG_API_KEY }}
         run: |
-          if [ -f mrt-tracker-app/tools/build_ura_rail.py ]; then
-            python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
+          if [ ! -f mrt-tracker-app/tools/build_ura_rail.py ]; then
+            echo "::error::URA rail builder is missing"
+            exit 1
           fi
+          python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
+          if [ ! -s mrt-tracker-app/app/src/main/assets/tracks.json ]; then
+            echo "::error::URA rail build did not produce tracks.json"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          p = "mrt-tracker-app/app/src/main/assets/tracks.json"
+          d = json.load(open(p, encoding="utf-8"))
+          ura = d.get("ura") or []
+          print("URA geometry packed for:", ", ".join(ura) if ura else "NONE")
+          if not ura:
+              raise SystemExit("URA builder produced no matched lines")
+          PY
+
+      # Keep the downloaded URA source available for the next build.
+      - name: Save URA rail source cache
+        if: hashFiles('osm-cache/ura-rail.geojson') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: osm-cache/ura-rail.geojson
+          key: ura-rail-v1-${{ github.run_id }}
 
       # Station exits from LTA's official exit list, with the places next to each exit (OpenStreetMap).
       # Never fails the build: without it, station pages just don't list exits.
