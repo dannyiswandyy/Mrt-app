@@ -27,6 +27,9 @@
   const style = document.createElement("style");
   style.textContent = `
 #splBtn{position:relative}
+.tiles #splBtn{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center}
+.tiles #splBtn svg{grid-row:1/3;width:42px;height:42px;padding:9px;border-radius:13px;background:color-mix(in srgb,var(--DTL) 14%,transparent);stroke:var(--DTL);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tiles #splBtn .spot-quick-title{font-weight:700!important;font-size:15px!important;color:var(--fg)!important}
 .tiles #splBtn{position:relative;right:auto;bottom:auto;z-index:auto}
 #splMask{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.42);display:none;padding:clamp(8px,3vw,24px);box-sizing:border-box;overflow:auto;
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
@@ -81,6 +84,13 @@
     btn.setAttribute("aria-haspopup", "dialog");
     btn.className = "planner-quick";
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M8 13h3M13 13h3M8 16h3"/></svg><span class="spot-quick-title">Spotter planner</span><span>See every scheduled train at a station</span>';
+  }
+  // Spotter Planner supersedes the retired Spotter Schedule tile. Remove any legacy copy
+  // that may still be injected by an older cached/module version, but never remove this planner.
+  if (tiles) for (const el of [...tiles.querySelectorAll("button,[role=\"button\"]")]) {
+    if (el === btn) continue;
+    const label = (el.textContent || "").replace(/\\s+/g, " ").trim().toLowerCase();
+    if (label.includes("spotter schedule") || label.includes("plan a spotting run")) el.remove();
   }
   if (tiles && btn.parentNode !== tiles) tiles.appendChild(btn);
 
