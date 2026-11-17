@@ -2,6 +2,7 @@
    index.html): on the map with its trains, and in the Line Board with estimated next-train times. */
 (function(){
 "use strict";
+if (window.MRT_PRODUCTION) return;
 if (typeof SKY_CODES === "undefined") return;
 var codes = SKY_CODES.slice();
 
