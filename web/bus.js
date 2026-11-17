@@ -23,7 +23,7 @@ if (W.mrtBus) return;
 const on = () => W.MRT_DEV_FEATURES === true && !W.mrtBusOff;
 const STOPS_KEY = "mrt.bus.stops", STOPS_DAYS = 14, NEAR_M = 300, INT_M = 600, NAMED_M = 1500, MAX_STOPS = 4, ARR_TTL = 25e3;
 const B = {stops: null, loading: null, err: "", arr: {}, busy: {}, near: {}, loops: null, loopsLoading: null};
-const LOOPS_KEY = "mrt.bus.loops";
+const LOOPS_KEY = "mrt.bus.loops2";
 const escH = s => { try { return esc(s); } catch(e){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); } };
 const app = () => { try { return !!(typeof APP !== "undefined" && APP && typeof APP.fetch === "function" && typeof nativeGet === "function"); } catch(e){ return false; } };
 const relay = () => { try { return (W.MRT_WEB_CONFIG && W.MRT_WEB_CONFIG.proxy) || ""; } catch(e){ return ""; } };
@@ -116,11 +116,12 @@ function loadLoops(){
       a.sort((x, y) => x[0] - y[0]);
       const [svc, dir] = k.split("|"), o = B.stops.byCode.get(a[0][1]);
       if (!o || a[0][1] !== a[a.length - 1][1] || (map[svc] && dir !== "1")) continue;      // only loops; direction 1 first
-      let far = null, fd = -1;
-      for (const [, c] of a){ const st = B.stops.byCode.get(c); if (!st) continue; const d = Math.hypot(st.x - o.x, st.y - o.y); if (d > fd){ fd = d; far = st; } }
+      let far = null, fd = -1, first = null;
+      const cmp = st => COMPASS[Math.round(((Math.atan2(st.x - o.x, -(st.y - o.y)) * 180 / Math.PI + 360) % 360) / 45) % 8];
+      for (const [, c] of a){ const st = B.stops.byCode.get(c); if (!st) continue; const d = Math.hypot(st.x - o.x, st.y - o.y); if (first === null && d >= 400) first = cmp(st); if (d > fd){ fd = d; far = st; } }
       if (!far || fd < 150) continue;
       const deg = (Math.atan2(far.x - o.x, -(far.y - o.y)) * 180 / Math.PI + 360) % 360;   // map y grows southward
-      map[svc] = [COMPASS[Math.round(deg / 45) % 8], far.road || far.desc, Math.round(fd / 100) / 10];
+      map[svc] = [COMPASS[Math.round(deg / 45) % 8], far.road || far.desc, Math.round(fd / 100) / 10, first || COMPASS[Math.round(deg / 45) % 8]];
     }
     store.set(LOOPS_KEY, {at: Date.now(), map});
     return B.loops = map;
@@ -133,7 +134,8 @@ const loopText = svc => {
     if (!B.loops && !B.loopsLoading && !B.loopsErr) loadLoops().then(() => { if (want) paint(want); });
     return B.loopsLoading && !B.loops ? `loop <span class="b-wait">· finding which way${B.loopsPage ? ` (${Math.min(99, Math.round(B.loopsPage / 55 * 100))}%)` : "…"}</span>` : "loop";
   }
-  return `loop · <b>${escH(l[0])}</b> via ${escH(l[1])}`;
+  // [furthest-stop compass, its road, km, the way it heads first] (older copies have no 4th)
+  return l[3] ? `loop · heads <b>${escH(l[3])}</b> first · out to ${escH(l[1])}` : `loop · <b>${escH(l[0])}</b> via ${escH(l[1])}`;
 };
 
 /* ---------- the stops for a station ---------- */
