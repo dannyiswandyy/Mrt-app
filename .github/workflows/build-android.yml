@@ -281,6 +281,7 @@ jobs:
           cp web/disruption-engine.js mrt-tracker-app/app/src/main/assets/disruption-engine.js
           cp web/skytrain.js mrt-tracker-app/app/src/main/assets/skytrain.js
           cp web/smart.js mrt-tracker-app/app/src/main/assets/smart.js
+          cp web/bus.js mrt-tracker-app/app/src/main/assets/bus.js
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'

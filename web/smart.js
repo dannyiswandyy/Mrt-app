@@ -1,4 +1,4 @@
-/* MRT Tracker – smart layer (same file in the app, the website and MRT Dev).
+/* MRT Tracker – smart layer (the same file in the app and the website).
    Loaded after the page's own script, it hooks in from outside so the page's core timing code stays as it is:
 
    1. Smarter train times

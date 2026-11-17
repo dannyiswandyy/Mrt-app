@@ -6,6 +6,8 @@
      GET  /health                         what the relay can do: {ok, lta, ai, yt}
      GET  /lta/TrainServiceAlerts         LTA train service alerts           (adds the key)
      GET  /lta/PCDRealTime?TrainLine=NSL  LTA platform crowd levels, one line (adds the key)
+     GET  /lta/BusArrival?BusStopCode=83139  LTA bus arrivals at one stop (adds the key)
+     GET  /lta/BusStops?$skip=0         LTA's bus stops, 500 at a time (adds the key; cached a day)
      GET  /news?q=…&hl=…&gl=…&ceid=…      Google News RSS search
      GET  /wx/two-hr-forecast …            NEA weather (data.gov.sg), cached so visitors share one request
      GET  /yt?handle=@railcamsg           which RailCam Singapore stream is live, and its latest videos
@@ -62,6 +64,17 @@ async function route(request, env, ctx) {
     const line = url.searchParams.get("TrainLine") || "";
     if (!LTA_LINES.has(line)) return text(400, "Unknown train line.");
     return upstream(LTA + "PCDRealTime?TrainLine=" + line, {AccountKey: env.LTA_KEY, accept: "application/json"}, 120);
+  }
+  if (request.method === "GET" && path === "/lta/BusArrival") {           // bus times at one stop ("Buses here" on a station card)
+    if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
+    const code = url.searchParams.get("BusStopCode") || "";
+    if (!/^\d{5}$/.test(code)) return text(400, "Bad bus stop code.");
+    return upstream(LTA + "v3/BusArrival?BusStopCode=" + code, {AccountKey: env.LTA_KEY, accept: "application/json"}, 20);
+  }
+  if (request.method === "GET" && path === "/lta/BusStops") {             // LTA's bus stop list, 500 at a time
+    if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
+    const skip = Math.max(0, Math.min(20000, parseInt(url.searchParams.get("$skip") || "0", 10) || 0));
+    return upstream(LTA + "BusStops?$skip=" + skip, {AccountKey: env.LTA_KEY, accept: "application/json"}, 86400);
   }
   if (request.method === "GET" && path === "/news") {
     const q = new URLSearchParams();
