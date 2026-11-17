@@ -154,6 +154,11 @@ h1{font-family:var(--display);font-size:26px;line-height:1;margin:0;letter-spaci
 .tinfo .eta{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .tinfo button{border:0;background:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px}
 .tinfo .tic{width:18px;height:22px;display:block}
+/* Train details: icon on top, the train's details under it, time and × at the bottom right (same on every screen). */
+.tinfo{flex-wrap:wrap}
+.tinfo>div:nth-child(2){flex:1 1 100%;min-width:0}
+.tinfo .posnote{display:block;color:var(--muted);font-size:11.5px;line-height:1.35;margin-top:3px}
+.tinfo .posnote b{color:var(--fg);font-weight:600}
 
 .tview{display:inline-flex;gap:2px;background:var(--soft);border-radius:8px;padding:2px;margin-bottom:8px}
 .tview button{border:0;background:none;color:var(--muted);font:600 13px var(--body);padding:5px 14px;border-radius:6px;cursor:pointer}
@@ -2922,6 +2927,43 @@ function ttAt(code, r, k, mv){
   if (!tl){ const w = wetRun(code, r); if (w) return r.s + r.p.arr[k] + w.W[k]; }   // as ttSched has it
   return tl ? r.s + tl + r.p.arr[k] * (r.p.end - tl) / r.p.end : r.s + r.p.arr[k];
 }
+/* Where a train is, for its details card: at a station, or between two and how far along (from the map's own
+   position), and whether LTA's live feed or the timetable places it. Same as MRT Dev. */
+function trainPredictionSource(t){
+  try{
+    const fresh = !!(rtState && rtState.at && Date.now() - rtState.at <= 10 * 60e3);
+    const tripId = t && t.ref && t.ref.tid != null ? String(t.ref.tid) : "";
+    const u = fresh && tripId && rtState.trips && rtState.trips[tripId];
+    const vp = fresh && tripId && rtState.vehicles && rtState.vehicles[tripId];
+    if (vp && Number.isFinite(vp.lat) && Number.isFinite(vp.lon)) return {live:true, kind:"VEHICLE_POSITION", label:"LIVE · LTA vehicle position", tripId, vehicle:vp.vehicle};
+    if (u && u.vehicle && (u.vehicle.id || u.vehicle.label)) return {live:true, kind:"GTFS-RT_VEHICLE", label:"LIVE · LTA vehicle identified", tripId, vehicle:u.vehicle};
+    if (u) return {live:true, kind:"GTFS-RT", label:"LIVE ESTIMATE · LTA GTFS-Realtime", tripId};
+    return {live:false, kind:"SCHEDULED", label:"SCHEDULED · LTA timetable", tripId};
+  }catch(e){ return {live:false, kind:"SCHEDULED", label:"SCHEDULED · LTA timetable", tripId:""}; }
+}
+function trainPositionInfo(code, t){
+  try{
+    const L = LINES[code], act = L && L.stations;
+    if (!L || !act || !t || !Number.isFinite(Number(t.idx))) return null;
+    const src = trainPredictionSource(t);
+    const n = act.length, x = Math.max(0, Math.min(n - 1, Number(t.idx)));
+    const name = i => act[i] && act[i][1] ? act[i][1] : act[i] && act[i][0] ? act[i][0] : String(i);
+    const codeOf = i => act[i] && act[i][0] ? act[i][0] : "";
+    if (t.atStation || Math.abs(x - Math.round(x)) < 0.035){
+      const i = Math.max(0, Math.min(n - 1, Math.round(x)));
+      return {kind:"station", station:name(i), stationCode:codeOf(i), index:i, fraction:0,
+        source:src.kind, sourceLabel:src.label, live:src.live, confidence:src.live ? "live" : "scheduled",
+        text:"Estimated at " + name(i)};
+    }
+    const lo = Math.max(0, Math.min(n - 2, Math.floor(x)));
+    const hi = lo + 1, f = Math.max(0, Math.min(1, x - lo));
+    const from = name(lo), to = name(hi), pct = Math.round(f * 100);
+    return {kind:"segment", from, to, fromCode:codeOf(lo), toCode:codeOf(hi), index:x, fraction:f,
+      percent:pct, source:src.kind, sourceLabel:src.label, confidence:src.live ? "live" : "scheduled", live:src.live,
+      text:"Estimated between " + from + " and " + to + " · " + pct + "% toward " + to};
+  }catch(e){ return null; }
+}
+window.mrtTrainPosition = trainPositionInfo;
 function ttTrainsOn(code, now, list){
   const late = [camAdj(code, 0) * 60, camAdj(code, 1) * 60], mv = moved(code, now.iso), out = [];
   const early = mv ? Math.min(0, ...mv.values()) * 60 : 0, last = now.mins * 60 - Math.min(late[0], late[1]) - early;
@@ -3276,10 +3318,12 @@ function tick(){
   } else {
     const stop = act[s.next][1];
     const where = s.atStation ? `Now at <b>${stop}</b>` : `Next stop <b>${stop}</b>`;
-    const wetHTML = wetNote(current, s) ? `<br><small class="posnote">${wetNote(current, s)}</small>` : "";
+    const pos = trainPositionInfo(current, s);
+    const posHTML = pos ? `<small class="posnote">📍 ${esc(pos.text)} · <b>${esc(pos.live ? "live-assisted estimate" : "scheduled estimate")}</b></small>` : "";
+    const wetHTML = wetNote(current, s) ? `<small class="posnote">${wetNote(current, s)}</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
       <div>${trainSVG(s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${wetHTML}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${wetHTML}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
       <span class="eta">${s.atStation ? "Boarding" : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min"}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
