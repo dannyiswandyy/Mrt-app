@@ -260,6 +260,8 @@ jobs:
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cp 'web/index.html' 'mrt-tracker-app/app/src/main/assets/index.html'
           cp 'web/run-graph.js' 'mrt-tracker-app/app/src/main/assets/run-graph.js'
+          cp 'web/trainset-intelligence.js' 'mrt-tracker-app/app/src/main/assets/trainset-intelligence.js'
+          cp 'web/disruption-intelligence.js' 'mrt-tracker-app/app/src/main/assets/disruption-intelligence.js'
           cp 'web/spotter-planner.js' 'mrt-tracker-app/app/src/main/assets/spotter-planner.js'
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
