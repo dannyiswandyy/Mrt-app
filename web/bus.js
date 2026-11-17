@@ -49,7 +49,19 @@ function stopsFromStore(){
   if (v && Array.isArray(v.list) && v.list.length > 1000 && Date.now() - v.at < STOPS_DAYS * 864e5) return v.list;
   return null;
 }
+/* The app packs LTA's stops and the loop directions when it's built (tools/build_bus.py, APP.getBus): use that. */
+function packed(){
+  if (B.packedTried) return; B.packedTried = true;
+  try {
+    if (typeof APP === "undefined" || !APP || typeof APP.getBus !== "function") return;
+    const t = APP.getBus(); if (!t) return;
+    const j = JSON.parse(t);
+    if (Array.isArray(j.stops) && j.stops.length > 1000){ B.stops = index(j.stops); B.packedAt = j.at; }
+    if (j.loops && typeof j.loops === "object" && Object.keys(j.loops).length) B.loops = j.loops;
+  } catch(e){}
+}
 function loadStops(){
+  packed();
   if (B.stops) return Promise.resolve(B.stops);
   const kept = stopsFromStore(); if (kept){ B.stops = index(kept); return Promise.resolve(B.stops); }
   if (B.loading) return B.loading;
@@ -83,6 +95,7 @@ function loopsFromStore(){
   return v && v.map && typeof v.map === "object" && Date.now() - v.at < STOPS_DAYS * 864e5 ? v.map : null;
 }
 function loadLoops(){
+  packed();
   if (B.loops) return Promise.resolve(B.loops);
   const kept = loopsFromStore(); if (kept){ B.loops = kept; return Promise.resolve(kept); }
   if (B.loopsLoading) return B.loopsLoading;
@@ -90,7 +103,10 @@ function loadLoops(){
     await loadStops();
     const runs = new Map();                            // "service|direction" -> [[sequence, stop code]]
     for (let skip = 0; skip < 60000; skip += 500){
-      const j = await lta("BusRoutes?$skip=" + skip), v = (j && j.value) || [];
+      let j = null;
+      for (let t = 0; t < 3 && !j; t++){ try { j = await lta("BusRoutes?$skip=" + skip); } catch(e){ if (t === 2) throw e; await new Promise(r => setTimeout(r, 1500 * (t + 1))); } }
+      const v = (j && j.value) || [];
+      B.loopsPage = skip / 500 + 1; if (B.loopsPage % 5 === 0 && want) paint(want);
       for (const r of v){ const k = r.ServiceNo + "|" + r.Direction; let a = runs.get(k); if (!a) runs.set(k, a = []); a.push([+r.StopSequence, String(r.BusStopCode)]); }
       if (v.length < 500) break;
     }
@@ -108,12 +124,15 @@ function loadLoops(){
     }
     store.set(LOOPS_KEY, {at: Date.now(), map});
     return B.loops = map;
-  })().catch(e => { B.loopsLoading = null; B.loopsErr = String(e && e.message || e); return null; });
+  })().catch(e => { B.loopsLoading = null; B.loopsErr = String(e && e.message || e); setTimeout(() => { B.loopsErr = ""; }, 120e3); return null; });
   return B.loopsLoading;
 }
 const loopText = svc => {
   const l = B.loops && B.loops[svc];
-  if (!l){ if (!B.loops && !B.loopsLoading && !B.loopsErr) loadLoops().then(() => { if (want) paint(want); }); return "loop"; }
+  if (!l){
+    if (!B.loops && !B.loopsLoading && !B.loopsErr) loadLoops().then(() => { if (want) paint(want); });
+    return B.loopsLoading && !B.loops ? `loop <span class="b-wait">· finding which way${B.loopsPage ? ` (${Math.min(99, Math.round(B.loopsPage / 55 * 100))}%)` : "…"}</span>` : "loop";
+  }
   return `loop · <b>${escH(l[0])}</b> via ${escH(l[1])}`;
 };
 
@@ -270,6 +289,7 @@ css.textContent = `
 .bus-box .b-sched{font-style:italic;opacity:.8}.bus-box .b-none{opacity:.5}
 .bus-box .b-tag{font:700 9.5px var(--body);text-transform:uppercase;letter-spacing:.03em;border-radius:5px;padding:1px 5px;margin-left:4px}
 .bus-box .b-tag.dep{background:rgba(23,134,63,.15);color:#17863f}.bus-box .b-tag.end{background:var(--soft);color:var(--muted)}
+.bus-box .b-wait{opacity:.7;font-size:11px}
 .bus-box .b-msg{margin:6px 0;color:var(--muted);font-size:12.5px}
 .bus-box .b-foot{margin:8px 0 0;color:var(--muted);font-size:10.5px;line-height:1.5}
 .bus-box .b-foot .b-t{min-width:0;font-size:10px;padding:0 4px}
