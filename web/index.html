@@ -6118,7 +6118,7 @@ function aBuiltin(q){
 }
 
 /* ---- Claude ---- */
-const A_TOOLS = [
+const A_TOOLS = [\n  {name:"rail_knowledge",description:"Curated Singapore rail knowledge for factual and conceptual questions. Use this for rail facts; live tools remain the authority for current conditions.",schema:{type:"object",properties:{query:{type:"string",description:"What the user wants to know"},category:{type:"string",description:"Optional topic such as network, operators, nsl, ewl, ccl, dtl, nel, tel, lrt, testing, turnaround, headway, depot or gtfs"}},required:["query"]},run:i=>aRailKnowledge(i.query,i.category)},
   {name: "station_info", description: "Live and reference facts for one station: its codes and lines, the next trains each way (from now), today's first and last trains, LTA's live platform crowd level, whether LTA reports a disruption there, and when it opened. Pass a station name or code, like \"Bishan\" or \"NS17\".",
     schema: {type: "object", properties: {station: {type: "string", description: "Station name or code"}}, required: ["station"]},
     run: i => {
@@ -6185,7 +6185,7 @@ function aRules(){
   return `You're the conversational rail assistant inside MRT Tracker, focused deeply on Singapore's rail network: MRT, LRT, Sentosa Express, Changi Airport SkyTrain and the RTS Link. It's ${day}, ${clockText(n.mins)} in Singapore.
 Your job is to understand what the person means, not just match keywords. Answer naturally like a knowledgeable local rail enthusiast who also has access to the app's live operational data.
 - Use app tools for anything current or app-specific: live/next trains, first/last trains, routes, frequencies, platform crowds, disruptions, weather, station/line history and other live state. Treat tool results as the source of truth for current conditions.
-- For Singapore rail facts, history, rolling stock, signalling, depots, operations, extensions, station design, operators, train models, testing, engineering movements and rail terminology, use your broad knowledge when appropriate. If a fact could have changed recently or you're unsure, say so rather than inventing it.
+- For Singapore rail facts, history, rolling stock, signalling, depots, operations, extensions, station design, operators, train models, testing, engineering movements and rail terminology, use the rail_knowledge tool first, then broader knowledge when appropriate. If a fact could have changed recently or you're unsure, say so rather than inventing it.
 - Distinguish clearly between scheduled, observed, inferred and simulated/test data. LTA timetables are schedules and do not themselves prove a train is on time.
 - Understand casual messages, opinions, jokes, complaints and emotional reactions. Do not force every message into a timetable lookup. If someone says "I hate this train", respond conversationally (for example, acknowledge it and ask what happened), and if they mention a specific train/model/line, engage with that context.
 - Follow the conversation. Resolve references like "that train", "this station", "the one I just mentioned", "why is it so slow?" and "is that normal?" from earlier turns whenever possible.
