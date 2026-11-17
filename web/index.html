@@ -8816,7 +8816,7 @@ window.mrtIntelligence={state:S,record,anchor,ingestTimetable:ingest,dwellFor,te
 
 
 function discover(){for(let i=0;i<localStorage.length;i++){let k=localStorage.key(i)||"";if(!/(spot|sight|train.*log|log.*train)/i.test(k))continue;try{let v=JSON.parse(localStorage.getItem(k)),a=Array.isArray(v)?v:v?.items||[];a.slice(-50).forEach(x=>{let t=x.trainId||x.train||x.r||x.run,st=x.station||x.stationName||x.stn,tm=x.time||x.timestamp||x.ts;if(t&&st&&!S.observations.some(o=>o.trainId==id(t)&&sn(o.station)==sn(st)&&String(o.time)==String(tm)))record({trainId:t,station:st,time:tm,source:"manual",event:x.event||"sighting"})})}catch(_){}}}
-discover();addEventListener("storage",discover);setInterval(discover,document.hidden?60000:30000);window.mrtIntelligenceDiscover=discover;
+discover();addEventListener("storage",discover);setInterval(()=>{if(!document.hidden)discover()},60000);window.mrtIntelligenceDiscover=discover;
 window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),observations:S.observations.slice(-20),journeys:S.journeys.length,graphStations:Object.keys(S.graph).length,timetableLines:Object.keys(S.timetable?.lines||{}).length,timetableLoadedAt:S.loadedAt});
 })();
 </script>
