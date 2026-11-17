@@ -2461,6 +2461,14 @@ jobs:
             python3 mrt-tracker-app/tools/build_tracks.py mrt-tracker-app osm-cache
           fi
 
+      # Restore the last good URA source so a temporary data.gov.sg outage does not remove geometry.
+      - name: Restore saved URA rail source
+        uses: actions/cache/restore@v4
+        with:
+          path: osm-cache/ura-rail.geojson
+          key: ura-rail-v1-${{ github.run_id }}
+          restore-keys: ura-rail-v1-
+
       # Replace simplified MRT/LRT pieces with the official URA Master Plan rail alignment.
       # The builder falls back per-piece when a safe URA match cannot be made.
       - name: Apply URA rail geometry
