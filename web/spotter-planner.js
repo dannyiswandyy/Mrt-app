@@ -80,7 +80,7 @@
     btn.type = "button";
     btn.setAttribute("aria-haspopup", "dialog");
     btn.className = "planner-quick";
-    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M8 13h3M13 13h3M8 16h3"/></svg><span class="spot-quick-title">Spotter planner</span><span>See every scheduled train at a station</span><b>Open planner ›</b>';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M8 13h3M13 13h3M8 16h3"/></svg><span class="spot-quick-title">Spotter planner</span><span>See every scheduled train at a station</span>';
   }
   if (tiles && btn.parentNode !== tiles) tiles.appendChild(btn);
 
