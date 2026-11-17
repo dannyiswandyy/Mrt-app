@@ -31,6 +31,9 @@ This is the **public** MRT Tracker app and website. Danny works on it with more 
 1. Check the page's script has no syntax errors, for both the app page and `web/index.html`, for example by pulling out the `<script>` blocks and running `node --check`.
 2. Run `node tests/timetable-check.js`.
 3. Check `build-android.yml` is still valid YAML and under 480 KB. GitHub refuses workflow files of 500 KB or more.
+4. Run `node tests/syntax-check.mjs` and `node tests/page-starts.mjs` (needs Playwright). The page start check opens `web/index.html` in headless Chrome and fails if the page has a script error, doesn't start, or freezes.
+
+Both the app build and the website deploy run these as a **Safety check** job first, and only publish if it passes, so a broken page never replaces the release or the website. Don't remove that job or the `needs: safety` lines.
 
 ## After you push
 

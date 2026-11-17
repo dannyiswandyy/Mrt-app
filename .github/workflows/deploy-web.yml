@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   deploy:
+    needs: safety
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -47,7 +48,7 @@ jobs:
           python3 - <<'PY'
           import yaml
           wf = yaml.safe_load(open(".github/workflows/build-android.yml"))
-          steps = next(iter(wf["jobs"].values()))["steps"]
+          steps = wf["jobs"]["build"]["steps"]
           run = next(s["run"] for s in steps if s.get("name") == "Write the app project")
           open("/tmp/write_app.sh", "w").write(run)
           PY
@@ -126,3 +127,26 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Runs before anything is published. If the page has a script error, doesn't start or freezes,
+  # the build/deploy stops here and the app, the website and the release stay on the last good version.
+  safety:
+    name: Safety check (page starts, no freeze)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Scripts have no syntax errors
+        run: node tests/syntax-check.mjs
+      - name: Timetable checks
+        run: node tests/timetable-check.js
+      - name: Page starts and doesn't freeze (headless Chrome)
+        run: |
+          npm install --no-save --no-package-lock --silent playwright@1.49.1
+          npx playwright install chromium
+          node tests/page-starts.mjs

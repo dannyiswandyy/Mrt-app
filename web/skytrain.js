@@ -1,4 +1,10 @@
-/* Production copy of the experimental Changi Airport Skytrain implementation.\n * Kept in the production source for engine parity, but deliberately not initialized by the production build. */\n(()=>{\n  if (window.MRT_PRODUCTION) return;\n})();\n\n/* Changi Airport Skytrain card on Home. The Skytrain itself is part of the page's lines (SKY_SERVICES in
+/* Production copy of the experimental Changi Airport Skytrain implementation.
+ * Kept in the production source for engine parity, but deliberately not initialized by the production build. */
+(()=>{
+  if (window.MRT_PRODUCTION) return;
+})();
+
+/* Changi Airport Skytrain card on Home. The Skytrain itself is part of the page's lines (SKY_SERVICES in
    index.html): on the map with its trains, and in the Line Board with estimated next-train times. */
 (function(){
 "use strict";
