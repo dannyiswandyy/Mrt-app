@@ -260,6 +260,7 @@ jobs:
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
           cp 'web/index.html' 'mrt-tracker-app/app/src/main/assets/index.html'
           cp 'web/run-graph.js' 'mrt-tracker-app/app/src/main/assets/run-graph.js'
+          cp 'web/spotter-planner.js' 'mrt-tracker-app/app/src/main/assets/spotter-planner.js'
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
@@ -2458,6 +2459,14 @@ jobs:
         run: |
           if [ -f mrt-tracker-app/tools/build_tracks.py ]; then
             python3 mrt-tracker-app/tools/build_tracks.py mrt-tracker-app osm-cache
+          fi
+
+      # Replace simplified MRT/LRT pieces with the official URA Master Plan rail alignment.
+      # The builder falls back per-piece when a safe URA match cannot be made.
+      - name: Apply URA rail geometry
+        run: |
+          if [ -f mrt-tracker-app/tools/build_ura_rail.py ]; then
+            python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
           fi
 
       # Station exits from LTA's official exit list, with the places next to each exit (OpenStreetMap).
