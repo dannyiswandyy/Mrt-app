@@ -27,7 +27,6 @@
   const style = document.createElement("style");
   style.textContent = `
 #splBtn{position:relative}
-.quick #splBtn{grid-column:1/-1}
 .tiles #splBtn{position:relative;right:auto;bottom:auto;z-index:auto}
 #splMask{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.42);display:none;padding:clamp(8px,3vw,24px);box-sizing:border-box;overflow:auto;
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
@@ -74,16 +73,16 @@
   document.head.appendChild(style);
 
   let btn = document.querySelector("#splBtn");
-  const quick = document.querySelector("#viewHome .quick");
+  const tiles = document.querySelector("#viewHome .tiles");
   if (!btn) {
     btn = document.createElement("button");
     btn.id = "splBtn";
     btn.type = "button";
     btn.setAttribute("aria-haspopup", "dialog");
-    btn.className = "spot-quick planner-quick";
+    btn.className = "planner-quick";
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M8 13h3M13 13h3M8 16h3"/></svg><span class="spot-quick-title">Spotter planner</span><span>See every scheduled train at a station</span><b>Open planner ›</b>';
   }
-  if (quick && btn.parentNode !== quick) quick.appendChild(btn);
+  if (tiles && btn.parentNode !== tiles) tiles.appendChild(btn);
 
   const mask = document.createElement("div");
   mask.id = "splMask"; mask.setAttribute("role", "presentation");
