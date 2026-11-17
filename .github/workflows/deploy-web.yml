@@ -84,6 +84,15 @@ jobs:
             if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
           fi
 
+      - name: Apply URA rail geometry
+        if: steps.tools.outcome == 'success'
+        continue-on-error: true
+        run: |
+          if [ -f mrt-tracker-app/tools/build_ura_rail.py ]; then
+            python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
+            if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
+          fi
+
       - name: Station exits (LTA) and nearby places (OpenStreetMap)
         if: steps.tools.outcome == 'success'
         continue-on-error: true
