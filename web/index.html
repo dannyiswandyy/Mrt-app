@@ -6117,8 +6117,46 @@ function aBuiltin(q){
   return out("I'm not sure which station or line you mean. Try a station name or code (like Bishan or NS17), a line (like the Circle Line), or a train model (like the R151).");
 }
 
+/* Singapore Rail Knowledge Layer: curated reference facts + app-native history. */
+const RAIL_KNOWLEDGE=[
+{k:"network",tags:"network mrt lrt rail singapore",t:"Singapore rail includes the MRT, Bukit Panjang/Sengkang/Punggol LRT, Sentosa Express and Changi Airport SkyTrain. The RTS Link is a separate cross-border project between Woodlands North and Bukit Chagar and is not yet passenger service."},
+{k:"operators",tags:"operator smrt sbs transit lta",t:"SMRT Trains operates the North-South, East-West, Circle and Thomson-East Coast MRT lines and Bukit Panjang LRT. SBS Transit operates the North East and Downtown MRT lines plus Sengkang and Punggol LRT. LTA is the rail regulator and infrastructure owner."},
+{k:"nsl",tags:"nsl north south red",t:"The North-South Line is Singapore's oldest MRT line and broadly runs between Jurong East and Marina South Pier. Service patterns can vary by timetable."},
+{k:"ewl",tags:"ewl east west green",t:"The East-West Line runs across Singapore between Tuas Link and Pasir Ris, with the Changi Airport branch connecting Tanah Merah and Changi Airport."},
+{k:"ccl",tags:"ccl circle yellow",t:"The Circle Line is an orbital MRT line operated by SMRT and uses automated driverless operation."},
+{k:"dtl",tags:"dtl downtown blue",t:"The Downtown Line is a fully underground driverless MRT line operated by SBS Transit, running from Bukit Panjang through central Singapore to Expo, with eastern extensions staged separately."},
+{k:"nel",tags:"nel north east purple driverless",t:"The North East Line is a fully underground automated MRT line operated by SBS Transit, linking HarbourFront and Punggol."},
+{k:"tel",tags:"tel thomson east coast brown",t:"The Thomson-East Coast Line is a driverless MRT line operated by SMRT, built in stages through Thomson, the central area and the East Coast."},
+{k:"lrt",tags:"lrt light rail bukit panjang sengkang punggol",t:"Singapore's LRT systems serve Bukit Panjang, Sengkang and Punggol. They use smaller automated vehicles and branch-based service patterns."},
+{k:"sentosa",tags:"sentosa express monorail",t:"Sentosa Express is a driverless monorail connecting VivoCity with Sentosa and is separate from the MRT/LRT network."},
+{k:"skytrain",tags:"changi airport skytrain changi",t:"The Changi Airport SkyTrain is an automated airport people-mover linking the terminals and is separate from the MRT East-West Line."},
+{k:"rts",tags:"rts link johor bahru woodlands north bukit chagar",t:"The Johor Bahru-Singapore RTS Link is a cross-border automated rapid transit project between Woodlands North and Bukit Chagar, separate from existing MRT lines."},
+{k:"automation",tags:"driverless automated signalling cbtc ato atp",t:"Singapore has highly automated MRT operations, but signalling, automation level and operating arrangements differ between lines. Do not assume every line uses identical equipment."},
+{k:"testing",tags:"testing engineering non revenue empty stock depot movement",t:"A train can move without passenger service for testing, engineering, depot transfer, recovery or other operational purposes. A test movement to an unopened station does not imply passengers are onboard."},
+{k:"turnaround",tags:"turnback turnaround layover terminal",t:"A turnaround is the operational process and time used for a train to reverse or prepare for its next working. An unusually long turnaround can occur during testing, engineering work or operational regulation."},
+{k:"headway",tags:"headway frequency interval peak trains",t:"Headway is the time gap between consecutive trains on the same service pattern. Train count depends on the timetable, service pattern, turnbacks and operational constraints."},
+{k:"specialbound",tags:"special bound short working short trip",t:"A short-working or special-bound train terminates before the normal line terminus. It can be planned, used for regulation, or arise during disruption."},
+{k:"speedrestriction",tags:"speed restriction slow temporary speed restriction",t:"Trains can run slower because of temporary speed restrictions, infrastructure work, signalling conditions, weather, congestion or other operational factors. An inferred slow segment is not automatically an official LTA restriction."},
+{k:"depot",tags:"depot stabling maintenance",t:"Depots and stabling facilities support maintenance, cleaning, inspection, overnight stabling and deployment. Depot movements can be non-revenue."},
+{k:"gtfs",tags:"gtfs timetable lta datamall schedule",t:"LTA timetable/GTFS data is a scheduled baseline. Timetable data does not by itself prove that a particular train is physically on time or carrying passengers."}
+];
+function aRailKnowledge(q,category){
+ const n=aNorm(String(q||"")), tokens=n.split(/[^a-z0-9]+/).filter(x=>x.length>1), out=[];
+ for(const x of RAIL_KNOWLEDGE){
+  if(category&&x.k!==category)continue;
+  const hay=x.k+" "+x.tags+" "+x.t, score=tokens.reduce((s,w)=>s+(hay.includes(w)?(w.length>=5?2:1):0),0);
+  if(score)out.push({score,topic:x.k,text:x.t});
+ }
+ for(const [k,v] of Object.entries(H_LINE||{})){
+  const name=H_KEY(k)||k;
+  if(n.includes(aNorm(name))||tokens.includes(aNorm(k)))out.push({score:18,topic:"line",text:aLineText(k,sgNow(),"line")});
+ }
+ out.sort((a,b)=>b.score-a.score);
+ return {query:q,category:category||null,matches:out.slice(0,6).map(x=>({topic:x.topic,text:x.text}))};
+}
 /* ---- Claude ---- */
-const A_TOOLS = [\n  {name:"rail_knowledge",description:"Curated Singapore rail knowledge for factual and conceptual questions. Use this for rail facts; live tools remain the authority for current conditions.",schema:{type:"object",properties:{query:{type:"string",description:"What the user wants to know"},category:{type:"string",description:"Optional topic such as network, operators, nsl, ewl, ccl, dtl, nel, tel, lrt, testing, turnaround, headway, depot or gtfs"}},required:["query"]},run:i=>aRailKnowledge(i.query,i.category)},
+const A_TOOLS = [
+  {name:"rail_knowledge",description:"Curated Singapore rail knowledge for factual and conceptual questions. Use this for rail facts; live tools remain the authority for current conditions.",schema:{type:"object",properties:{query:{type:"string",description:"What the user wants to know"},category:{type:"string",description:"Optional topic such as network, operators, nsl, ewl, ccl, dtl, nel, tel, lrt, testing, turnaround, headway, depot or gtfs"}},required:["query"]},run:i=>aRailKnowledge(i.query,i.category)},
   {name: "station_info", description: "Live and reference facts for one station: its codes and lines, the next trains each way (from now), today's first and last trains, LTA's live platform crowd level, whether LTA reports a disruption there, and when it opened. Pass a station name or code, like \"Bishan\" or \"NS17\".",
     schema: {type: "object", properties: {station: {type: "string", description: "Station name or code"}}, required: ["station"]},
     run: i => {
