@@ -26,7 +26,8 @@
 
   const style = document.createElement("style");
   style.textContent = `
-#splBtn{position:fixed;right:14px;bottom:88px;z-index:9000}
+#splBtn{position:relative}
+.quick #splBtn{grid-column:1/-1}
 .tiles #splBtn{position:relative;right:auto;bottom:auto;z-index:auto}
 #splMask{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.42);display:none;padding:clamp(8px,3vw,24px);box-sizing:border-box;overflow:auto;
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
@@ -72,16 +73,17 @@
 `;
   document.head.appendChild(style);
 
-  const btn = document.querySelector("#splBtn") || document.createElement("button");
-  btn.id = "splBtn"; btn.type = "button"; btn.setAttribute("aria-haspopup", "dialog");
-  const tiles = document.querySelector("#viewHome .tiles");
-  if (!btn.parentNode){
-    if (tiles){
-      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="3.5"/><path d="M4 8h3l2-3h6l2 3h3v11H4z"/></svg>Spotter planner<span>' +
-        (PREVIEW ? "Public app preview" : "When trains pass a station") + "</span>";
-      tiles.appendChild(btn);
-    } else { btn.className = "btn"; btn.textContent = "Spotter planner"; document.body.appendChild(btn); }
+  let btn = document.querySelector("#splBtn");
+  const quick = document.querySelector("#viewHome .quick");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "splBtn";
+    btn.type = "button";
+    btn.setAttribute("aria-haspopup", "dialog");
+    btn.className = "spot-quick planner-quick";
+    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 3v4M16 3v4M4 9h16"/><path d="M8 13h3M13 13h3M8 16h3"/></svg><span class="spot-quick-title">Spotter planner</span><span>See every scheduled train at a station</span><b>Open planner ›</b>';
   }
+  if (quick && btn.parentNode !== quick) quick.appendChild(btn);
 
   const mask = document.createElement("div");
   mask.id = "splMask"; mask.setAttribute("role", "presentation");
