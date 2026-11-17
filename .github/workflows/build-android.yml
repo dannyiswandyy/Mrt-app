@@ -267,6 +267,7 @@ jobs:
           cp 'web/trainset-intelligence.js' 'mrt-tracker-app/app/src/main/assets/trainset-intelligence.js'
           cp 'web/disruption-intelligence.js' 'mrt-tracker-app/app/src/main/assets/disruption-intelligence.js'
           cp 'web/spotter-planner.js' 'mrt-tracker-app/app/src/main/assets/spotter-planner.js'
+          cp 'web/ops-lab.js' 'mrt-tracker-app/app/src/main/assets/ops-lab.js'
           cp web/diagnostics.js mrt-tracker-app/app/src/main/assets/diagnostics.js
           cp web/rt-capture.js mrt-tracker-app/app/src/main/assets/rt-capture.js
           cp web/ui-refresh-v3.js mrt-tracker-app/app/src/main/assets/ui-refresh-v3.js
