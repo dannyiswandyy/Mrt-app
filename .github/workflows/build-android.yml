@@ -1846,7 +1846,7 @@ jobs:
                   try {
                       byte[] b = get(base() + "version.json", 64 * 1024, null);
                       JSONObject j = new JSONObject(new String(b, StandardCharsets.UTF_8));
-                      return j.has("versionCode") ? j : null;
+                      return j.optBoolean("buildComplete", false) && j.has("versionCode") ? j : null;
                   } catch (Exception e) {
                       return null;
                   }
@@ -2602,7 +2602,7 @@ jobs:
           if [ "$CHANNEL" = "dev" ]; then UPDATE_REPO=""; fi
           gradle -p mrt-tracker-app assembleRelease --no-daemon --parallel --build-cache --configuration-cache -Pvc=$VC -Pvn=$VN -Pchannel="$CHANNEL" -PupdateRepo="$UPDATE_REPO" -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks"
           cp mrt-tracker-app/app/build/outputs/apk/release/app-release.apk "$APK"
-          printf '{"versionCode":%s,"versionName":"%s"}\n' "$VC" "$VN" > version.json
+          printf '{"versionCode":%s,"versionName":"%s","buildComplete":true}\n' "$VC" "$VN" > version.json
 
       - uses: actions/upload-artifact@v4
         with:
