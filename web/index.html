@@ -1654,7 +1654,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
 
   <footer>
     <p><b>How this works.</b> In the MRT Tracker phone app, trains and next-train times follow LTA's official train timetable, the same published schedule journey planners use, including public holidays. Where the timetable isn't available, they're estimated from typical frequencies and the operators' own station-to-station travel times. Either way, they show the schedule, so delays don't appear on the map; disruption notices from LTA appear under Updates.</p>
-    <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and SMRT for the off-peak trips ending at Joo Koon. How many North-South, East-West, Changi Airport branch, North East, Circle and Thomson-East Coast line trains are out, and the morning-peak trips from Yishun: SMRT's and SBS Transit's train duty rosters (Oct–Nov 2026) and a train run number roster sheet. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. 3D buildings (phone app): © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
+    <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and SMRT for the off-peak trips ending at Joo Koon. How many North-South, East-West, Changi Airport branch, North East, Circle and Thomson-East Coast line trains are out, and the morning-peak trips from Yishun: SMRT's and SBS Transit's train duty rosters (Oct–Nov 2026) and a train run number roster sheet. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. MRT and LRT track shapes: URA Master Plan rail lines (Urban Redevelopment Authority, via data.gov.sg, under the Singapore Open Data Licence), downloaded while the app and website are built; SG Rail Data where they don't match. 3D buildings (phone app): © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
   </footer>
 </div>
 
@@ -3818,15 +3818,24 @@ const MAP = {"stations":{"NS10":[-2097,-9790],"EW9":[6996,3963],"NS16":[3310,-19
 /* The RTS Link's and the Sentosa Express's real track. SG Rail Data has neither, so they're drawn straight
    unless the phone app has their routes from OpenStreetMap (© OpenStreetMap contributors), downloaded while
    GitHub builds it (tools/build_tracks.py). Each piece must still run between the same two stations. */
-let osmTracks = false;
+let osmTracks = false, uraTracks = false;   // MRT and LRT lines can come from URA's Master Plan rail lines (tools/build_ura_rail.py)
 try {
   const t = APP && APP.getTracks ? JSON.parse(APP.getTracks() || "null") : null;
+  // URA's MRT and LRT lines come with their stations moved onto the line (up to 400 m), so their pieces may start
+  // and end a little away from SG Rail Data's station points; everything else must start and end exactly on them
+  const ura = new Set(Array.isArray(t && t.ura) ? t.ura : []);
   for (const [c, segs] of Object.entries((t && t.paths) || {})){
-    const cur = MAP.paths[c], end = (a, k) => [a[a.length - 2 * k], a[a.length - 2 * k + 1]];
+    const cur = MAP.paths[c], end = (a, k) => [a[a.length - 2 * k], a[a.length - 2 * k + 1]], tol = ura.has(c) ? 410 : 1;
     if (!cur || !Array.isArray(segs) || segs.length !== cur.length) continue;
     const fits = segs.every((p, i) => Array.isArray(p) && p.length >= 4 && p.length % 2 === 0 && p.every(Number.isFinite)
-      && Math.hypot(p[0] - cur[i][0], p[1] - cur[i][1]) < 1 && Math.hypot(...end(p, 1).map((v, k) => v - end(cur[i], 1)[k])) < 1);
-    if (fits){ MAP.paths[c] = segs; MAP.straight[c] = []; osmTracks = true; }
+      && Math.hypot(p[0] - cur[i][0], p[1] - cur[i][1]) < tol && Math.hypot(...end(p, 1).map((v, k) => v - end(cur[i], 1)[k])) < tol);
+    if (fits){ MAP.paths[c] = segs; MAP.straight[c] = []; if (ura.has(c)) uraTracks = true; else osmTracks = true; }
+  }
+  // station dots follow URA's line too, for the lines that took URA's pieces
+  if (uraTracks) for (const [code, p] of Object.entries((t && t.stations) || {})){
+    const o = MAP.stations[code], pre = code.replace(/\d+$/, "");
+    const line = {NS: "NSL", EW: "EWL", CG: "CG", NE: "NEL", CC: "CCL", DT: "DTL", TE: "TEL", BP: "BP", SE: "SE", SW: "SW", PE: "PE", PW: "PW"}[pre];
+    if (o && line && ura.has(line) && Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) && Math.hypot(p[0] - o[0], p[1] - o[1]) < 410) MAP.stations[code] = p;
   }
 } catch(e){}
 
@@ -3858,7 +3867,8 @@ const MSTN = (() => {
     const p = MAP.stations[st[0]]; if (!p) return;
     const e = (by[st[1]] ||= {name: st[1], codes: [], pts: []});
     e.codes.push({line: c, code: st[0], idx: i});
-    if (!e.pts.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < 60)) e.pts.push(p);
+    // platforms further apart than this are drawn as linked dots (with URA's tracks each line's dot is on its own line)
+    if (!e.pts.some(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < (uraTracks ? 20 : 60))) e.pts.push(p);
   });
   const list = Object.values(by);
   for (const e of list){
@@ -4233,7 +4243,8 @@ function syncMapAttr(){
   const a = $("mapAttr");
   a.hidden = false;
   a.textContent = (satOk === 0 && satFails >= 4 ? "Satellite photos couldn't load. Check your internet connection." : "Imagery: Esri, Vantor, Earthstar Geographics and the GIS User Community")
-    + (bldShown || osmTracks ? " · " + (bldShown && osmTracks ? "Buildings and tracks" : bldShown ? "Buildings" : "Tracks") + " © OpenStreetMap contributors" : "");
+    + (bldShown || osmTracks ? " · " + (bldShown && osmTracks ? "Buildings and tracks" : bldShown ? "Buildings" : "Tracks") + " © OpenStreetMap contributors" : "")
+    + (uraTracks ? " · MRT tracks: URA Master Plan (data.gov.sg)" : "");
 }
 syncMapAttr(); sync3d();
 
