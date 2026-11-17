@@ -112,7 +112,7 @@ root.addEventListener("click",e=>{
  const b=e.target.closest("[data-tab]");if(b){tab=b.dataset.tab;root.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("on",x===b));selected=null;render();return}
  const tr=e.target.closest("[data-train]");if(tr){selected=tr.dataset.train;render();return}
  if(e.target.closest("[data-back]")){selected=null;render();return}
- const sc=e.target.closest("[data-scenario]");if(sc){const m=root.querySelector("#opsScenarioMsg");window.mrtDevScenario={type:sc.dataset.scenario,armedAt:Date.now(),passengerService:false};if(m)m.textContent="Armed in DEV memory only. The live timetable is unchanged; use the map/sandbox to exercise the movement.";return}
+ const sc=e.target.closest("[data-scenario]");if(sc){const m=root.querySelector("#opsScenarioMsg");window.mrtDevScenario={type:sc.dataset.scenario,armedAt:typeof simNow==="function"?simNow():Date.now(),passengerService:false};if(m)m.textContent="Armed in DEV memory only. The live timetable is unchanged; use the map/sandbox to exercise the movement.";return}
 });
 btn.onclick=()=>{root.classList.add("open");render()};root.querySelector(".opsClose").onclick=()=>root.classList.remove("open");root.addEventListener("click",e=>{if(e.target===root)root.classList.remove("open")});
 setInterval(()=>{if(root.classList.contains("open"))render()},5000);
