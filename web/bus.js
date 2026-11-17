@@ -167,19 +167,29 @@ if (typeof W.mapInfoHTML === "function"){
     return h;
   };
 }
-if (typeof W.hxOpen === "function"){
-  const base = W.hxOpen;
-  W.hxOpen = function(x){
-    const out = base.apply(this, arguments);
-    try {
-      const body = document.getElementById("hxBody"); if (!body) return out;
-      let hb = document.getElementById("hxBus");
-      if (!hb){ hb = document.createElement("div"); hb.id = "hxBus"; const live = document.getElementById("hxLive"); live && live.nextSibling ? body.insertBefore(hb, live.nextSibling) : body.appendChild(hb); }
-      if (on() && x && x.type === "station"){ hb.dataset.name = x.name; hb.hidden = false; hb._h = null; hb.innerHTML = boxHTML(x.name); B.lastRefresh = Date.now(); refresh(x.name); }
-      else { hb.hidden = true; hb.dataset.name = ""; hb.innerHTML = ""; }
-    } catch(e){}
-    return out;
-  };
+/* The phone sheet is opened from inside the page (a tap on the map, a search result, Home), so watch the sheet
+   itself: whenever it shows a station, put "Buses here" in it. */
+function syncSheet(){
+  try {
+    const sheet = document.getElementById("hxSheet"), body = document.getElementById("hxBody"), title = document.getElementById("hxTitle");
+    if (!sheet || !body || !title) return;
+    let hb = document.getElementById("hxBus");
+    if (!hb){ hb = document.createElement("div"); hb.id = "hxBus"; hb.hidden = true; const live = document.getElementById("hxLive"); live && live.nextSibling ? body.insertBefore(hb, live.nextSibling) : body.appendChild(hb); }
+    const name = !sheet.hidden && !sheet.classList.contains("hx-train") && aByName(title.textContent.trim()) ? title.textContent.trim() : "";
+    if (on() && name){
+      if (hb.dataset.name !== name){ hb.dataset.name = name; hb._h = null; hb.innerHTML = boxHTML(name); hb._h = hb.innerHTML; B.lastRefresh = Date.now(); refresh(name); }
+      hb.hidden = false;
+    } else if (hb.dataset.name || !hb.hidden){ hb.hidden = true; hb.dataset.name = ""; hb.innerHTML = ""; hb._h = null; }
+  } catch(e){}
+}
+{
+  const sheet = document.getElementById("hxSheet"), title = document.getElementById("hxTitle");
+  if (sheet && title && W.MutationObserver){
+    const mo = new MutationObserver(syncSheet);
+    mo.observe(sheet, {attributes: true, attributeFilter: ["hidden", "class"]});
+    mo.observe(title, {childList: true, characterData: true, subtree: true});
+  }
+  setInterval(syncSheet, 1500);              // and a slow check, in case the sheet changes some other way
 }
 /* keep the open card's times fresh: every 30 s while a station card or sheet is showing */
 setInterval(() => {
