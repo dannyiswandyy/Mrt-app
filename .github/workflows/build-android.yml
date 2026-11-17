@@ -20,6 +20,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-mrt-tracker
+  cancel-in-progress: false
+
 env:
   CHANNEL: beta
 jobs:
@@ -2594,7 +2598,7 @@ jobs:
           # and downloads and installs a newer one itself. This repo is public, so no token is needed.
           UPDATE_REPO="${{ github.repository }}"
           if [ "$CHANNEL" = "dev" ]; then UPDATE_REPO=""; fi
-          gradle -p mrt-tracker-app assembleRelease -Pvc=$VC -Pvn=$VN -Pchannel="$CHANNEL" -PupdateRepo="$UPDATE_REPO" -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks"
+          gradle -p mrt-tracker-app assembleRelease --no-daemon --parallel --build-cache --configuration-cache -Pvc=$VC -Pvn=$VN -Pchannel="$CHANNEL" -PupdateRepo="$UPDATE_REPO" -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks"
           cp mrt-tracker-app/app/build/outputs/apk/release/app-release.apk "$APK"
           printf '{"versionCode":%s,"versionName":"%s"}\n' "$VC" "$VN" > version.json
 
