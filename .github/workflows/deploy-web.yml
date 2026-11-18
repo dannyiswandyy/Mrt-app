@@ -98,9 +98,10 @@ jobs:
         if: steps.tools.outcome == 'success'
         continue-on-error: true
         env:
-          ONEMAP_TOKEN: ${{ secrets.ONEMAP_TOKEN }}
+          ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
+          ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
         run: |
-          if [ -f mrt-tracker-app/tools/build_onemap_rail.py ] && [ -n "$ONEMAP_TOKEN" ]; then
+          if [ -f mrt-tracker-app/tools/build_onemap_rail.py ]; then
             python3 mrt-tracker-app/tools/build_onemap_rail.py mrt-tracker-app
             if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
           fi
