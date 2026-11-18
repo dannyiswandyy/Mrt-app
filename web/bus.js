@@ -9,7 +9,7 @@
    Which stops: LTA's list of bus stops (DataMall Bus Stops), fetched once and kept for 14 days; stops within about
    300 m of the station, nearest first (up to 4), plus any bus interchange within about 600 m, plus stops named
    after the station up to 1.5 km away (Changi Airport's are at the terminals: PTB1, PTB2…).
-   Hidden unless window.MRT_DEV_FEATURES is true (test builds), while it's being tried out. In the phone app the app adds the
+   Available in the normal app and website. It can be explicitly disabled with window.mrtBusOff=true. In the phone app the app adds the
    LTA key (window.MrtApp); on the website it goes through the data relay (worker/: /lta/BusArrival, /lta/BusStops). */
 (() => {
 "use strict";
@@ -20,7 +20,7 @@ let tries = 0;
 
 function init(){
 if (W.mrtBus) return;
-const on = () => W.MRT_DEV_FEATURES === true && !W.mrtBusOff;
+const on = () => W.mrtBusOff !== true;
 const STOPS_KEY = "mrt.bus.stops", STOPS_DAYS = 14, NEAR_M = 300, INT_M = 600, NAMED_M = 1500, MAX_STOPS = 4, ARR_TTL = 25e3;
 const B = {stops: null, loading: null, err: "", arr: {}, busy: {}, near: {}, loops: null, loopsLoading: null};
 const LOOPS_KEY = "mrt.bus.loops2";
@@ -200,7 +200,7 @@ function boxHTML(name){
     body = st.length ? st.map(stopHTML).join("") : `<p class="b-msg">No bus stops within ${NEAR_M} m.</p>`;
   }
   const t = Object.values(B.arr).reduce((m, a) => Math.max(m, a.at || 0), 0);
-  return `<details class="bus-box" id="${id}" data-bus="${escH(name)}" open><summary><span>🚌 Buses here</span><small class="b-dev">TEST · LTA live</small></summary>${body}<p class="b-foot">Minutes to each bus. <span class="b-t b-l1">n</span> seats <span class="b-t b-l2">n</span> standing <span class="b-t b-l3">n</span> full · <i>italic</i>: scheduled, no GPS · DD double deck${t ? ` · updated ${new Date(t + 8 * 3600e3).toISOString().slice(11, 16)}` : ""}</p></details>`;
+  return `<details class="bus-box" id="${id}" data-bus="${escH(name)}" open><summary><span>🚌 Buses here</span><small class="b-dev">LTA live</small></summary>${body}<p class="b-foot">Minutes to each bus. <span class="b-t b-l1">n</span> seats <span class="b-t b-l2">n</span> standing <span class="b-t b-l3">n</span> full · <i>italic</i>: scheduled, no GPS · DD double deck${t ? ` · updated ${new Date(t + 8 * 3600e3).toISOString().slice(11, 16)}` : ""}</p></details>`;
 }
 /* start loading for a station, then repaint every box showing it */
 let want = null;
