@@ -94,6 +94,17 @@ jobs:
             if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
           fi
 
+      - name: Refine LRT geometry with OneMap
+        if: steps.tools.outcome == 'success'
+        continue-on-error: true
+        env:
+          ONEMAP_TOKEN: ${{ secrets.ONEMAP_TOKEN }}
+        run: |
+          if [ -f mrt-tracker-app/tools/build_onemap_rail.py ] && [ -n "$ONEMAP_TOKEN" ]; then
+            python3 mrt-tracker-app/tools/build_onemap_rail.py mrt-tracker-app
+            if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
+          fi
+
       - name: Station exits (LTA) and nearby places (OpenStreetMap)
         if: steps.tools.outcome == 'success'
         continue-on-error: true
