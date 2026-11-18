@@ -28,20 +28,20 @@
   --rowh:52px;
   --bad:#c8102e; --badbg:#fde8ea; --good:#0a7a3d; --goodbg:#e3f4ea;
   --shadow:0 8px 28px rgba(0,0,0,.12);
-  --bldRoof:#e6eaef; --bldWall:#c8cfd8; --bldWall2:#b3bcc7; --bldEdge:#aab3be;
+  --bldRoof:rgba(230,234,239,.56); --bldWall:rgba(200,207,216,.42); --bldWall2:rgba(179,188,199,.36); --bldEdge:rgba(170,179,190,.62);
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0b0e12; --panel:#141920; --fg:#e8edf2; --muted:#93a0ad; --rule:#242d37;
   --track:#34404c; --soft:#1d242d; --chip:#e8edf2; --chipfg:#0f1317; --warn:#ffb85c; --warnbg:#2d2210;
   --NEL:#c04fd4; --DTL:#3d8af0; --TEL:#c08050; --bad:#ff5a6a; --badbg:#3a1519; --good:#5fd38d; --goodbg:#11291c; --BP:#93a395; --SE:#93a395; --SW:#93a395; --PE:#93a395; --PW:#93a395; --RTS:#32bfca; --SEN:#f06aa8;
   --shadow:0 10px 32px rgba(0,0,0,.45); color-scheme:dark;
-  --bldRoof:#323c49; --bldWall:#222a34; --bldWall2:#1b222b; --bldEdge:#46525f}}
+  --bldRoof:rgba(50,60,73,.62); --bldWall:rgba(34,42,52,.46); --bldWall2:rgba(27,34,43,.40); --bldEdge:rgba(70,82,95,.68)}}
 :root[data-theme="dark"]{
   --bg:#0b0e12; --panel:#141920; --fg:#e8edf2; --muted:#93a0ad; --rule:#242d37;
   --track:#34404c; --soft:#1d242d; --chip:#e8edf2; --chipfg:#0f1317; --warn:#ffb85c; --warnbg:#2d2210;
   --NEL:#c04fd4; --DTL:#3d8af0; --TEL:#c08050; --bad:#ff5a6a; --badbg:#3a1519; --good:#5fd38d; --goodbg:#11291c; --BP:#93a395; --SE:#93a395; --SW:#93a395; --PE:#93a395; --PW:#93a395; --RTS:#32bfca; --SEN:#f06aa8;
   --shadow:0 10px 32px rgba(0,0,0,.45); color-scheme:dark;
-  --bldRoof:#323c49; --bldWall:#222a34; --bldWall2:#1b222b; --bldEdge:#46525f}
+  --bldRoof:rgba(50,60,73,.62); --bldWall:rgba(34,42,52,.46); --bldWall2:rgba(27,34,43,.40); --bldEdge:rgba(70,82,95,.68)}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -4420,7 +4420,7 @@ function satRender(ctx){
     }
   }
   // a light wash in the page's own colour keeps lines and names readable on top of the photo
-  ctx.globalAlpha = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches) ? 0.35 : 0.3;
+  ctx.globalAlpha = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches) ? 0.16 : 0.12;
   ctx.fillStyle = MC.bg; ctx.fillRect(0, 0, mW, mH); ctx.globalAlpha = 1;
 }
 function syncMapAttr(){
