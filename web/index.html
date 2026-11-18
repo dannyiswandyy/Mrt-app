@@ -2817,10 +2817,13 @@ function rtLivePosition(line, r, sec){
   }catch(e){ return null; }
 }
 /* Where a scheduled run is at a given time (seconds since the service day began). */
-function ttState(r, sec){
+/* `sec` is the run's own timetable time (ttSched: already moved by LTA's live delay); `clock`, if given, is the
+   time on the clock (seconds since the service day began), which LTA's live stop times are compared with. Without
+   it the two were mixed up and a train LTA gives stop-by-stop times for was drawn its delay late twice over. */
+function ttState(r, sec, clock){
   const p = r.p, e = sec - r.s;
   if (e < p.arr[0] || e > p.end + 45) return null;   // arr[0] > 0: a run starting partway along the North-South Line (SLOW)
-  const live = (typeof rtLivePosition === "function") ? rtLivePosition(r._line || "", r, sec) : null;
+  const live = (typeof rtLivePosition === "function") ? rtLivePosition(r._line || "", r, clock != null ? clock : sec) : null;
   if (live) return live;
   let k = 0;
   while (k < p.arr.length - 1 && p.arr[k + 1] <= e) k++;
@@ -2977,7 +2980,7 @@ function ttTrainsOn(code, now, list){
   for (const r of list){
     if (r.s > last) break;
     if (r.s + r.p.end + TT_LAYOVER_MAX + maxLate < gone) continue;   // ended long ago: can't be on the map any more
-    const sc = schedOf(r), sec = sc.sec, st = ttState(r, sec), pr = links.prev.get(r);
+    const sc = schedOf(r), sec = sc.sec, st = ttState(r, sec, now.mins * 60 - late[r.p.d > 0 ? 0 : 1]), pr = links.prev.get(r);
     if (!st){
       // the run is over: if the same train does another run from here, it stays at the platform, now facing
       // the way it'll go next, until that run leaves (then that run's own entry below takes over, same id)
@@ -3683,10 +3686,11 @@ function rtTimesFor(code, r){
     const known=new Map();
     for(const q of u.s){
       const sid=String(q[0]||"").trim().toUpperCase(), seq=Number(q[1]);
+      const sidCode=(c=>({CE1:"CC34",CE2:"CC33"})[c]||c)(sid.split("_")[0]);   // "EW24_1": EW24; CE1 / CE2: CC34 / CC33
       let k=Number.isFinite(seq)&&seq>0 ? seq-1 : null;
       if(sid){
         const cand=[];
-        for(let i=0;i<stations.length;i++) if(String(stations[i][0]||"").toUpperCase()===sid) cand.push(i);
+        for(let i=0;i<stations.length;i++) if(String(stations[i][0]||"").toUpperCase()===sidCode) cand.push(i);
         if(cand.length){
           const expected=k==null ? p.f : p.f+p.d*k;
           cand.sort((a,b)=>Math.abs(a-expected)-Math.abs(b-expected));
@@ -3712,7 +3716,10 @@ function rtTimesFor(code, r){
       for(let i=1;i<pts.length;i++) if(pts[i]>=k){hi=pts[i];lo=pts[i-1];break;}
       const dl=deltaAt(lo),dh=deltaAt(hi),f=(k-lo)/Math.max(1,hi-lo); return dl+(dh-dl)*f;
     };
-    for(let k=0;k<N;k++){const d=deltaAt(k);arr[k]+=d;dep[k]+=d;}
+    // every stop's delay first, then move the times: deltaAt reads arr and dep, so moving them as it went
+    // made every delay after the first stop LTA mentions wrong (0 after the last one)
+    const D=[];for(let k=0;k<N;k++)D.push(deltaAt(k));
+    for(let k=0;k<N;k++){arr[k]+=D[k];dep[k]+=D[k];}
     return rtPosCache[key]={arr,dep,known,source:"GTFS-RT stop times",feedAt:st.at};
   }catch(e){return null;}
 }
