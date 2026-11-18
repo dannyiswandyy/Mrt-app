@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://server.arcgisonline.com https://i.ytimg.com; connect-src 'self' https://api-open.data.gov.sg https://*.workers.dev; media-src 'none'; object-src 'none'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://server.arcgisonline.com https://i.ytimg.com https://metro.iciv.me; connect-src 'self' https://api-open.data.gov.sg https://*.workers.dev; media-src 'none'; object-src 'none'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1511,6 +1511,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
           <button type="button" id="mapIn" aria-label="Zoom in" title="Zoom in">+</button>
           <button type="button" id="mapOut" aria-label="Zoom out" title="Zoom out">−</button>
           <button type="button" id="mapReset" aria-label="Show whole network" title="Reset map">⤢</button>
+          <button type="button" id="mapHd" aria-label="Open high-definition system map" title="HD system map">HD</button>
           <button type="button" id="map3d" class="m3d" aria-pressed="true" aria-label="3D buildings" title="3D buildings" hidden>3D</button><!--DEV:START--><button type="button" id="map3dN" class="m3dn" aria-label="Point north" title="Point north" hidden>N</button><!--DEV:END-->
         <div class="maplegend" id="mapLegend">
           <button type="button" class="maplegend-btn" id="mapLegendBtn" aria-expanded="false" aria-controls="mapLegendCard" aria-label="Map legend" title="Map legend">
@@ -1534,7 +1535,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
       </div>
       <div class="mapinfo" id="mapInfo"></div>
     </section>
-
+<div class="hdmap-backdrop" id="hdMap" hidden role="dialog" aria-modal="true" aria-label="High-definition Singapore MRT and LRT system map"><div class="hdmap-card"><div class="hdmap-head"><div><b>HD system map</b><span>LTA July 2026 edition · 2178 × 2178 · scroll/pinch to inspect</span></div><button type="button" class="hdmap-close" id="hdMapClose" aria-label="Close HD system map">×</button></div><div class="hdmap-body"><img class="hdmap-img" src="https://metro.iciv.me/images/singapore_mrt_map.jpg" width="2178" height="2178" alt="Singapore MRT and LRT system map, LTA July 2026 edition" loading="lazy" decoding="async"></div></div></div>
     <div id="lineView" hidden>
       <section class="status" id="status"></section>
       <section class="fleet" id="fleet"></section>
@@ -4799,6 +4800,7 @@ document.addEventListener("pointerdown", e => {
   const root = $("mapLegend"); if (!root || root.contains(e.target)) return;
   const card = $("mapLegendCard"); if (!card.hidden){ card.hidden = true; $("mapLegendBtn").setAttribute("aria-expanded","false"); }
 });
+const hdMap=$("hdMap"),hdMapClose=$("hdMapClose"),mapHd=$("mapHd");function closeHdMap(){if(!hdMap)return;hdMap.hidden=true}if(mapHd)mapHd.onclick=e=>{e.stopPropagation();hdMap.hidden=false};if(hdMapClose)hdMapClose.onclick=closeHdMap;if(hdMap)hdMap.onclick=e=>{if(e.target===hdMap)closeHdMap()};document.addEventListener("keydown",e=>{if(e.key==="Escape"&&hdMap&&!hdMap.hidden)closeHdMap()});
 $("mapIn").onclick = () => zoomAt(mW / 2, mH / 2, 1.6);
 $("mapOut").onclick = () => zoomAt(mW / 2, mH / 2, 1 / 1.6);
 $("mapReset").onclick = () => { const v0 = {...view}; mapFit(); const t = {...view}; view = v0; flyTo((mW / 2 - t.tx) / t.s, (mH / 2 - t.ty) / t.s, t.s); };
