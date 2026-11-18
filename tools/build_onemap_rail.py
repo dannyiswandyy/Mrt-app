@@ -1,62 +1,93 @@
 #!/usr/bin/env python3
-"""Use OneMap's public-transport rail routing to refine LRT track geometry.
+"""Use OneMap public-transport rail routing to refine LRT track geometry.
 
-OneMap is the authoritative Singapore national map. This optional step uses a
-repository secret ONEMAP_TOKEN and never blocks a build: if the token is absent
-or a route cannot be obtained, the existing URA/OSM geometry is kept.
-
-Only the LRT lines are overridden. MRT/URA geometry remains unchanged.
+The OneMap account credentials are read only from the build environment. A fresh
+short-lived access token is requested at build time, so no token is bundled in
+the APK or website.
 """
-import json, math, os, re, sys, urllib.parse, urllib.request, datetime
+import datetime, json, math, os, sys, urllib.parse, urllib.request
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
 ASSETS = os.path.join(ROOT, "app", "src", "main", "assets")
 PAGE = os.path.join(ASSETS, "index.html")
 OUT = os.path.join(ASSETS, "tracks.json")
+
+EMAIL = os.environ.get("ONEMAP_EMAIL", "").strip()
+PASSWORD = os.environ.get("ONEMAP_PASSWORD", "")
 TOKEN = os.environ.get("ONEMAP_TOKEN", "").strip()
-API = "https://www.onemap.gov.sg/api/public/routingsvc/route"
+AUTH_API = "https://www.onemap.gov.sg/api/auth/post/getToken"
+ROUTE_API = "https://www.onemap.gov.sg/api/public/routingsvc/route"
 
 LAT0, LON0 = 1.3521, 103.8198
 KX = 111320 * math.cos(math.radians(LAT0))
 KY = 110574
 
-LRT = {
-    "BP": re.compile(r"^BP\d+$"),
-    "SE": re.compile(r"^SE\d+$"),
-    "SW": re.compile(r"^SW\d+$"),
-    "PE": re.compile(r"^PE\d+$"),
-    "PW": re.compile(r"^PW\d+$"),
+# Exact operating order used by the app. STC is the Sengkang/Punggol interchange
+# station and BP6 is the Bukit Panjang loop endpoint.
+LRT_ORDER = {
+    "BP": ["BP6","BP7","BP8","BP9","BP10","BP11","BP12","BP13","BP6"],
+    "SE": ["STC","SE1","SE2","SE3","SE4","SE5","STC"],
+    "SW": ["STC","SW1","SW2","SW3","SW4","SW5","SW6","SW7","SW8","STC"],
+    "PE": ["PTC","PE1","PE2","PE3","PE4","PE5","PE6","PE7","PTC"],
+    "PW": ["PTC","PW1","PW2","PW3","PW4","PW5","PW6","PW7","PTC"],
 }
 
 def xy(lat, lon):
     return (lon - LON0) * KX, -(lat - LAT0) * KY
 
 def decode_polyline(s):
-    # Google-compatible encoded polyline: OneMap route_geometry format.
     out, lat, lon, i = [], 0, 0, 0
     while i < len(s):
         vals = []
         for _ in range(2):
             shift = result = 0
             while True:
-                if i >= len(s): return []
-                b = ord(s[i]) - 63; i += 1
+                if i >= len(s):
+                    return []
+                b = ord(s[i]) - 63
+                i += 1
                 result |= (b & 0x1f) << shift
                 shift += 5
-                if b < 0x20: break
+                if b < 0x20:
+                    break
             vals.append(-(result >> 1) - 1 if result & 1 else result >> 1)
-        lat += vals[0]; lon += vals[1]
+        lat += vals[0]
+        lon += vals[1]
         out.append(xy(lat / 1e5, lon / 1e5))
     return out
 
 def page_map():
     html = open(PAGE, encoding="utf-8").read()
-    m = re.search(r"^const MAP = (\{.*\});\s*$", html, re.M)
-    if not m:
+    marker = "const MAP = "
+    start = html.find(marker)
+    if start < 0:
         raise RuntimeError("MAP not found")
-    return json.loads(m.group(1))
+    start += len(marker)
+    end = html.find(";\n", start)
+    if end < 0:
+        raise RuntimeError("MAP terminator not found")
+    return json.loads(html[start:end])
 
-def route(start, end):
+def get_token():
+    if TOKEN:
+        return TOKEN
+    if not EMAIL or not PASSWORD:
+        return ""
+    body = json.dumps({"email": EMAIL, "password": PASSWORD}).encode()
+    req = urllib.request.Request(
+        AUTH_API,
+        data=body,
+        headers={"Content-Type": "application/json", "User-Agent": "MRTTracker-OneMap-Rail/1.1"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=20) as r:
+        j = json.loads(r.read().decode())
+    token = (j.get("access_token") or "").strip()
+    if not token:
+        raise RuntimeError("OneMap authentication returned no access_token")
+    return token
+
+def route(start, end, token):
     d = datetime.date.today()
     q = urllib.parse.urlencode({
         "start": f"{start[0]},{start[1]}",
@@ -68,37 +99,40 @@ def route(start, end):
         "maxWalkDistance": "0",
         "numItineraries": "1",
     })
-    req = urllib.request.Request(API + "?" + q, headers={
-        "Authorization": TOKEN,
-        "User-Agent": "MRTTracker-OneMap-Rail/1.0",
-    })
+    req = urllib.request.Request(
+        ROUTE_API + "?" + q,
+        headers={"Authorization": token, "User-Agent": "MRTTracker-OneMap-Rail/1.1"},
+    )
     with urllib.request.urlopen(req, timeout=30) as r:
         j = json.loads(r.read().decode())
     if j.get("status") not in (0, "0"):
-        raise RuntimeError(j.get("status_message") or "route failed")
-    geom = j.get("route_geometry") or ""
-    pts = decode_polyline(geom)
+        raise RuntimeError(j.get("status_message") or j.get("error") or "route failed")
+    pts = decode_polyline(j.get("route_geometry") or "")
     if len(pts) < 2:
         raise RuntimeError("no usable rail geometry")
     return pts
 
 def simplify(pts, tol=3):
-    if len(pts) < 3: return pts
+    if len(pts) < 3:
+        return pts
     a, b = pts[0], pts[-1]
-    dx, dy = b[0]-a[0], b[1]-a[1]
-    L = math.hypot(dx, dy) or 1e-9
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dy) or 1e-9
     best, idx = 0, 0
     for i, p in enumerate(pts[1:-1], 1):
-        dist = abs(dy*p[0] - dx*p[1] + b[0]*a[1] - b[1]*a[0]) / L
-        if dist > best: best, idx = dist, i
-    if best <= tol: return [a,b]
+        dist = abs(dy*p[0] - dx*p[1] + b[0]*a[1] - b[1]*a[0]) / length
+        if dist > best:
+            best, idx = dist, i
+    if best <= tol:
+        return [a, b]
     return simplify(pts[:idx+1], tol)[:-1] + simplify(pts[idx:], tol)
 
 def main():
-    if not TOKEN:
-        print("OneMap rail refinement skipped: ONEMAP_TOKEN is not configured.")
-        return
     try:
+        token = get_token()
+        if not token:
+            print("OneMap rail refinement skipped: no ONEMAP credentials/token configured.")
+            return
         M = page_map()
         tracks = json.load(open(OUT, encoding="utf-8"))
     except Exception as e:
@@ -106,34 +140,27 @@ def main():
         return
 
     changed = []
-    for code, pat in LRT.items():
-        seq = []
-        for c in M.get("stations", {}):
-            if pat.fullmatch(c): seq.append(c)
-        # Preserve the page's actual line order rather than dictionary order.
-        lm = re.search(r"\n  " + code + r":\{name:"[^"]+"[^\n]*?stations:\[(.*?)\]\}", open(PAGE, encoding="utf-8").read())
-        if lm:
-            ordered = re.findall(r'\["([A-Z]+\d*)","', lm.group(1))
-            if ordered: seq = [c for c in ordered if c in M["stations"]]
-        if len(seq) < 2: continue
-
-        paths = []
-        ok = True
+    for code, seq in LRT_ORDER.items():
+        if any(c not in M.get("stations", {}) for c in seq):
+            print(f"OneMap {code} skipped: one or more app stations are missing")
+            continue
+        paths, ok = [], True
         for a, b in zip(seq, seq[1:]):
-            A = M["stations"][a]; B = M["stations"][b]
-            # MAP coordinates are metres east/south; convert back to WGS84.
-            alat = LAT0 - A[1] / KY; alon = LON0 + A[0] / KX
-            blat = LAT0 - B[1] / KY; blon = LON0 + B[0] / KX
+            A, B = M["stations"][a], M["stations"][b]
+            alat, alon = LAT0 - A[1] / KY, LON0 + A[0] / KX
+            blat, blon = LAT0 - B[1] / KY, LON0 + B[0] / KX
             try:
-                pts = route((alat, alon), (blat, blon))
-                # Force exact app station endpoints so train placement stays continuous.
+                pts = route((alat, alon), (blat, blon), token)
                 pts[0], pts[-1] = tuple(A), tuple(B)
-                paths.append([v for p in simplify(pts, 3) for v in (round(p[0]), round(p[1]))])
+                flat = [v for p in simplify(pts, 3) for v in (round(p[0]), round(p[1]))]
+                if len(flat) < 4:
+                    raise RuntimeError("route geometry collapsed to a line segment")
+                paths.append(flat)
             except Exception as e:
                 print(f"OneMap {code} {a}-{b} skipped: {e}")
                 ok = False
                 break
-        if ok and len(paths) == len(seq)-1:
+        if ok and len(paths) == len(seq) - 1:
             tracks.setdefault("paths", {})[code] = paths
             changed.append(code)
 
