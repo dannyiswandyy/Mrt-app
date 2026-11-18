@@ -2523,17 +2523,14 @@ jobs:
               raise SystemExit("URA builder produced no matched lines")
           PY
 
-      # OneMap is Singapore's authoritative national map. When ONEMAP_TOKEN is configured,
-      # use its rail routing geometry to refine the LRT loops; otherwise keep the URA geometry unchanged.
+      # OneMap is Singapore's authoritative national map. Generate a fresh short-lived
+      # access token from the repository's existing credentials, then refine the LRT loops.
       - name: Refine LRT geometry with OneMap
         env:
-          ONEMAP_TOKEN: ${{ secrets.ONEMAP_TOKEN }}
+          ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
+          ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
         run: |
-          if [ -f mrt-tracker-app/tools/build_onemap_rail.py ] && [ -n "$ONEMAP_TOKEN" ]; then
-            python3 mrt-tracker-app/tools/build_onemap_rail.py mrt-tracker-app
-          else
-            echo "OneMap LRT refinement skipped (no ONEMAP_TOKEN); existing URA geometry remains."
-          fi
+          python3 mrt-tracker-app/tools/build_onemap_rail.py mrt-tracker-app
 
       # Keep the downloaded URA source available for the next build.
       - name: Save URA rail source cache
