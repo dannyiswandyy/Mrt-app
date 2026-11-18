@@ -6,13 +6,22 @@ style.id="mrt-ui-refresh-v3";
 style.textContent=css;
 (document.head||document.documentElement).appendChild(style);
 const root=document.documentElement;
+/* Runs on every resize, and on phones that includes the address bar sliding in and out while scrolling: so only
+   touch the page when something really changed (each change restyles the whole page). */
+const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+let lastKind="",lastVh="";
 const setClass=()=>{
   const w=Math.max(document.documentElement.clientWidth,window.innerWidth||0);
-  root.classList.toggle("device-phone",w<=700);
-  root.classList.toggle("device-tablet",w>700&&w<1200);
-  root.classList.toggle("device-desktop",w>=1200);
-  root.classList.toggle("device-ios",/iPad|iPhone|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1));
-  root.style.setProperty("--ui-vh",(window.visualViewport?window.visualViewport.height:window.innerHeight)+"px");
+  const kind=w<=700?"device-phone":w<1200?"device-tablet":"device-desktop";
+  if(kind!==lastKind){
+    root.classList.toggle("device-phone",kind==="device-phone");
+    root.classList.toggle("device-tablet",kind==="device-tablet");
+    root.classList.toggle("device-desktop",kind==="device-desktop");
+    if(!lastKind) root.classList.toggle("device-ios",ios);
+    lastKind=kind;
+  }
+  const vh=Math.round(window.visualViewport?window.visualViewport.height:window.innerHeight)+"px";
+  if(vh!==lastVh){ root.style.setProperty("--ui-vh",vh); lastVh=vh; }
 };
 setClass();
 addEventListener("resize",setClass,{passive:true});

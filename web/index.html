@@ -2354,6 +2354,7 @@ function wetUpdate(){
 }
 /* The wet stretches of a line ("NS1-NS2" -> {w: share above ground, spans}), or null when there are none. */
 function wetSpans(code){
+  if (WET.loaded && !wetOn) return null;          // fast way out: this is asked for every train, many times a second
   try {
     wetLoad(); if (!wetOn || !WET_LINES.includes(code)) return null;
     wetUpdate();
@@ -2368,8 +2369,8 @@ const wetRunCache = new WeakMap();
 function wetRun(code, r){
   try {
     if (!r || !r.p || r.added) return null;
+    const p = r.p, m = wetSpans(code); if (!m || camAdj(code, p.d > 0 ? 0 : 1)) return null;   // dry: stop here (cheap)
     if (typeof rtTimesFor === "function" && rtTimesFor(code, r)) return null;   // LTA's live times already include any slowdown
-    const p = r.p, m = wetSpans(code); if (!m || camAdj(code, p.d > 0 ? 0 : 1)) return null;
     const c = wetRunCache.get(r); if (c && c.v === WET.ver) return c.x;
     const st = LINES[code].stations, n = p.arr.length, W = [0], R = [p.arr[0], p.dep[0]], S = [p.arr[0], p.dep[0]];
     let any = false;
@@ -3001,16 +3002,25 @@ function ttTrainsOn(code, now, list){
 function trainById(list, id){
   return list.find(t => t.id === id) || list.find(t => t.prev === id) || null;
 }
+/* Next trains at stop s of a timetable line. The day's runs are in start order, so instead of working out every
+   run's time here (300-700 runs a line, asked dozens of times a second), runs that passed here over an hour ago are
+   skipped (unless LTA's live feed lists them or they're known to be running late), and once `count` trains are
+   found, the search stops at the first run starting 15 min after the latest of them (no train runs that early). */
 function ttNext(list, s, dir, now, count, reach){
   const sec = now.mins * 60 - camAdj(list.code, dir) * 60, res = [], mv = moved(list.code, now.iso);
   ttLinks(list);                                           // works out each run's lateness from the run before (r.tl)
+  let live = null; try { live = rtState && rtState.trips; } catch(e){}
+  const tops = [];                                         // the `count` earliest times found so far, sorted
+  const keep = t => { if (!(count > 0)) return; let i = tops.length; while (i > 0 && tops[i - 1] > t) i--; tops.splice(i, 0, t); if (tops.length > count) tops.pop(); };
   for (const r of list){
     const p = r.p; if ((p.d > 0 ? 0 : 1) !== dir) continue;
+    if (tops.length >= count && r.s - 900 > tops[tops.length - 1]) break;          // in start order: none sooner from here on
     const k = (s - p.f) * p.d;
     if (k < 0 || k > p.arr.length - 1 || (k === p.arr.length - 1 && !(LINES[list.code].bound && p.to === -1))) continue;   // a Circle Line loop run goes on round from its last stop here
     if (reach != null && (reach - p.f) * p.d > p.arr.length - 1) continue;
+    if (r.s + p.arr[k] + (r.tl || 0) < sec - 3600 && !(mv && mv.get(`${list.code}t${r.s}p${r.pi}`)) && !(live && r.tid && live[r.tid])) continue;   // long gone
     const t = ttAt(list.code, r, k, mv);
-    if (t >= sec - 10) res.push({m: (t - sec) / 60, to: p.to});
+    if (t >= sec - 10){ res.push({m: (t - sec) / 60, to: p.to}); keep(t); }
   }
   res.sort((a, b) => a.m - b.m);
   const top = res.slice(0, count), out = top.map(x => x.m);
