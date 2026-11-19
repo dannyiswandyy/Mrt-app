@@ -8510,6 +8510,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
         <div class="hfacts"><div><span>Codes</span><b>${codePills(codes)}</b></div><div><span>Lines</span><b>${esc(lines.join(", "))}</b></div></div>
         <div class="mi-act" style="margin-top:10px"><button class="btn ghost" type="button" data-hx="hist">Station history ›</button><button class="btn ghost" type="button" data-hx="map">Show on map</button><button class="btn ghost" type="button" data-hx="board">Line Board</button>${window.repMapBtn ? repMapBtn() : ""}</div>
       </details>
+      ${window.engSightingsHTML ? engSightingsHTML(name) : ""}
       <div class="mi-act"><button class="btn" type="button" data-hx="from">From here</button><button class="btn ghost" type="button" data-hx="to">To here</button><button class="btn ghost" type="button" data-hx="fav">${isFav(name) ? "★ On Home" : "☆ Add to Home"}</button></div>`;
   }
   function trainNow(x){
@@ -9202,4 +9203,4 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
 <script src="run-graph.js"></script>
 <script src="gtfs-lab.js"></script>
 <script src="disruption-engine.js"></script>
-<script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script>
+<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script>

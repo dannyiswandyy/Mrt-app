@@ -267,6 +267,8 @@ jobs:
           cp 'web/run-graph.js' 'mrt-tracker-app/app/src/main/assets/run-graph.js'
           cp 'web/trainset-intelligence.js' 'mrt-tracker-app/app/src/main/assets/trainset-intelligence.js'
           cp 'web/disruption-intelligence.js' 'mrt-tracker-app/app/src/main/assets/disruption-intelligence.js'
+          cp 'web/eng-sightings-logic.js' 'mrt-tracker-app/app/src/main/assets/eng-sightings-logic.js'
+          cp 'web/eng-sightings.js' 'mrt-tracker-app/app/src/main/assets/eng-sightings.js'
           cp 'web/spotter-planner.js' 'mrt-tracker-app/app/src/main/assets/spotter-planner.js'
           cp 'web/ops-lab.js' 'mrt-tracker-app/app/src/main/assets/ops-lab.js'
           cp 'web/ops-lab.js' 'mrt-tracker-app/app/src/main/assets/ops-lab.js'
