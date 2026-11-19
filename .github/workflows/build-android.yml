@@ -2532,6 +2532,7 @@ jobs:
         env:
           ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
           ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
+          ONEMAP_TOKEN: ${{ secrets.ONEMAP_TOKEN }}
         run: |
           python3 mrt-tracker-app/tools/build_onemap_rail.py mrt-tracker-app
 
