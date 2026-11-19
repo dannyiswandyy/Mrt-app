@@ -86,7 +86,9 @@ h1{font-family:var(--display);font-size:26px;line-height:1;margin:0;letter-spaci
 .search-drop{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);max-height:320px;overflow-y:auto;z-index:60}
 .s-item{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;border-bottom:1px solid var(--soft);background:none;color:var(--fg);padding:9px 12px;font:500 14px var(--body);text-align:left;cursor:pointer}
 .s-item:last-child{border-bottom:0}
-.s-item:hover,.s-item:focus{background:var(--soft);outline:none}
+.s-item:hover,.s-item:focus,.s-item.on{background:var(--soft);outline:none}
+.name .st-name{border:0;background:none;color:inherit;font:inherit;padding:0;margin:0;cursor:pointer;text-align:left}
+.name .st-name:hover,.name .st-name:focus-visible{text-decoration:underline}
 .s-badges{display:flex;gap:4px;flex-wrap:wrap}
 
 .views{display:flex;gap:3px;background:var(--soft);border-radius:9px;padding:3px;flex:0 0 auto}
@@ -851,8 +853,17 @@ select,input[type="time"],input[type="text"],textarea{
 .maproute[hidden]{display:none}
 .rt-form{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .rt-f{display:grid;gap:3px;grid-column:1;min-width:0}
-.rt-f span{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.rt-f input,.rt-f select{width:100%;min-width:0;font:500 15px var(--body);color:var(--fg);background:var(--soft);border:1px solid var(--rule);border-radius:9px;padding:9px 10px}
+.rt-f > span:not(.rt-field){font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.rt-f input,.rt-f select{width:100%;min-width:0;font:500 15px var(--body);color:var(--fg);background:var(--soft);border:1px solid var(--rule);border-radius:9px;padding:9px 36px 9px 10px}
+.rt-field{position:relative;min-width:0}
+.rt-f input,.rt-x{position:relative;z-index:45}
+.rt-x{position:absolute;right:4px;bottom:4px;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;z-index:46}
+.rt-drop{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;max-height:min(240px,42dvh);overflow:auto;background:var(--panel);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow)}
+.rt-drop.up{top:auto;bottom:calc(100% + 4px)}
+.rt-sug{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;border:0;border-bottom:1px solid var(--soft);background:none;color:var(--fg);padding:8px 12px;font:500 15px var(--body);text-align:left;cursor:pointer}
+.rt-sug:last-child{border-bottom:0}
+.rt-sug.on,.rt-sug:hover{background:var(--soft)}
+.rt-sug small{color:var(--muted);font-size:12px}
 .rt-f input:focus,.rt-f select:focus{outline:2px solid var(--fg);outline-offset:1px}
 .rt-swap{grid-column:2;grid-row:1 / span 2;align-self:center;width:38px;height:38px;border-radius:50%;border:1px solid var(--rule);background:var(--panel);color:var(--fg);font-size:18px;cursor:pointer}
 .rt-form .rt-fare{grid-column:1 / -1}
@@ -1133,10 +1144,43 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
 
 /* Desktop / large monitors: keep the tracker dense but breathable. */
 @media (min-width:1200px){
-  .wrap{padding-inline:var(--ui-gutter)}
+  .wrap{padding-inline:var(--ui-gutter);max-width:1440px}
   .header-controls{align-items:center}
   .mapwrap{min-height:520px}
   #viewTrains:not([hidden]){grid-template-columns:minmax(0,1.45fr) minmax(390px,.95fr)}
+}
+/* Tablets, 600–1023px: cards that don't stretch, dialogs that stay a card. Wider screens keep the side panel. */
+@media (min-width:600px) and (max-width:1023px){
+  .wrap{max-width:1280px;margin-inline:auto}
+  .home,.hist{max-width:980px;margin-inline:auto}
+  .card{max-width:100%}
+  .btn,.tab,.s-item,.rt-sug,.mob-nav button{min-height:44px}
+  .sheet{
+    left:max(24px, env(safe-area-inset-left));
+    right:max(24px, env(safe-area-inset-right));
+    width:auto;max-width:680px;margin-inline:auto;
+    bottom:max(16px, env(safe-area-inset-bottom));
+    border-radius:18px;max-height:min(78dvh, 740px);
+  }
+  .simsheet{
+    left:50%;right:auto;top:auto;
+    width:min(560px, calc(100vw - 48px));
+    transform:translateX(-50%);
+    bottom:max(16px, env(safe-area-inset-bottom));
+    border-radius:18px;max-height:min(78dvh, 680px);
+  }
+}
+@media (min-width:600px) and (max-width:1023px) and (orientation:landscape),
+       (min-width:900px) and (max-width:1199px){
+  #viewTrains:not([hidden]){
+    display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(300px,420px);
+    gap:14px;align-items:stretch;
+  }
+  #mapView,#lineView{display:flex!important;flex-direction:column;min-height:0}
+  #lineView{overflow-y:auto;max-height:calc(100dvh - 180px)}
+  .mapwrap{height:min(72dvh, 760px)!important;min-height:360px}
+  #mapInfo{max-width:420px}
 }
 
 /* Foldables and split-screen Android: avoid horizontal overflow from long train labels. */
@@ -1150,6 +1194,10 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
 /* iOS Safari/WebView keyboard + dynamic viewport stability. */
 @supports (height:100dvh){
   .simsheet,.sheet{max-height:88dvh}
+}
+@media (min-width:600px) and (max-width:1023px){
+  .sheet{max-height:min(78dvh, 740px)}
+  .simsheet{max-height:min(78dvh, 680px)}
 }
 @supports (padding:max(0px)){
   .mob-nav{padding-bottom:max(5px,env(safe-area-inset-bottom))}
@@ -3123,7 +3171,7 @@ function buildBoard(){
     return `<div class="row${others.length?" ix":""}${fut?" future":""}" tabindex="0" data-i="${i}">
       <span class="dot"></span>
       <div class="st">
-        <div class="name">${codePills([[current, s[0]], ...others], "lg")}${s[1]}${fut ? "" : `<span class="cwd-slot" data-code="${s[0]}"></span>`}</div>
+        <div class="name">${codePills([[current, s[0]], ...others], "lg")}<button type="button" class="st-name" data-stname="${esc(s[1])}">${esc(s[1])}</button>${fut ? "" : `<span class="cwd-slot" data-code="${s[0]}"></span>`}</div>
         <div class="next" id="nx${i}"></div>
         <div class="detail" id="dt${i}" hidden></div>
       </div></div>`;
@@ -3131,6 +3179,8 @@ function buildBoard(){
   $("board").innerHTML = `<div class="lanes" id="lanes"><div class="spine" id="spine"></div><div class="spine future" id="spineF" hidden></div></div>` + rows;
   $("board").onclick = e => {
     const h = e.target.closest("[data-hstation]"); if (h){ histOpen("station", h.dataset.hstation); return; }
+    const nm = e.target.closest("[data-stname]");
+    if (nm){ e.preventDefault(); e.stopPropagation(); openStationCard(nm.dataset.stname, current); return; }
     const r = e.target.closest(".row"); if (r) toggle(+r.dataset.i);
   };
   $("board").onkeydown = e => { if ((e.key==="Enter"||e.key===" ") && e.target.classList.contains("row")){ e.preventDefault(); toggle(+e.target.dataset.i); } };
@@ -4145,6 +4195,7 @@ const mctx = mcv.getContext("2d");
 let mW = 0, mH = 0, mDpr = 1, view = null, fitScale = 0.01, mDirty = true, mLast = 0;
 let mSel = null;          // {type:"train", line, id} or {type:"station", name}
 let mHits = [];           // trains drawn last frame, for tapping
+let mNameHits = [];       // station-name labels drawn last frame, same card as the circle
 
 /* colours from the page theme */
 let MC = {};
@@ -4520,6 +4571,7 @@ function mapDraw(){
     }
   }
   // labels: interchanges and ends first; more appear as you zoom in
+  mNameHits = [];
   if (zoom >= 1.6){
     const fs = clampN(9 + zoom * 0.35, 10, 13), placed = [];
     ctx.font = `600 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle";
@@ -4544,6 +4596,7 @@ function mapDraw(){
           ctx.lineWidth = 3; ctx.strokeStyle = MC.bg; ctx.strokeText(e.name, bx, y);
           ctx.fillStyle = MC.fg; ctx.fillText(e.name, bx, y);
           if (codes) canvasPills(ctx, codes, bx + tw + 5, y, pfs);
+          mNameHits.push({name: e.name, box});
           break label;
         }
       }
@@ -4740,6 +4793,8 @@ const ptrs = new Map();
 let gest = null, pinch = null, lastTap = null;
 const local = e => { const r = mcv.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
 mcv.addEventListener("pointerdown", e => {
+  for (const id of ["rtDropFrom", "rtDropTo"]){ const d = $(id); if (d){ d.hidden = true; d.innerHTML = ""; } }
+  for (const id of ["rtFrom", "rtTo"]){ const i = $(id); if (i) i.setAttribute("aria-expanded", "false"); }
   try { mcv.setPointerCapture(e.pointerId); } catch(_){}
   const p = local(e); ptrs.set(e.pointerId, p);
   if (ptrs.size === 1) gest = {x: p.x, y: p.y, t: performance.now(), moved: false};
@@ -4772,6 +4827,27 @@ const endPtr = e => {
 mcv.addEventListener("pointerup", endPtr);
 mcv.addEventListener("pointercancel", endPtr);
 mcv.addEventListener("wheel", e => { e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015)); }, {passive: false});
+function nameAt(list, x, y){
+  if (!list) return "";
+  for (let i = list.length - 1; i >= 0; i--){
+    const b = list[i].box;
+    if (b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) return list[i].name;
+  }
+  return "";
+}
+/* The station card: the same one you get from tapping the circle on the map. */
+function openStationCard(name, line){
+  if (!name || !byName[name]) return;
+  const lines = byName[name].map(x => x[0]);
+  mSel = {type: "station", name};
+  mDirty = true;
+  mapInfo();
+  const target = line && lines.includes(line) ? line : (lines.includes(current) ? current : lines[0]);
+  if (typeof showView === "function") showView("trains");
+  if (typeof setTrainView === "function") setTrainView("map");
+  if (isDesktop()) select(target, name);
+  else if (window.mapFocus) window.mapFocus(name);
+}
 function mapTap(x, y){
   let best = null, bd = 16;
   for (const h of mHits){ const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } }
@@ -4780,14 +4856,12 @@ function mapTap(x, y){
     if (isDesktop()){ select(best.line); selTrain = best.id; tick(); }
     return;
   }
+  const named = nameAt(mNameHits, x, y) || (typeof RT !== "undefined" && nameAt(RT.labelHits, x, y));
+  if (named){ openStationCard(named); return; }
   let bs = null, bsd = 18;
   for (const e of MSTN) for (const p of e.pts){ const d = Math.hypot(sx(p[0]) - x, sy(p[1]) - y); if (d < bsd){ bsd = d; bs = e; } }
-  mSel = bs ? {type: "station", name: bs.name} : null;
-  mDirty = true; mapInfo();
-  if (bs && isDesktop()){
-    const lines = bs.codes.map(c => c.line);
-    select(lines.includes(current) ? current : lines[0], bs.name);
-  }
+  if (bs) openStationCard(bs.name);
+  else { mSel = null; mDirty = true; mapInfo(); }
 }
 $("mapLegendBtn").onclick = e => {
   e.stopPropagation();
@@ -7312,7 +7386,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
   const B = {};                  // shared buffers
   const tex = new Map();         // satellite tiles as textures
   const chunks = new Map();      // building meshes, one per 250 m cell
-  let hits = [], tags3 = [], last3 = [], lastT = 0, satBad = 0, satGood = 0;
+  let hits = [], nameHits3 = [], tags3 = [], last3 = [], lastT = 0, satBad = 0, satGood = 0;
 
   /* ---- small maths ---- */
   const persp = (f, a, n, fa) => { const t = 1 / Math.tan(f / 2), r = 1 / (n - fa); return [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, (fa + n) * r, -1, 0, 0, 2 * fa * n * r, 0]; };
@@ -7738,6 +7812,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
       s.r = r;
     }
     // names: nearest and most important first, never on top of each other
+    nameHits3 = [];
     const fs = clampN(15 - Math.log2(c.d / 1500) * 1.5, 11, 16);
     octx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; octx.textBaseline = "middle";
     const order = shown.slice().sort((a, b) => (b.e.ix * 2 + b.e.term) - (a.e.ix * 2 + a.e.term) || a.q[2] - b.q[2]);
@@ -7757,6 +7832,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
       const box = [x, y - h / 2, x + Math.max(w, codes ? pw + 4 : 0), y + h / 2 + (codes ? ph : 0)];
       if (placed.some(b => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) continue;
       placed.push(box);
+      nameHits3.push({name: e.name, box});
       octx.fillStyle = "rgba(10,14,20,.62)"; octx.beginPath();
       if (octx.roundRect) octx.roundRect(box[0], box[1], w, h, h / 2); else octx.rect(box[0], box[1], w, h);
       octx.fill();
@@ -7879,6 +7955,8 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
     let best = null, bd = 1e9;
     for (const h of hits){ const d = Math.hypot(h.x - x, h.y - y); if (d < h.r && d < bd){ bd = d; best = h; } }
     if (best){ mSel = {type: "train", line: best.line, id: best.id}; mapInfo(); mDirty = true; return; }
+    const named = nameAt(nameHits3, x, y);
+    if (named){ openStationCard(named); return; }
     camera();
     let bs = null, bsd = 22;
     for (const e of MSTN){ const q = toScreen(e.x, 6, e.y); if (!q) continue; const d = Math.hypot(q[0] - x, q[1] - y); if (d < bsd){ bsd = d; bs = e; } }
@@ -7937,7 +8015,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
    senior / person with disabilities, or Workfare card, 50 cents less when you tap in before 7.45am on a weekday
    that isn't a public holiday. The distance is the route's length on the map, so near a band's edge it can be
    one step out; the Sentosa Express adds its own $4 ($2 concession) when boarding at VivoCity. */
-const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 0, err: ""};
+const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 0, err: "", labelHits: []};
 (() => {
   const FARES = {
     adult: {name: "Adult card", t: [128,138,149,159,168,175,182,186,190,194,198,202,207,211,215,220,224,227,230,233,236,238,240,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257]},
@@ -7948,7 +8026,87 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   const WALK = 3;                 // minutes from one line's platform to the other's at a change
   try { const s = store.get("mrt.trip", null); if (s && typeof s === "object") Object.assign(RT.f, s); } catch(e){}
   const save = () => store.set("mrt.trip", RT.f);
-  let rtList = "", rtListN = -1;      // the station list for the From/To boxes, built once
+  let rtList = "", rtListN = -1;      // kept so older callers that check the list length still see one entry per station
+  let rtTimer = 0, rtHi = -1, rtQuiet = false;
+  const RECENT_KEY = "mrt.tripRecent";
+  const ALIAS = {
+    je: "Jurong East", cck: "Choa Chu Kang", amk: "Ang Mo Kio", dhoby: "Dhoby Ghaut",
+    changi: "Changi Airport", airport: "Changi Airport", raffles: "Raffles Place",
+    outram: "Outram Park", harbourfront: "HarbourFront", "harbour front": "HarbourFront",
+    botanic: "Botanic Gardens", "one north": "one-north", onenorth: "one-north",
+    "paya lebar": "Paya Lebar", "city hall": "City Hall", "marina bay": "Marina Bay",
+    "little india": "Little India", "boon lay": "Boon Lay", "pasir ris": "Pasir Ris",
+    "ang mo kio": "Ang Mo Kio", "choa chu kang": "Choa Chu Kang", "jurong east": "Jurong East"
+  };
+  const normQ = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const wordsOf = s => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  function editDist(a, b){
+    if (Math.abs(a.length - b.length) > 2) return 9;
+    const m = Array.from({length: a.length + 1}, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) m[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++){
+      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    return m[a.length][b.length];
+  }
+  function stationScore(e, raw){
+    const q = String(raw || "").trim().toLowerCase();
+    const qn = normQ(q);
+    if (!qn) return 0;
+    let best = 0;
+    for (const c of e.codes){
+      const cn = normQ(c.code);
+      if (cn === qn) best = Math.max(best, 100);
+      else if (cn.startsWith(qn)) best = Math.max(best, 86);
+    }
+    const name = e.name.toLowerCase(), nn = normQ(e.name);
+    if (nn === qn) best = Math.max(best, 98);
+    else if (name.startsWith(q) || nn.startsWith(qn)) best = Math.max(best, 90);
+    if (wordsOf(e.name).some(w => w.startsWith(qn))) best = Math.max(best, 80);
+    if (name.includes(q) || nn.includes(qn)) best = Math.max(best, 72);
+    for (const [alias, target] of Object.entries(ALIAS)){
+      if (normQ(target) !== nn) continue;
+      if (alias === q || normQ(alias) === qn) best = Math.max(best, 96);
+      else if (alias.startsWith(q) || (q.length >= 3 && alias.includes(q))) best = Math.max(best, 88);
+    }
+    if (qn.length >= 3 && best < 70){
+      const allow = qn.length <= 4 ? 1 : 2;
+      const d = editDist(qn, nn);
+      if (d <= allow) best = Math.max(best, 64 - d * 8);
+      for (const w of wordsOf(e.name)) if (editDist(qn, normQ(w)) <= 1) best = Math.max(best, 66);
+    }
+    return best;
+  }
+  function searchStations(raw){
+    const q = String(raw || "").trim();
+    const seen = new Set();
+    const rows = [];
+    for (const e of MSTN){
+      if (!e || seen.has(e.name)) continue;
+      seen.add(e.name);
+      const score = q ? stationScore(e, q) : 0;
+      if (q && score <= 0) continue;
+      rows.push({name: e.name, codes: e.codes, score});
+    }
+    if (!q){
+      const recent = recentStations();
+      return recent.map(n => MSTN.find(e => e.name === n)).filter(Boolean).map(e => ({name: e.name, codes: e.codes, score: 1, recent: true}));
+    }
+    rows.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    return rows.slice(0, 8);
+  }
+  function recentStations(){
+    try {
+      const a = store.get(RECENT_KEY, []);
+      return Array.isArray(a) ? a.filter(n => byName[n]).slice(0, 6) : [];
+    } catch(e){ return []; }
+  }
+  function rememberStation(name){
+    if (!byName[name]) return;
+    const next = [name, ...recentStations().filter(n => n !== name)].slice(0, 6);
+    try { store.set(RECENT_KEY, next); } catch(e){}
+  }
+  window.rtSearchStations = searchStations;
   const TRIPS = new Map();            // recent trips by from/to, for the same minute and line status
 
   const find = q => {
@@ -8068,17 +8226,71 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
 
   /* ---- the card under the map ---- */
   const lineName = c => c === "CG" ? "Changi Airport Branch" : LINES[c].name;
+  const stnBtn = n => byName[n] ? `<button type="button" class="st-name" data-stname="${esc(n)}">${esc(n)}</button>` : esc(n);
+  const whichOf = el => el && el.id === "rtTo" ? "to" : el && el.id === "rtFrom" ? "from" : "";
+  const dropOf = which => $(which === "to" ? "rtDropTo" : "rtDropFrom");
+  function hideDrops(){
+    for (const id of ["rtDropFrom", "rtDropTo"]){ const d = $(id); if (d){ d.hidden = true; d.innerHTML = ""; } }
+    for (const id of ["rtFrom", "rtTo"]){ const i = $(id); if (i) i.setAttribute("aria-expanded", "false"); }
+    rtHi = -1;
+  }
+  function paintDrop(which, rows){
+    const drop = dropOf(which), input = $(which === "to" ? "rtTo" : "rtFrom");
+    if (!drop || !input) return;
+    const other = dropOf(which === "to" ? "from" : "to");
+    if (other){ other.hidden = true; other.innerHTML = ""; }
+    if (!rows.length) drop.innerHTML = `<div class="rt-sug" style="color:var(--muted);cursor:default">No matching stations</div>`;
+    else drop.innerHTML = rows.map((r, i) => `<button type="button" class="rt-sug${i === rtHi ? " on" : ""}" data-pick="${esc(r.name)}" data-which="${which}"><span><b>${esc(r.name)}</b>${r.recent ? ` <small>Recent</small>` : ""}</span><span class="s-badges">${codePills((r.codes || []).map(c => [c.line, c.code]))}</span></button>`).join("");
+    const room = input.getBoundingClientRect();
+    const otherEl = $(which === "to" ? "rtFrom" : "rtTo");
+    const otherBox = otherEl ? otherEl.getBoundingClientRect() : null;
+    const vv = window.visualViewport;
+    const viewTop = vv ? vv.offsetTop : 0;
+    const viewBottom = vv ? vv.offsetTop + vv.height : innerHeight;
+    const above = room.top - viewTop, below = viewBottom - room.bottom;
+    const otherBelow = otherBox && otherBox.top >= room.bottom - 8;
+    const otherAbove = otherBox && otherBox.bottom <= room.top + 8;
+    const openUp = otherBelow ? above >= 140 : otherAbove ? (below < 160 && above > below) : (below < 180 && above > 200);
+    drop.classList.toggle("up", openUp);
+    drop.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  }
+  function queueSearch(input){
+    const which = whichOf(input); if (!which) return;
+    const q = input.value;
+    clearTimeout(rtTimer);
+    rtTimer = setTimeout(() => {
+      if (!input.isConnected || document.activeElement !== input || rtQuiet) return;
+      const rows = searchStations(q);
+      if (!q && !rows.length){ hideDrops(); return; }
+      if (rtHi < 0) rtHi = 0;
+      paintDrop(which, rows);
+    }, 70);
+  }
+  function chooseStation(which, name){
+    if (!byName[name]) return;
+    RT.f[which] = name;
+    rememberStation(name);
+    save();
+    rtQuiet = true;
+    const input = $(which === "to" ? "rtTo" : "rtFrom");
+    if (input) input.value = name;
+    const x = input && input.parentElement && input.parentElement.querySelector(".rt-x");
+    if (x) x.hidden = false;
+    hideDrops();
+    setTimeout(() => { rtQuiet = false; }, 300);
+  }
   function formHTML(){
     if (rtListN !== MSTN.length){ rtListN = MSTN.length; rtList = MSTN.map(e => e.name).sort((x, y) => x.localeCompare(y)).map(n => `<option value="${esc(n)}"></option>`).join(""); }
     return `<div class="mi-h"><b>Plan a trip</b><button class="mi-x" type="button" data-act="rt-close" aria-label="Close">×</button></div>
       <div class="rt-form">
-        <label class="rt-f"><span>From</span><input id="rtFrom" list="rtList" autocomplete="off" placeholder="Station or code, e.g. Canberra" value="${esc(RT.f.from)}"></label>
+        <label class="rt-f"><span>From</span><span class="rt-field"><input id="rtFrom" autocomplete="off" enterkeyhint="search" placeholder="Station or code, e.g. Canberra" value="${esc(RT.f.from)}" role="combobox" aria-expanded="false" aria-controls="rtDropFrom" aria-autocomplete="list"><button type="button" class="rt-x" data-act="rt-clear" data-which="from" aria-label="Clear from"${RT.f.from ? "" : " hidden"}>×</button><div class="rt-drop" id="rtDropFrom" hidden></div></span></label>
         <button class="rt-swap" type="button" data-act="rt-swap" aria-label="Swap from and to" title="Swap">⇅</button>
-        <label class="rt-f"><span>To</span><input id="rtTo" list="rtList" autocomplete="off" placeholder="e.g. Changi Airport" value="${esc(RT.f.to)}"></label>
+        <label class="rt-f"><span>To</span><span class="rt-field"><input id="rtTo" autocomplete="off" enterkeyhint="search" placeholder="e.g. Changi Airport" value="${esc(RT.f.to)}" role="combobox" aria-expanded="false" aria-controls="rtDropTo" aria-autocomplete="list"><button type="button" class="rt-x" data-act="rt-clear" data-which="to" aria-label="Clear to"${RT.f.to ? "" : " hidden"}>×</button><div class="rt-drop" id="rtDropTo" hidden></div></span></label>
         <label class="rt-f rt-fare"><span>Fare</span><select id="rtFare">${Object.entries(FARES).map(([k, v]) => `<option value="${k}"${RT.f.fare === k ? " selected" : ""}>${v.name}</option>`).join("")}</select></label>
         <button class="btn" type="button" data-act="rt-go">Show route</button>
         ${RT.err ? `<p class="rt-err" role="alert">${esc(RT.err)}</p>` : ""}
-      </div><datalist id="rtList">${rtList}</datalist>`;
+      </div>`;
   }
   function disruptHTML(r){
     const D = r.disrupt; if (!D) return "";
@@ -8100,14 +8312,14 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       if (l.walk){ prev = prevCode = null; steps.push(`<li class="rt-walk"><span class="rt-dot"></span><div>Walk from <b>${esc(l.at)}</b> to <b>${esc(l.to)}</b>, about ${Math.round(l.mins)} min</div></li>`); first = false; continue; }
       const code = l.fromCode, nm = l.line === "CG" ? "CGL" : l.line;
       const tap = !first && prevCode && isTapOut(prevCode, code);   // e.g. Newton: tap out and back in to change
-      if (!first) steps.push(`<li class="rt-chg"><span class="rt-dot"></span><div>Change at <b>${esc(l.from)}</b> ${codePills(byName[l.from] || [])}${tap ? " · tap out to transfer" : ""} · about ${l.xfer} min walk${l.wait != null ? `, ${Math.max(0, Math.round(l.wait))} min wait` : ""}${window.tripTip ? tripTip(l.from, "chg", prev, l.line) : ""}</div></li>`);
-      steps.push(`<li class="rt-board" style="--c:var(--${l.line})"><span class="rt-dot"></span><div>${codePills([[l.line, code]], "lg")} <b>${esc(l.from)}</b><br>
+      if (!first) steps.push(`<li class="rt-chg"><span class="rt-dot"></span><div>Change at <b>${stnBtn(l.from)}</b> ${codePills(byName[l.from] || [])}${tap ? " · tap out to transfer" : ""} · about ${l.xfer} min walk${l.wait != null ? `, ${Math.max(0, Math.round(l.wait))} min wait` : ""}${window.tripTip ? tripTip(l.from, "chg", prev, l.line) : ""}</div></li>`);
+      steps.push(`<li class="rt-board" style="--c:var(--${l.line})"><span class="rt-dot"></span><div>${codePills([[l.line, code]], "lg")} <b>${stnBtn(l.from)}</b><br>
         <span class="rt-sub">${esc(lineName(l.line))} ${esc(towardsW(l.toward))}${l.wait != null ? ` · ${first ? (l.wait < 0.75 ? "train now" : `next train in ${Math.round(l.wait)} min`) : `train at ${clockText(l.board)}`}` : " · no more trains today"}</span></div></li>
         <li class="rt-ride" style="--c:var(--${l.line})"><span class="rt-bar"></span><div>${l.stops} stop${l.stops === 1 ? "" : "s"} · ${Math.round(l.ride)} min · ${l.km.toFixed(1)} km</div></li>`);
       first = false; prev = l.line; prevCode = l.toCode;
     }
     const last = r.legs[r.legs.length - 1];
-    steps.push(`<li class="rt-end"><span class="rt-dot"></span><div>Arrive <b>${esc(r.to)}</b>${last && last.toCode ? ` ${codePills([[last.line, last.toCode]], "lg")}` : ""} about ${clockText(r.arrive)}${window.tripTip ? tripTip(r.to, "dest") : ""}</div></li>`);
+    steps.push(`<li class="rt-end"><span class="rt-dot"></span><div>Arrive <b>${stnBtn(r.to)}</b>${last && last.toCode ? ` ${codePills([[last.line, last.toCode]], "lg")}` : ""} about ${clockText(r.arrive)}${window.tripTip ? tripTip(r.to, "dest") : ""}</div></li>`);
     const noTrain = r.firstWait == null;
     return `<div class="mi-h"><b>${esc(r.from)} → ${esc(r.to)}</b><button class="mi-x" type="button" data-act="rt-close" aria-label="Close">×</button></div>${disruptHTML(r)}
       <div class="rt-sum">
@@ -8230,6 +8442,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const pulse = reduce ? 0 : (Math.sin(t / 260) + 1) / 2;
     ctx.font = `700 ${clampN(lw * 2.3, 12, 15)}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle";
     const boxes = [];
+    RT.labelHits = [];
     for (const m of RT.marks){
       const q = P(m.x, m.y); if (!q) continue;
       const r = lw * (m.kind === "change" ? 1.1 : 1.35);
@@ -8244,7 +8457,9 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       let x = null, y = q[1];
       for (const [bx, by] of [[q[0] + r + 7, q[1]], [q[0] - r - 7 - w, q[1]], [q[0] - w / 2, q[1] - r - h / 2 - 6], [q[0] - w / 2, q[1] + r + h / 2 + 6]]) if (!hit(bx, by)){ x = bx; y = by; break; }
       if (x === null) continue;
-      boxes.push([x, y - h / 2, x + w, y + h / 2]);
+      const box = [x, y - h / 2, x + w, y + h / 2];
+      boxes.push(box);
+      RT.labelHits.push({name: m.name, box});
       ctx.fillStyle = "rgba(12,16,22,.82)"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y - h / 2, w, h, h / 2); else ctx.rect(x, y - h / 2, w, h); ctx.fill();
       ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.fillText(label, x + 8, y + 0.5);
     }
@@ -8295,15 +8510,63 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return h;
   };
   const read = () => { const f = $("rtFrom"), t = $("rtTo"), k = $("rtFare"); if (f) RT.f.from = f.value; if (t) RT.f.to = t.value; if (k) RT.f.fare = k.value; };
-  $("mapInfo").addEventListener("input", e => { if (e.target.closest(".rt-form")) read(); });
+  $("mapInfo").addEventListener("input", e => {
+    if (!e.target.closest(".rt-form")) return;
+    read();
+    if (e.target.id === "rtFrom" || e.target.id === "rtTo"){
+      const x = e.target.parentElement && e.target.parentElement.querySelector(".rt-x");
+      if (x) x.hidden = !e.target.value;
+      if (!rtQuiet){ rtHi = 0; queueSearch(e.target); }
+    }
+  });
   $("mapInfo").addEventListener("change", e => {
     if (e.target.id === "rtFare"){ read(); save(); if (RT.route) mapInfo(); }
   });
-  $("mapInfo").addEventListener("focusin", e => { const t = e.target; if (t && (t.id === "rtFrom" || t.id === "rtTo") && t.value){ const v0 = t.value; setTimeout(() => { try { if (t.value === v0 && document.activeElement === t) t.select(); } catch(_){} }, 0); } });
-  $("mapInfo").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest(".rt-form")){ e.preventDefault(); read(); show(); } });
+  $("mapInfo").addEventListener("focusin", e => {
+    const t = e.target;
+    if (!t || rtQuiet || (t.id !== "rtFrom" && t.id !== "rtTo")) return;
+    rtHi = 0; queueSearch(t);
+  });
+  $("mapInfo").addEventListener("keydown", e => {
+    const t = e.target;
+    if (!t || !t.closest || !t.closest(".rt-form")) return;
+    const which = whichOf(t);
+    const drop = which && dropOf(which);
+    const items = drop && !drop.hidden ? [...drop.querySelectorAll("[data-pick]")] : [];
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && items.length){
+      e.preventDefault();
+      rtHi = e.key === "ArrowDown" ? Math.min(items.length - 1, rtHi + 1) : Math.max(0, rtHi - 1);
+      items.forEach((el, i) => el.classList.toggle("on", i === rtHi));
+      items[rtHi].scrollIntoView({block: "nearest"});
+      return;
+    }
+    if (e.key === "Enter"){
+      e.preventDefault();
+      if (items.length){ chooseStation(which, items[Math.max(0, rtHi)].dataset.pick); return; }
+      read(); show();
+      return;
+    }
+    if (e.key === "Escape" && drop && !drop.hidden){ e.preventDefault(); hideDrops(); }
+  });
+  document.addEventListener("pointerdown", e => {
+    if (!e.target.closest || e.target.closest(".rt-field")) return;
+    hideDrops();
+  });
   $("mapInfo").addEventListener("click", e => {
+    const pick = e.target.closest("[data-pick]");
+    if (pick){ e.preventDefault(); chooseStation(pick.dataset.which, pick.dataset.pick); return; }
+    const nm = e.target.closest("[data-stname]");
+    if (nm){ e.preventDefault(); openStationCard(nm.dataset.stname); return; }
     const b = e.target.closest("[data-act^='rt-']"); if (!b) return;
     const act = b.dataset.act;
+    if (act === "rt-clear"){
+      const which = b.dataset.which === "to" ? "to" : "from";
+      RT.f[which] = ""; save();
+      const input = $(which === "to" ? "rtTo" : "rtFrom");
+      if (input){ input.value = ""; input.focus(); }
+      b.hidden = true; hideDrops();
+      return;
+    }
     if (act === "rt-close"){ RT.view = false; RT.route = null; RT.err = ""; mapInfo(); mDirty = true; return; }
     if (act === "rt-swap"){ read(); [RT.f.from, RT.f.to] = [RT.f.to, RT.f.from]; mapInfo(); return; }
     if (act === "rt-go"){ read(); show(); return; }
@@ -8327,7 +8590,14 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     else { RT.view = true; if (!RT.f.from && mSel && mSel.type === "station") RT.f.from = mSel.name; mSel = null; RT.route = null; RT.err = ""; }
     mapInfo(); mDirty = true;
     $("mapRoute").setAttribute("aria-pressed", RT.view);
-    if (RT.view) setTimeout(() => { const i = $(RT.f.from ? "rtTo" : "rtFrom"); if (i) i.focus({preventScroll: true}); if (!isDesktop()) $("mapInfo").scrollIntoView({block: "nearest", behavior: "smooth"}); }, 60);
+    if (RT.view) setTimeout(() => {
+      const active = document.activeElement;
+      if (!(active && (active.id === "rtFrom" || active.id === "rtTo"))){
+        const i = $(RT.f.from ? "rtTo" : "rtFrom");
+        if (i) i.focus({preventScroll: true});
+      }
+      if (!isDesktop()) $("mapInfo").scrollIntoView({block: "nearest", behavior: "smooth"});
+    }, 60);
   };
   // the next trains move on: work the trip out again about every 25 seconds while it's showing
   setInterval(() => {
