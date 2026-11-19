@@ -1,6 +1,6 @@
-# MRT Tracker website
+# MRT Spotter website
 
-The normal MRT Tracker app (from `.github/workflows/build-android.yml`, not MRT Dev) as a website on GitHub Pages.
+The normal MRT Spotter app (from `.github/workflows/build-android.yml`, not MRT Dev) as a website on GitHub Pages.
 
 * `index.html`, `livecam.html` – made by `tools/make_web.py` from the app page packed in `build-android.yml`.
   Re-run after the app changes: `python3 web/tools/make_web.py .github/workflows/build-android.yml web`

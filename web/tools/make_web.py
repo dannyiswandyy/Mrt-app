@@ -54,7 +54,7 @@ CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe
 sub(r'<meta http-equiv="Content-Security-Policy" content="[^"]*">', f'<meta http-equiv="Content-Security-Policy" content="{CSP}">', regex=True)
 
 # 2. Web app basics.
-sub('<title>MRT Train Tracker</title>', '<title>MRT Train Tracker</title>\n<meta name="description" content="Live map of Singapore\'s MRT and LRT trains, next trains, disruptions and crowds.">\n'
+sub('<title>MRT Spotter</title>', '<title>MRT Spotter</title>\n<meta name="description" content="Live map of Singapore\'s MRT and LRT trains, next trains, disruptions and crowds.">\n'
     '<meta name="theme-color" content="#14181d">\n<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icons/icon.svg" type="image/svg+xml">\n'
     '<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">')
 

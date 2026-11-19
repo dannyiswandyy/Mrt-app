@@ -41,7 +41,7 @@ export default {
                      : new Response(null, {status: 403});
     }
     // only the website (a browser sends its Origin); anything else is turned away
-    if (!allowed) return text(403, "This relay only serves the MRT Tracker website.", "");
+    if (!allowed) return text(403, "This relay only serves the MRT Spotter website.", "");
     try {
       const res = await route(request, env, ctx);
       return withCors(res, origin);

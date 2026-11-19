@@ -6,7 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>MRT Train Tracker</title>
+<title>MRT Spotter</title>
+<meta name="application-name" content="MRT Spotter">
+<meta name="apple-mobile-web-app-title" content="MRT Spotter">
+<meta property="og:title" content="MRT Spotter">
+<meta property="og:site_name" content="MRT Spotter">
 <meta name="description" content="Live map of Singapore's MRT and LRT trains, next trains, disruptions and crowds.">
 <meta name="theme-color" content="#14181d">
 <link rel="manifest" href="manifest.webmanifest">
@@ -1425,7 +1429,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
   <header class="app-header">
     <div class="top">
       <div class="brand-wrap">
-        <h1><svg class="brand-mark" viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="210" fill="#0b0e15"/><rect x="262" y="190" width="501" height="570" rx="92" fill="#e7ecf3"/><rect x="322" y="270" width="381" height="211" fill="#1f2935"/><rect x="262" y="560" width="501" height="40" fill="#e4002b"/><rect x="262" y="600" width="501" height="31" fill="#00a650"/><circle cx="351" cy="698" r="39" fill="#ffd45a"/><circle cx="674" cy="698" r="39" fill="#ffd45a"/><path d="M380 778h70l-79 102h-71zM574 778h70l81 102h-71z" fill="#e7ecf3"/></svg><span class="brand-name">MRT Train Tracker</span></h1>
+        <h1><svg class="brand-mark" viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="210" fill="#0b0e15"/><rect x="262" y="190" width="501" height="570" rx="92" fill="#e7ecf3"/><rect x="322" y="270" width="381" height="211" fill="#1f2935"/><rect x="262" y="560" width="501" height="40" fill="#e4002b"/><rect x="262" y="600" width="501" height="31" fill="#00a650"/><circle cx="351" cy="698" r="39" fill="#ffd45a"/><circle cx="674" cy="698" r="39" fill="#ffd45a"/><path d="M380 778h70l-79 102h-71zM574 778h70l81 102h-71z" fill="#e7ecf3"/></svg><span class="brand-name">MRT Spotter</span></h1>
         <button type="button" class="devtag" id="devTag" hidden aria-haspopup="dialog" title="Test mode">Dev<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 14h9"/></svg></button>
       </div>
       <div class="top-right">
@@ -1613,7 +1617,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
   </main>
 
   <footer>
-    <p><b>How this works.</b> In the MRT Tracker phone app, trains and next-train times follow LTA's official train timetable, the same published schedule journey planners use, including public holidays. Where the timetable isn't available, they're estimated from typical frequencies and the operators' own station-to-station travel times. Either way, they show the schedule, so delays don't appear on the map; disruption notices from LTA appear under Updates.</p>
+    <p><b>How this works.</b> In the MRT Spotter phone app, trains and next-train times follow LTA's official train timetable, the same published schedule journey planners use, including public holidays. Where the timetable isn't available, they're estimated from typical frequencies and the operators' own station-to-station travel times. Either way, they show the schedule, so delays don't appear on the map; disruption notices from LTA appear under Updates.</p>
     <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and SMRT for the off-peak trips ending at Joo Koon. How many North-South, East-West, Changi Airport branch, North East, Circle and Thomson-East Coast line trains are out, and the morning-peak trips from Yishun: SMRT's and SBS Transit's train duty rosters (Oct–Nov 2026) and a train run number roster sheet. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. MRT and LRT track shapes: URA Master Plan rail lines (Urban Redevelopment Authority, via data.gov.sg, under the Singapore Open Data Licence), downloaded while the app and website are built; SG Rail Data where they don't match. 3D buildings (phone app): © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
   </footer>
 </div>
@@ -1664,7 +1668,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
 <script src="config.js"></script>
 <script src="run-graph.js"></script>
 <script>
-/* ---------- MRT Tracker website: stand-in for the Android app's bridge ----------
+/* ---------- MRT Spotter website: stand-in for the Android app's bridge ----------
    The phone app gives this page window.MrtApp (LTA data with the app's key, news, the timetable, buildings
    and track shapes packed into the app). On the website:
    * the timetable, buildings, RTS Link / Sentosa Express tracks and station exits come from data/ next to this page
@@ -1719,7 +1723,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
 
   let tt = "", bld = "", trk = "", ex = "";
   const bridge = {
-    getChannel: () => "beta",                      // the normal MRT Tracker, not MRT Dev
+    getChannel: () => "beta",                      // the normal MRT Spotter, not MRT Dev
     getVersion: () => W.build,
     getTimetable: () => tt,
     getBuildings: () => bld,
@@ -3773,7 +3777,7 @@ function renderUpd(){
   const u = updState, busy = u.pct !== null && u.pct !== undefined && !u.error;
   const label = u.error ? "Try again" : busy ? (u.pct >= 100 ? "Installing…" : `${u.pct}%`) : "Update";
   b.innerHTML = `<div><b>New version available</b><br><span class="sub">${u.error ? esc(u.error)
-      : u.needPerm ? "Allow MRT Tracker to install updates, then come back and tap Update."
+      : u.needPerm ? "Allow MRT Spotter to install updates, then come back and tap Update."
       : busy ? (u.pct >= 100 ? "Confirm the update on the next screen." : "Downloading…") : `Version ${esc(u.version)}`}</span></div>
     <button class="ubtn" type="button" id="updGo"${busy ? " disabled" : ""}>${label}</button>
     ${busy ? `<div class="ubar"><i style="width:${Math.min(100, u.pct)}%"></i></div>` : ""}`;
@@ -3838,7 +3842,7 @@ function renderOfficial(){
   if (!APP){
     const sample = {segments:[{lines:["NSL"],line:"NSL",ltaLine:"NSL",direction:"Both",codes:["NS1","NS2","NS3","NS4"],bus:["NS1","NS2","NS3","NS4"],shuttle:[],shuttleDir:""}],
       messages:[{text:"0712hrs: NSL – No train service between Jurong East and Choa Chu Kang due to a track fault. Free regular bus services are available at designated bus stops near the affected stations.", at:"Example"}]};
-    body = `<p class="muted">Live notices from LTA's official alerts feed appear here in your MRT Tracker phone app. Here's how a disruption looks:</p>
+    body = `<p class="muted">Live notices from LTA's official alerts feed appear here in your MRT Spotter phone app. Here's how a disruption looks:</p>
       <div class="alert bad" style="cursor:default"><span><span class="chip sample">Sample</span></span>${sample.segments.map(segHTML).join("")}</div>${msgsHTML(sample.messages)}`;
   } else if (!hasKey()){
     body = `<p class="muted">${(window.MRT_WEB && !MRT_WEB.live) ? "Live disruption alerts aren't available on this website right now. Check SMRT or SBS Transit on X for updates." : "Live disruption alerts aren't included in this version of the app."}</p>`;
@@ -3858,7 +3862,7 @@ function renderOfficial(){
 
 function renderNews(){
   const list = $("newsList"), note = $("newsNote");
-  if (!APP){ note.textContent = "News about Singapore's MRT, LRT and rail appears here in your MRT Tracker phone app."; list.innerHTML = ""; return; }
+  if (!APP){ note.textContent = "News about Singapore's MRT, LRT and rail appears here in your MRT Spotter phone app."; list.innerHTML = ""; return; }
   if (!newsState || !newsState.items.length){
     note.textContent = loading ? "Loading recent reports…" : (window.MRT_WEB && !MRT_WEB.live) ? "Rail news isn't available on this website right now." : "No Singapore rail news from the past week.";
     list.innerHTML = ""; return;
@@ -3883,7 +3887,7 @@ function renderSettings(){
     <label>Train times</label>
     <p class="muted">${TT ? `<b style="color:var(--good)">✓ LTA official timetable</b>, downloaded ${esc(TT.feed.built)}. ${TT.feed.lines.length < ORDER.length ? `Estimated on: ${ORDER.filter(c => !TT.lines[c]).map(c => c === "CG" ? "CGL" : c).join(", ")}.` : "Covers every line."}` : "Estimated from typical frequencies. This version of the app doesn't include LTA's timetable."}</p>
     ${APP.getVersion ? `<label>App version</label>
-    <p class="muted"><b>${esc(APP.getVersion())}</b> · ${/*DEV:START*/APP_CHANNEL === "dev" ? "MRT Dev, the developer app for trying new features. It updates separately from MRT Tracker." : /*DEV:END*/"MRT Tracker (beta)"}</p>` : ""}
+    <p class="muted"><b>${esc(APP.getVersion())}</b> · ${/*DEV:START*/APP_CHANNEL === "dev" ? "MRT Dev, the developer app for trying new features. It updates separately from MRT Spotter." : /*DEV:END*/"MRT Spotter (beta)"}</p>` : ""}
     ${APP.checkUpdateNow ? `<div><button class="btn ghost" type="button" id="updCheck">Check for updates</button></div><p class="muted" id="updMsg"></p>` : ""}</div>`;
 
   const uc = $("updCheck");
@@ -6065,7 +6069,7 @@ function aCrowd(e){
   for (const x of e.codes) if (!seen.has(x.code)){ seen.add(x.code); const l = crowdOf(x.code); if (l) lv.push({code: x.code, line: x.line, level: CROWD_TEXT[l]}); }
   return lv.length ? {window: crowdWindow(), levels: lv} : null;
 }
-const aCrowdNote = () => !APP ? "Live platform crowds come from LTA through the MRT Tracker phone app, so this web version doesn't have them."
+const aCrowdNote = () => !APP ? "Live platform crowds come from LTA through the MRT Spotter phone app, so this web version doesn't have them."
   : "LTA's live platform crowd levels aren't available right now.";
 function aOpened(e){
   const seen = new Set(), out = [];
@@ -6162,7 +6166,7 @@ function aRoute(a, b, now, avoid){      // avoid(line, code, nextCode, dir): lea
   return {from: a.name, to: b.name, mins, changes: Math.max(0, legs.filter(l => l.line).length - 1), legs};
 }
 function aStatus(k){
-  if (!APP && !SIM.alert) return {known: false, note: "Disruption alerts come from LTA through the MRT Tracker phone app, so this web version doesn't get them. Check SMRT or SBS Transit on X for updates."};
+  if (!APP && !SIM.alert) return {known: false, note: "Disruption alerts come from LTA through the MRT Spotter phone app, so this web version doesn't get them. Check SMRT or SBS Transit on X for updates."};
   if (!alertState) return {known: false, note: "There's no word from LTA yet. Open Updates to check again."};
   const codes = k ? aCodesOf(k) : null;
   const segs = alertState.status === 2 ? alertState.segments.filter(sg => !codes || (sg.lines || [sg.line]).some(c => codes.includes(c))) : [];
@@ -6321,7 +6325,7 @@ function aBuiltin(q){
     return out(`The app doesn't have fares. You can check them on SimplyGo (simplygo.com.sg) or LTA's MyTransport.SG app.${extra}`);
   }
   if (/\b(live ?cams?|rail ?cam|railcamsg|live ?streams?|webcam|camera)\b/.test(n))
-    return out(`The **Live cam** tab plays RailCam Singapore's live stream from YouTube (youtube.com/@railcamsg). ${camApp() ? "The app looks for the channel's live stream every 3 minutes while the tab is open and starts it by itself; when there's none, it lists the latest videos." : "In the MRT Tracker app it also finds new streams by itself."}`);
+    return out(`The **Live cam** tab plays RailCam Singapore's live stream from YouTube (youtube.com/@railcamsg). ${camApp() ? "The app looks for the channel's live stream every 3 minutes while the tab is open and starts it by itself; when there's none, it lists the latest videos." : "In the MRT Spotter app it also finds new streams by itself."}`);
   if (/\b(special[- ]?bound|short[- ]?(trip|trips|working)|(end|ends|ending|terminat\w*) (early|halfway|partway|midway|before)|turn(s|ing)? back)\b/.test(n)){
     if (ln) lnAct(ln);
     return out(aShortText(ln));
@@ -6483,7 +6487,7 @@ const aRunTool = (name, input) => { const t = A_TOOLS.find(x => x.name === name)
 function aRules(){
   const n = sgNow(), d = new Date(simNow() + 8 * 3600e3);
   const day = d.toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC"});
-  return `You're the conversational rail assistant inside MRT Tracker, focused deeply on Singapore's rail network: MRT, LRT, Sentosa Express, Changi Airport SkyTrain and the RTS Link. It's ${day}, ${clockText(n.mins)} in Singapore.
+  return `You're the conversational rail assistant inside MRT Spotter, focused deeply on Singapore's rail network: MRT, LRT, Sentosa Express, Changi Airport SkyTrain and the RTS Link. It's ${day}, ${clockText(n.mins)} in Singapore.
 Your job is to understand what the person means, not just match keywords. Answer naturally like a knowledgeable local rail enthusiast who also has access to the app's live operational data.
 - Use app tools for anything current or app-specific: live/next trains, first/last trains, routes, frequencies, platform crowds, disruptions, weather, station/line history and other live state. Treat tool results as the source of truth for current conditions.
 - For Singapore rail facts, history, rolling stock, signalling, depots, operations, extensions, station design, operators, train models, testing, engineering movements and rail terminology, use the rail_knowledge tool first, then broader knowledge when appropriate. If a fact could have changed recently or you're unsure, say so rather than inventing it.
@@ -7024,7 +7028,7 @@ function camRender(){
   let st;
   if (A.video) st = camErr != null ? `The ${A.name} camera won't play here right now. Tap Open in YouTube to watch it there.`
     : `${A.name} camera from ${CAM.name}. If it isn't streaming right now, YouTube says so in the player. Tap Main cam to go back.`;
-  else if (!camApp()) st = "YouTube plays whatever RailCam Singapore has live. In the MRT Tracker app, it also finds new streams by itself and lists recent videos.";
+  else if (!camApp()) st = "YouTube plays whatever RailCam Singapore has live. In the MRT Spotter app, it also finds new streams by itself and lists recent videos.";
   else if (camBusy) st = "Checking RailCam Singapore for a live stream…";
   else if (camFail && !camInfo) st = "Couldn't reach YouTube to look for a live stream, so this is the last stream the app knows of.";
   else if (camPick && !live) st = `Playing an earlier video. Checked ${at}: not live. It switches to the live stream as soon as one starts.`;
@@ -7285,7 +7289,7 @@ repRender(false);
 /*DEV:END*/
 
 /*DEV:START*/
-/* Which app this is: "dev" (MRT Dev, for trying new features) or "beta" (MRT Tracker). */
+/* Which app this is: "dev" (MRT Dev, for trying new features) or "beta" (MRT Spotter). */
 if (APP_CHANNEL === "dev"){ $("devTag").hidden = false; document.title = "MRT Dev"; }
 /*DEV:END*/
 renderAll();
@@ -8779,7 +8783,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   setInterval(checkDis, 10000); setTimeout(checkDis, 2500);
   window.notifyRowHTML = () => {
     const st = nState();
-    if (st === "none") return `<p class="hint nt-row">Disruption alerts for these stations' lines work in the MRT Tracker app.</p>`;
+    if (st === "none") return `<p class="hint nt-row">Disruption alerts for these stations' lines work in the MRT Spotter app.</p>`;
     return `<div class="nt-row"><label><input type="checkbox" id="disNotify"${disOn() ? " checked" : ""}> Notify me about disruptions on these stations' lines</label>
       ${st === "ask" ? `<button class="btn ghost" type="button" data-nt="ask">Allow notifications</button>` : st === "off" ? `<span class="hint">Notifications are off for this app.</span><button class="btn ghost" type="button" data-nt="settings">Open settings</button>` : ""}</div>`;
   };
@@ -8817,7 +8821,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     remind = {key: tripKey(r), at: list.map(x => x.at), end: list[list.length - 1].at + 60000, sig: list.map(x => Math.round(x.at / 60000)).join(",")};
     store.set(REM_KEY, remind);
     const st = nState();
-    remMsg = st === "none" ? "In a browser nothing is sent: reminders come from the MRT Tracker app."
+    remMsg = st === "none" ? "In a browser nothing is sent: reminders come from the MRT Spotter app."
       : st === "off" ? "Notifications are off for this app, so these won't show. Turn them on in Android settings." : "";
   }
   function clearRemind(){ call("tripCancel"); remind = null; store.set(REM_KEY, null); remMsg = ""; }
