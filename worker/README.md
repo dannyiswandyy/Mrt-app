@@ -1,4 +1,4 @@
-# MRT Tracker website: data relay (Cloudflare Worker)
+# MRT Spotter website: data relay (Cloudflare Worker)
 
 The website (GitHub Pages) is public, so it can't hold the LTA DataMall key, and a browser isn't allowed to read
 LTA, Google News or YouTube directly. This small Worker does it for the website only. It holds the key as a
@@ -51,7 +51,7 @@ and the Ask tab uses its built-in answers.
 curl -H "Origin: https://dannyiswandyy.github.io" https://mrt-relay.YOUR-NAME.workers.dev/health
 ```
 should print `{"ok":true,"lta":true,"ai":false,"yt":true}`. (Opening `/health` in a browser tab shows
-"This relay only serves the MRT Tracker website." That's expected: a tab sends no Origin.)
+"This relay only serves the MRT Spotter website." That's expected: a tab sends no Origin.)
 
 ### 5. Point the website at it
 Edit `web/config.js`:

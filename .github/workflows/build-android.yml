@@ -40,7 +40,7 @@ jobs:
           cat > 'mrt-tracker-app/README.md' <<'MRTAPP_EOF'
           # MRT Tracker (Android)
           
-          A small Android app that shows the MRT Train Tracker full screen. The tracker page is bundled inside the app (`app/src/main/assets/index.html`), so trains and timings work offline; the internet is only used for fonts.
+          A small Android app that shows MRT Spotter full screen. The tracker page is bundled inside the app (`app/src/main/assets/index.html`), so trains and timings work offline; the internet is only used for fonts.
           
           ## Build with GitHub (no computer needed)
           
@@ -126,7 +126,7 @@ jobs:
 
               defaultConfig {
                   applicationId channel == 'dev' ? 'sg.mrttracker.app' : 'sg.mrttracker.app'
-                  resValue 'string', 'app_name', channel == 'dev' ? 'MRT Tracker' : 'MRT Tracker'
+                  resValue 'string', 'app_name', channel == 'dev' ? 'MRT Tracker' : 'MRT Spotter'
                   resValue 'color', 'icon_bg', '#0A0E14'
                   buildConfigField 'String', 'CHANNEL', '"' + channel + '"'
                   minSdk 24
@@ -1931,7 +1931,7 @@ jobs:
                       PendingIntent pi = PendingIntent.getActivity(c, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                       Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : new Notification.Builder(c);
                       b.setSmallIcon(R.drawable.ic_stat_train)
-                              .setContentTitle("New MRT Tracker version")
+                              .setContentTitle("New MRT Spotter version")
                               .setContentText(versionName.isEmpty() ? "Tap to update" : "Version " + versionName + " is ready. Tap to update.")
                               .setContentIntent(pi)
                               .setAutoCancel(true);
@@ -2643,7 +2643,7 @@ jobs:
               --notes "MRT Tracker, the developer app for trying new features. Download mrt-tracker.apk on your Android phone and open it to install. It installs next to MRT Tracker and doesn't change it."
           else
             gh release delete latest --yes --cleanup-tag || true
-            gh release create latest "$APK" version.json --title "MRT Tracker $VN" \
+            gh release create latest "$APK" version.json --title "MRT Spotter $VN" \
               --notes "Download mrt-tracker.apk on your Android phone and open it to install. Once installed, the app updates itself: it tells you when there's a new version and installs it in one tap."
           fi
 

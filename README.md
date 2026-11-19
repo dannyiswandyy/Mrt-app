@@ -1,14 +1,14 @@
-# Singapore MRT Tracker
+# MRT Spotter
 
 A Singapore MRT/LRT tracker for Android, plus a website at [dannyiswandyy.github.io/Mrt-app](https://dannyiswandyy.github.io/Mrt-app/). It shows the network map (2D and 3D), trains and timings, station and train-model information, weather, news, disruptions, and a trip planner.
 
-**MRT Tracker** is the public / beta app for day-to-day use. It is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` and `version.json` under the repository's **latest** release. The app can check that release and install newer builds in-app. The public app does **not** contain the private Dev build or Dev workflow.
+**MRT Spotter** is the public / beta app for day-to-day use. It is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` and `version.json` under the repository's **latest** release. The app can check that release and install newer builds in-app. The public app does **not** contain the private Dev build or Dev workflow.
 
 3D buildings are downloaded in smaller parts with retries and cached between builds, so when OpenStreetMap is slow the missing station areas fill in over the next few builds. If the LTA timetable can't be downloaded, the build summary says whether the key was refused or the file link failed, and the app falls back to estimates.
 
 A separate private Dev build exists for the maintainer's own testing and is kept in the private `mrt-dev-app` repository. Dev builds are not part of this public repository or its public updater.
 
-## Current features (MRT Tracker)
+## Current features
 
 - Singapore MRT/LRT network map, with interchange **code pills** and a 3D map you can move, turn and tilt
 - Train positions and arrival times from LTA's packed timetable, with a fallback to estimates built from the operators' train duty rosters (weekday, Saturday, Sunday and public holiday)

@@ -1,6 +1,6 @@
 {
-  "name": "MRT Train Tracker",
-  "short_name": "MRT Tracker",
+  "name": "MRT Spotter",
+  "short_name": "MRT Spotter",
   "description": "Live map of Singapore's MRT and LRT trains, next trains, disruptions and crowds.",
   "start_url": "./",
   "scope": "./",

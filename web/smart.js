@@ -219,7 +219,7 @@ function delayText(codes){
     if (parts.length) lines.push(`**${lineName(c)}** – ${parts.join("; ")}${liveFresh() ? " (LTA live feed)" : ""}.`);
     else if (liveFresh()) lines.push(`**${lineName(c)}** – LTA's live feed has no delays listed for trains running now.`);
   }
-  if (!lines.length) return `LTA's live train feed isn't reachable here${W.APP ? " right now" : " (it comes through the MRT Tracker phone app)"}, and this device hasn't learned enough yet to say how late trains usually run.`;
+  if (!lines.length) return `LTA's live train feed isn't reachable here${W.APP ? " right now" : " (it comes through the MRT Spotter phone app)"}, and this device hasn't learned enough yet to say how late trains usually run.`;
   return lines.join("\n");
 }
 function wetText(){
