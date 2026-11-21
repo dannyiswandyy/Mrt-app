@@ -14,7 +14,7 @@
      the text itself. Online/offline follows the browser. */
 (() => {
   const C = window.MRT_WEB_CONFIG || {}, PROXY = String(C.proxy || "").trim().replace(/\/+$/, "");
-  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "__BUILD__"};
+  // The website is always the public production channel. Keep all Dev-only modules inert even if source parity ships them.\n  window.MRT_PRODUCTION = true;\n  window.MRT_DEV_FEATURES = false;\n  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "__BUILD__"};
   const within = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
   const getText = (u, ms) => within(fetch(u, {cache: "no-cache"}).then(r => r.ok ? r.text() : null).catch(() => null), ms);
   const reply = (id, code, body) => setTimeout(() => { if (window.__native) window.__native(id, code, body || ""); }, 0);
