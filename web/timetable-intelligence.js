@@ -65,12 +65,16 @@
     }).filter(Boolean).sort(function (a, b) { return a.time - b.time; });
   }
   function inspectDay(T, code, date) {
-    var trips = scheduledTrips(T, code, date), bySlot = new Map(), paths = new Map(), patterns = new Map();
+    var trips = scheduledTrips(T, code, date), bySlot = new Map(), paths = new Map(), patterns = new Map(), lrtRoutes = new Map();
     trips.forEach(function (t) {
       paths.set(t.route, (paths.get(t.route) || 0) + 1);
       if (LRT.has(code)) {
         var p = t.pattern || "Unclassified trip";
         patterns.set(p, (patterns.get(p) || 0) + 1);
+        var routeId = p + "|" + t.route;
+        if (!lrtRoutes.has(routeId)) lrtRoutes.set(routeId, {pattern:p, route:t.route, count:0, first:hhmm(t.time), last:hhmm(t.endTime)});
+        var lr = lrtRoutes.get(routeId);
+        lr.count++; lr.last = hhmm(t.endTime);
       } else if (t.slot) {
         var key = t.service + ":" + t.slot;
         if (!bySlot.has(key)) bySlot.set(key, {slot: t.slot, service: t.service, trips: []});
@@ -94,6 +98,7 @@
       last:trips.length ? hhmm(Math.max.apply(null, trips.map(function (t) { return t.endTime; }))) : null,
       routes:[].concat(Array.from(paths, function (x) { return {route:x[0], count:x[1]}; })).sort(function (a,b) { return b.count-a.count; }),
       patterns:Array.from(patterns, function (x) { return {pattern:x[0], count:x[1]}; }).sort(function (a,b) { return b.count-a.count; }),
+      lrtRoutes:Array.from(lrtRoutes.values()).sort(function(a,b){return b.count-a.count;}),
       isLrt:LRT.has(code), evidence:"LTA scheduled trips; not real-time train movements or an official duty roster"};
   }
   function fingerprint(T) {
@@ -210,8 +215,8 @@
       var d=inspectDay(T,code,selectedDate);
       return '<button type="button" class="tti-line" data-line="'+esc(code)+'" aria-pressed="'+(code===selected)+'"><b>'+esc(code)+'</b><span>'+d.trips+' trips'+(d.isLrt?" · trip patterns":(" · "+d.runs+" duties"))+'</span></button>';
     }).join("");
-    var variations=data.isLrt ? data.patterns.map(function(p){
-      return '<li><b>'+esc(p.pattern)+'</b> · '+p.count+' timetable trips</li>';
+    var variations=data.isLrt ? data.lrtRoutes.map(function(p){
+      return '<li><b>'+esc(p.pattern)+'</b> · '+esc(p.route)+' · '+p.count+' scheduled trips <small>'+esc(p.first)+'–'+esc(p.last)+'</small></li>';
     }).join("") : data.varied.slice(0,80).map(function(r){
       return '<li><details><summary><b>Slot '+esc(r.slot)+'</b> · '+r.trips+' trips · '+esc(r.routes.join(" | "))+'</summary><small>Route changes near '+esc(r.times.join(", ")||"not available")+'</small><ol>'+r.timeline.map(function(t){return '<li>'+esc(t.time)+'–'+esc(t.end)+' · '+esc(t.origin)+' → '+esc(t.dest)+'</li>';}).join("")+'</ol></details></li>';
     }).join("");
