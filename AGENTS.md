@@ -2,6 +2,16 @@
 
 This is the **public** MRT Tracker app and website. Danny works on it with more than one AI (Claude, ChatGPT, Grok). Read this before changing anything, so you don't undo each other's work. New features are tried in MRT Dev (the `mrt-dev-app` repo) first and only come here when Danny asks.
 
+## Shared core and channel controls
+
+The user wants **public Android + public website + private Dev Android** to share approved underlying intelligence and bug fixes. Core capability should not silently fall behind on production just because Dev receives a change. Experimental features can exist in the shared logic but must remain hidden and disabled on public surfaces until expressly approved.
+
+- **Production source of truth:** `web/index.html` and its local `web/*.js` dependencies are used by both the public website and the public Android workflow. When adding a local script reference to `web/index.html`, also copy that file to `mrt-tracker-app/app/src/main/assets/` in `.github/workflows/build-android.yml`. The regression test in `tests/timetable-intelligence.test.mjs` checks this.
+- **Explicit visibility flags:** production uses `window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;`; experimental UI, network requests, simulation and Dev diagnostics must check these flags before loading or operating. Having experimental code present does not grant permission to display or execute it.
+- **Dev-only release stays private:** never upload `mrt-dev.apk` to the public repository or include private Dev credentials in a public artifact. The Dev app builds in `SingaporeTrainsProductions/mrt-dev-app`.
+- **Promote safely:** synchronize approved core fixes on both sides, while withholding unapproved experimental behaviours. Check website deployment, public APK, and private Dev APK separately; do not say a build is published until the intended release assets are confirmed.
+- **No blind automatic cross-repo merges:** the repositories have separate Android packaging and test suites. Review shared source changes for compatibility before applying them.
+
 ## Before you change anything
 
 1. **Get the newest commit first.** Another AI may have pushed a minute ago. Pull or fetch `main` and build on top of it.
