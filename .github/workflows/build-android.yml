@@ -2692,6 +2692,10 @@ jobs:
             gh release delete latest --yes --cleanup-tag || true
             gh release create latest "$APK" version.json --title "MRT Spotter $VN" \
               --notes "Download mrt-tracker.apk on your Android phone and open it to install. Once installed, the app updates itself: it tells you when there's a new version and installs it in one tap."
+            # GitHub may retain the release as a draft after upload; explicitly publish
+            # it so /releases/latest/download/... and in-app updates become reachable.
+            gh release edit latest --draft=false --latest
+            gh release view latest --json isDraft --jq '.isDraft' | grep -qx false
           fi
 
   # Runs before anything is published. If the page has a script error, doesn't start or freezes,
