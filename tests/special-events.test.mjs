@@ -66,3 +66,24 @@ test("only announced rail lines are inspected", () => {
   assert.equal(r.trips.some(t => t.line === "NEL"), false);
   assert.deepEqual(Object.keys(r.countByLine).sort(), ["CCL", "EWL", "NSL"]);
 });
+
+
+test("line-board/map bridge shows LTA Sunday 02:30 runs during Saturday 26:30", () => {
+  const sat = [{ s: 95400, tid: "SAT", pi: 1 }];
+  const sun = [{ s: 9000, tid: "SUN", pi: 2 }];
+  const w = { sgNow: () => ({ iso: "2026-12-05", mins: 1590 }),
+    ttTrips: (_code, iso) => iso === "2026-12-05" ? sat : sun };
+  vm.runInNewContext(src.slice(src.indexOf(tag)), { window: w, Date });
+  const shown = w.ttTrips("NSL", "2026-12-05");
+  assert.deepEqual(Array.from(shown.map(t => t.tid)), ["SAT", "SUN"]);
+  assert.deepEqual(Array.from(shown.map(t => t.s)), [95400, 95400]);
+  assert.equal(w.ttTrips("NEL", "2026-12-05"), sat, "other lines remain unchanged");
+  assert.equal(w.ttTrips("NSL", "2026-12-06"), sun, "daytime Sunday timetable is unchanged");
+});
+
+test("no early Sunday trains means no fabricated map trains", () => {
+  const w = { sgNow: () => ({ iso: "2026-12-05", mins: 1590 }),
+    ttTrips: (_code, iso) => iso === "2026-12-06" ? null : null };
+  vm.runInNewContext(src.slice(src.indexOf(tag)), { window: w, Date });
+  assert.equal(w.ttTrips("NSL", "2026-12-05"), null);
+});
