@@ -4968,6 +4968,10 @@ window.selectFutureRailStation = hit => {
   mDirty = true; mapInfo();
   if (typeof M3 !== "undefined" && M3.on) M3.focus(hit.x,hit.y);
   else if (view) flyTo(hit.x,hit.y,Math.max(view.s,fitScale*6));
+  // Use the same live station sheet on phones/tablets as existing MRT and RTS stations.
+  // The sheet's future-station branch shows project details, never arrival predictions.
+  if (!isDesktop() && typeof window.hxOpen === "function")
+    window.hxOpen({type:"future-station",line:hit.line,code:hit.code,name:hit.name}, false);
 };
 function mapTap(x, y){
   let best = null, bd = 16;
