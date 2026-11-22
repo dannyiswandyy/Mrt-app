@@ -2337,9 +2337,12 @@ function runsFor(code, day, dir = 0){
   }
   return runCache[k] = out;
 }
-/* A train's destination: the line's usual end, or for a special-bound train the station it ends at. */
-const isShortTo = (L, dir, act, to) => to != null && to >= 0 && to < act.length && !L.loop && !L.lrt && !L.shuttle &&
-  (L.bound ? !(dir === 0 && to === act.length - 1) : to !== (dir ? 0 : act.length - 1) && act[to][1] !== dest(L, dir, act));   // Circle Line: Dhoby Ghaut is an end; Promenade (after Bayfront) just carries on round
+/* Each LTA trip carries its own scheduled end station. The fixed line-end labels are only
+   directional fallbacks (and for a full loop). Short-turn detection also covers LRT loops,
+   shuttles and Circle Line patterns; duplicate loop-hub stations have the same name. */
+const isShortTo = (L, dir, act, to) => Number.isInteger(to) && to >= 0 && to < act.length &&
+  !!act[to] && !!act[dir ? 0 : act.length - 1] &&
+  act[to][1] !== act[dir ? 0 : act.length - 1][1];
 const destOf = (L, dir, act, to) => isShortTo(L, dir, act, to) ? endsName(L, dir, act, to) : dest(L, dir, act);
 /* Minutes NSL trains are running behind (+) or ahead (-) of the schedule, as seen on the Live cam
    (train spotting; 0 when it's off). Set up by the spotting module further down. */
@@ -3337,7 +3340,7 @@ function tick(){
         if (!arr.length) return `<div><span>${toW(dest(L, d, act))}</span><span class="t">${arr.cut ? "No service · disruption" : "No more trains"}</span></div>`;
         const groups = [];
         arr.forEach((m, k) => {
-          const sb = isShortTo(L, d, act, arr.to[k]), name = sb ? endsName(L, d, act, arr.to[k]) : dest(L, d, act);
+          const sb = isShortTo(L, d, act, arr.to[k]), name = destOf(L, d, act, arr.to[k]);
           let g = groups.find(x => x.name === name); if (!g) groups.push(g = {name, sb, ms: []});
           g.ms.push(boardMins(m) + (isLastCall(current, i, d, now, m) ? lastTag : "")); if (sb) anyShort = true;
         });
