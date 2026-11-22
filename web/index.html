@@ -4706,49 +4706,13 @@ function canvasPills(ctx, list, x, y, fs, draw = true){
 /* ---- info card under your finger ---- */
 
 /* ---- info card under your finger & desktop split sync ---- */
-const rostersNov22 = {
-  NSL: {
-    "HD": [201, 206, 218, 408, 412, 416, 418],
-    "FD": [216, 220, 417],
-    "FD LN": [202, 203, 204, 205, 207, 208, 209, 210, 211, 212, 214, 215, 217, 219, 221,
-      401, 402, 403, 404, 405, 406, 407, 411, 414, 415],
-    "(AM)": [213, 409, 410, 413],
-    "(PM) LN": [419, 420, 421, 422, 423, 424, 425, 426, 427, 428]
-  },
-  EWL: {
-    "FD": [111, 113, 308, 310],
-    "FD LN": [112, 115, 116, 118, 120, 121, 122, 123, 124, 126, 127, 301, 307, 309, 311, 312, 313, 314, 315, 316, 318, 319, 320, 321, 323, 326, 327],
-    "HD": [114, 119, 302, 303, 305, 317, 322, 324, 325],
-    "(AM)": [117, 125, 304, 306],
-    "(PM)": [132],
-    "(PM) LN": [128, 129, 130, 131, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142],
-    "(OP)": [328]
-  }
-};
-
-function dutyLabel(run, iso){
-  const slot = Number(run.run);
-  const roster = rostersNov22[run.line];
-  if (roster && iso === "2026-11-22" && TT &&
-      window.mrtRunGraph.activeServices(TT, iso).includes(run.service)){
-    for (const [code, slots] of Object.entries(roster)){
-      if (slots.includes(slot)) return slot + " " + code + " · Spotter roster";
-    }
-  }
-  const start = run.start / 3600, end = run.end / 3600;
-  let code = "";
-  if (run.trips.length > 2 && start < 9.5){
-    if (end <= 12) code = "(AM)";
-    else if (end <= 15) code = "HD";
-    else if (end >= 18) code = "FD";
-  } else if (run.trips.length > 1 && start >= 10.5 && start <= 11.5 && end >= 14 && end <= 15.5){
-    code = "(OP)"; // Off-Peak working, approximately 11am to 3pm.
-  } else if (run.trips.length > 2 && start >= 14 && start < 20 && end >= 17){
-    code = "(PM)";
-  }
-  if (!code) return "Run " + run.run + " · Duty unclassified";
-  if (end >= 23) code += " LN";
-  return run.run + " " + code + " · Timetable estimate";
+/* Duty labels come from the scheduled LTA GTFS run, not a fixed spotter roster. */
+function dutyLabel(run, _iso){
+  const api = window.mrtRunGraph;
+  const estimate = api && api.classifyDuty ? api.classifyDuty(run) : null;
+  const slot = run && run.run != null ? String(run.run) : "?";
+  if (!estimate || estimate.code === "Unclassified") return "Run " + slot + " · Duty unclassified (LTA)";
+  return slot + " " + estimate.code + " · LTA timing estimate";
 }
 function mapDutyHTML(code, tid, iso){
   const g = window.mrtRunGraphToday;
@@ -4780,7 +4744,7 @@ function mapDutyHTML(code, tid, iso){
   }).join("");
   return '<details class="mi-run"><summary><span>Train duty · '+esc(dutyLabel(run, iso))+'</span><span>'+run.trips.length+' trips</span></summary>'+
     '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>Today</span></div>'+rows+
-    '<p class="hint" style="margin:8px 0 0"><b>Roster duty, not live status:</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). '+
+    '<p class="hint" style="margin:8px 0 0"><b>LTA-timed duty estimate, not an official roster or live status:</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). '+
     (finalScheduledTrip ? 'This is the last scheduled passenger trip in this run; depot withdrawal is unconfirmed.' : 'Ending this trip does not mean the full duty has ended.')+'</p></details>';
 }
 function mapInfoHTML(){
@@ -8853,14 +8817,10 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       if (trips.length < 2) return "";
       const idx = Math.max(0, trips.indexOf(cur));
       const dutyText = dutyLabel(cur.run, T.now.iso);
-      const lastTrip = trips[trips.length - 1];
-      // A full-day roster and an early-ending scheduled run can disagree.
-      // Show that discrepancy, but never infer a confirmed depot withdrawal.
-      const earlyRosterMismatch = /\bFD\b/.test(dutyText) && dutyText.includes("Spotter roster") &&
-        Number(lastTrip && lastTrip.arr) > 0 && Number(lastTrip.arr) < 16 * 3600;
+      const estimatedDuty = api.classifyDuty(cur.run);
       const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now" style="background:var(--${x.line});color:#fff;font-weight:800;letter-spacing:.04em">THIS TRIP</span>` : ""}</li>`).join("");
-      const current = `<div class="cdt-current"><span>Today’s journey · ${esc(dutyText)}</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today${idx === trips.length - 1 ? " · Last listed trip of this run" : ""}</small>${earlyRosterMismatch ? `<p class="hint" style="margin:8px 0 0">Roster/timetable mismatch: this FD duty has no later passenger trip listed after ${esc(api.clock(lastTrip.arr))}. Withdrawal is not confirmed.</p>` : ""}</div>`;
-      return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). These describe rostered duty, not the train's live operating status. ${idx === trips.length - 1 ? "This is the last scheduled passenger trip in the run, but a depot withdrawal is not confirmed." : "The end of this individual trip does not mean the entire duty has ended."} LTA's timetable groups scheduled trips; it does not identify the physical trainset.</p></details></div>`;
+      const current = `<div class="cdt-current"><span>Today’s journey · ${esc(dutyText)}</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today${idx === trips.length - 1 ? " · Last listed trip of this run" : ""}</small><small>LTA timetable evidence: ${estimatedDuty.start == null ? "Timing unavailable" : esc(api.hm(estimatedDuty.start)) + "–" + esc(api.hm(estimatedDuty.end))} scheduled run</small></div>`;
+      return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). These are estimated from LTA passenger-trip times, not an official duty roster or the train's live operating status. ${idx === trips.length - 1 ? "This is the last scheduled passenger trip in the run, but a depot withdrawal is not confirmed." : "The end of this individual trip does not mean the entire duty has ended."} LTA's timetable groups scheduled trips; it does not identify the physical trainset.</p></details></div>`;
     }catch(e){ return ""; }
   }
   function trainLive(x){
