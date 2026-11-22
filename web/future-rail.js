@@ -44,8 +44,21 @@
     {id:"WCE",name:"West Coast Extension · first phase",color:"#0099a8",stage:"Engineering studies · proposed connection, not final alignment",nodes:[
       P("JE7","Pandan Reservoir",-7900,5700),P("CR18","West Coast (working name)",-8500,4700)
     ]},
-    {id:"DTL2E",name:"Downtown Line 2 Extension",color:"#005eb8",stage:"Announced extension · intermediate stations unconfirmed",nodes:[
-      P("DT1","Bukit Panjang",-6417,-2897,"DT1"),P("DTX","Towards Sungei Kadut · conceptual",-11600,-5000)
+    {id:"DTL2E",name:"Downtown Line 2 Extension",color:"#005eb8",stage:"LTA announced DE1 and DE2/NS6 · target 2035 · locations indicative",nodes:[
+      P("DT1","Bukit Panjang",-6417,-2897,"DT1"),P("DE1","DE1 (name unconfirmed)",-7050,-4870),
+      P("DE2","DE2 / NS6 interchange (name unconfirmed)",-7450,-6480)
+    ]},
+    {id:"NS6",name:"North-South Line · NS6 infill",color:"#e4272e",stage:"LTA-announced interchange with DTL2e · target 2035 · location indicative",nodes:[
+      P("NS5","Yew Tee",-8057,-5016,"NS5"),P("NS6","NS6 / DE2 interchange (name unconfirmed)",-7450,-6480),
+      P("NS7","Kranji",-6434,-8085,"NS7")
+    ]},
+    {id:"TEL5",name:"Thomson-East Coast Line · Stage 5",color:"#9a7049",stage:"Passenger service scheduled 26 December 2026",nodes:[
+      P("TE29","Bayshore",13634,4310,"TE29"),P("TE30","Bedok South",14387,3919,"TE30"),
+      P("TE31","Sungei Bedok",15258,3509,"TE31")
+    ]},
+    {id:"DTL3E",name:"Downtown Line · Stage 3 Extension",color:"#005eb8",stage:"Passenger service scheduled 26 December 2026",nodes:[
+      P("DT35","Expo",15852,1820,"DT35"),P("DT36","Xilin",16132,2561,"DT36"),
+      P("DT37","Sungei Bedok",15258,3509,"DT37")
     ]},
     {id:"TELe",name:"Thomson-East Coast Line · Terminal 5",color:"#9a7049",stage:"Announced corridor · exact alignment not final",nodes:[
       P("TE31","Sungei Bedok",15300,3800),P("TE32","Changi Terminal 5",18500,2800)
@@ -67,14 +80,36 @@
   ];
   let enabled = false;
   let geometry = null;
+  let geometryStatus = "pending";
+  // URA fragments are indicative and not proof of a final approved alignment.
+  // Keep this diagnostic visible to testers so missing source geometry is never
+  // accidentally presented as surveyed track geometry.
+  function coverage(){
+    const matched=geometry&&geometry.matched||{};
+    const routes=lines.filter(line=>!line.concept);
+    const withURA=routes.filter(line=>Array.isArray(matched[line.id])&&matched[line.id].length>0);
+    return {loaded:!!geometry,status:geometryStatus,withURA:withURA.map(line=>line.id),
+      estimated:routes.filter(line=>!withURA.includes(line)).map(line=>line.id),total:routes.length};
+  }
+  function updateToggleLabel(){
+    if (!root.document) return;
+    const button=document.getElementById("futureRailToggle");
+    if (!button) return;
+    const c=coverage();
+    button.textContent="Future rail · "+(enabled?"ON":"OFF")+
+      (c.loaded?" · URA "+c.withURA.length+"/"+c.total:c.status==="pending"?" · loading":" · estimates only");
+    button.title="Experimental and NOT IN SERVICE. Solid segments: indicative URA corridors ("+
+      c.withURA.join(", ")+"). Dashed routes: illustrative estimates. Missing URA: "+c.estimated.join(", ");
+  }
   // Generated during builds from URA Master Plan GeoJSON; never replace it
   // with invented coordinate chains. The approximations remain only as fallback.
   function loadGeometry(){
     if (!dev() || typeof fetch !== "function") return;
     fetch("future-rail-geometry.json", {cache:"no-store"})
       .then(r=>{if(!r.ok)throw Error("future geometry unavailable");return r.json();})
-      .then(d=>{geometry=d&&d.matched?d:null;if(enabled&&typeof api.invalidate==="function")api.invalidate();})
-      .catch(()=>{geometry=null;});
+      .then(d=>{geometry=d&&d.matched?d:null;geometryStatus=geometry?"loaded":"unavailable";
+        updateToggleLabel();if(enabled&&typeof api.invalidate==="function")api.invalidate();})
+      .catch(()=>{geometry=null;geometryStatus="unavailable";updateToggleLabel();});
   }
   const dev = () => root.MRT_DEV_FEATURES === true && root.MRT_PRODUCTION !== true;
   function attach(){
@@ -89,8 +124,9 @@
     button.title="Experimental: sourced URA Master Plan geometry where available, dashed estimates elsewhere. Not open for passenger service.";
     button.style.cssText="position:absolute;z-index:24;left:12px;bottom:68px;max-width:185px;padding:9px 12px;border-radius:9px;border:1px solid #7a94a7;background:#17313dcc;color:#fff;font:700 12px system-ui;cursor:pointer";
     wrap.appendChild(button);
+    updateToggleLabel();
     button.addEventListener("click",()=>{
-      enabled=!enabled; button.textContent="Future rail · "+(enabled?"ON":"OFF");
+      enabled=!enabled;updateToggleLabel();
       button.setAttribute("aria-pressed",String(enabled));
       if (typeof api.invalidate === "function") api.invalidate();
     });
@@ -139,7 +175,7 @@
     ctx.fillStyle="#ffda82";ctx.fillText("FUTURE RAIL · URA indicative geometry + estimates · NOT IN SERVICE",14,22);
     ctx.restore();
   }
-  const api={lines,source:LTA,draw,attach,invalidate:null,get enabled(){return dev()&&enabled;}};
+  const api={lines,source:LTA,draw,attach,coverage,invalidate:null,get enabled(){return dev()&&enabled;}};
   root.mrtFutureRail=api;
   if(dev()){
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{attach();loadGeometry();});
