@@ -87,3 +87,26 @@ test("independent roster conflicts are flagged without replacing LTA trips", () 
   assert.ok(result.missing.some(r=>r.slot==="030"));
   assert.equal(api.inspectDay("CCL","2026-11-22").trips,2);
 });
+
+test("trip-specific termini include short-turn MRT, LRT loop and Circle Line patterns", () => {
+  const page = readFileSync(new URL(isDev
+    ? "../android/app/src/main/assets/index.html"
+    : "../web/index.html", import.meta.url), "utf8");
+  const from = page.indexOf("/* Each LTA trip carries its own scheduled end station.");
+  const to = page.indexOf("/* Minutes NSL trains", from);
+  assert.ok(from >= 0 && to > from, "dynamic terminus helpers are present");
+  const helpers = vm.runInNewContext(page.slice(from, to) + "\n({isShortTo, destOf})", {
+    dest: (line, dir, stations) => line.bound ? line.bound[dir] : line.loop ? "Loop via hub" : stations[dir ? 0 : stations.length-1][1],
+    endsName: (line, dir, stations, end) => stations[end][1]
+  });
+  const mrt = [["NS1", "Jurong East"], ["NS14", "Khatib"], ["NS28", "Marina South Pier"]];
+  assert.equal(helpers.destOf({}, 0, mrt, 1), "Khatib");
+  assert.equal(helpers.isShortTo({}, 0, mrt, 2), false);
+  const loop = [["STC", "Sengkang"], ["SW2", "Farmway"], ["STC", "Sengkang"]];
+  assert.equal(helpers.destOf({loop:true, lrt:true}, 0, loop, 1), "Farmway");
+  assert.equal(helpers.isShortTo({loop:true, lrt:true}, 0, loop, 2), false);
+  assert.equal(helpers.isShortTo({loop:true, lrt:true}, 0, loop, 0), false);
+  const ccl = [["CC1", "Dhoby Ghaut"], ["CC6", "Stadium"], ["CC4", "Promenade"]];
+  assert.equal(helpers.destOf({bound:["Anticlockwise","Clockwise"]}, 0, ccl, 1), "Stadium");
+  assert.equal(helpers.isShortTo({bound:["Anticlockwise","Clockwise"]}, 0, ccl, -1), false);
+});
