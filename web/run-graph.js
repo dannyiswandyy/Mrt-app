@@ -418,6 +418,41 @@
 
   /* ---------- run classes ---------- */
   const H = h => h * 3600;
+  /**
+   * Approximate enthusiast duty code from the actual scheduled passenger trips.
+   * LTA GTFS publishes trip timings, not the operator's FD/HD/peak duty roster.
+   * The classifications below must never imply a confirmed depot movement.
+   * Times are GTFS service-day seconds; 25:00 is the following day's 01:00.
+   */
+  function classifyDuty(run) {
+    const trips = (run && Array.isArray(run.trips) ? run.trips : [])
+      .filter(t => Number.isFinite(Number(t.dep)) && Number.isFinite(Number(t.arr)) && Number(t.arr) > Number(t.dep))
+      .slice().sort((a, b) => Number(a.dep) - Number(b.dep));
+    if (!trips.length) return {code: "Unclassified", start: null, end: null,
+      evidence: ["No usable LTA scheduled passenger-trip times for this run."], source: "LTA timetable estimate"};
+    const first = trips[0], last = trips.reduce((z, t) => Number(t.arr) > Number(z.arr) ? t : z, trips[0]);
+    const start = Number(first.dep), end = Number(last.arr);
+    const midday = trips.some(t => Number(t.dep) < H(15) && Number(t.arr) > H(11));
+    // Singapore early-morning special trains may be 02:30 in a new service day,
+    // or 26:30 on the previous service day. Treat both as late-night trips.
+    const overnightStart = start < H(4.5);
+    const lateNight = overnightStart || end >= H(22);
+    let code = "Unclassified";
+    if (overnightStart && end <= H(6)) code = "LN";
+    else if (start < H(10) && end >= H(18) && midday && trips.length >= 2) code = lateNight ? "FD LN" : "FD";
+    else if (!overnightStart && start < H(10) && end <= H(11.5)) code = "(AM)";
+    else if (!overnightStart && start < H(10) && end > H(11.5) && end <= H(16.5)) code = "HD";
+    else if (start >= H(10.25) && start <= H(12.5) && end >= H(13.5) && end <= H(16.5)) code = "(OP)";
+    else if (start >= H(13) && start < H(20.5) && end >= H(17)) code = lateNight ? "(PM) LN" : "(PM)";
+    else if (lateNight) code = "LN";
+    const evidence = [
+      `${trips.length} LTA scheduled passenger trip(s), ${hm(start)} first departure to ${hm(end)} last arrival (GTFS service-day time).`,
+      `Midday passenger coverage (11:00–15:00): ${midday ? "yes" : "not shown"}. Late-night coverage (after 22:00 or early-hours special): ${lateNight ? "yes" : "not shown"}.`,
+      "Duty code is inferred from scheduled times, not an operator-issued roster, confirmed physical train identity or depot withdrawal."
+    ];
+    return {code, start, end, trips: trips.length, source: "LTA timetable estimate", evidence};
+  }
+
   function classify(r) {
     const s = r.start, e = r.end, n = r.trips.length;
     let cls, what;
@@ -555,7 +590,7 @@
     return ch;
   }
 
-  const api = {LABELS: L, parseTripId, tripsOf, build, buildLine, findTrip, tripAt, activeServices, specialServices, compareServices,
+  const api = {LABELS: L, parseTripId, tripsOf, build, buildLine, classifyDuty, findTrip, tripAt, activeServices, specialServices, compareServices,
     feedSummary, diffFeeds, hms, hm, clock, mins, fmtGap};
   root.mrtRunGraph = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
