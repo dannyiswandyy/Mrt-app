@@ -68,7 +68,9 @@
       css(); dayCss();
       const g = lineGraph(code); if (!g) return "";
       const t = g.trips.find(x => x.tid === tid); if (!t || !t.run) return "";
-      const r = t.run, i = t.index, rows = [], proof = [r.clsItem];
+      const r = t.run, i = t.index, rows = [], duty = RG.classifyDuty(r);
+      const proof = [{label: duty.code === "Unclassified" ? L.NONE : L.POSSIBLE,
+        inference: "LTA timetable duty estimate: " + duty.code, evidence: duty.evidence}, r.clsItem];
       const finalScheduledTrip = i === r.trips.length - 1;
       r.trips.forEach((x, k) => {
         if (k) {
@@ -87,9 +89,9 @@
       proof.push(r.leaves, ...(r.notes || []));
       rows.push(`<li class="td-end">Finishes at ${esc(r.last.dest)} · ${esc(RG.clock(r.last.arr))}${finalScheduledTrip ? " · Last scheduled trip in this run" : ""}</li>`);
       const n = r.trips.length;
-      return `<details class="td"><summary><b>Today's journey</b><small>${esc(r.clsItem.inference)} · ${n} trip${n === 1 ? "" : "s"}</small><i>⌄</i></summary>
+      return `<details class="td"><summary><b>Today's journey</b><small>${esc(r.run)} ${esc(duty.code)} · ${n} trip${n === 1 ? "" : "s"} · LTA estimate</small><i>⌄</i></summary>
         <ol class="td-list">${rows.join("")}</ol>
-        <div class="td-foot"><p><b>Roster duty ≠ live operating status.</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). ${finalScheduledTrip ? "This is the final listed passenger trip in the scheduled run; a depot withdrawal is not confirmed." : "A train can finish its current trip while its rostered duty continues."}</p>From LTA's timetable for this train's duty (run ${esc(r.run)}). LTA doesn't say which physical train runs it.
+        <div class="td-foot"><p><b>LTA-timed duty estimate ≠ official roster or live operating status.</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). ${finalScheduledTrip ? "This is the final listed passenger trip in the scheduled run; a depot withdrawal is not confirmed." : "A train can finish its current trip while its rostered duty continues."}</p>Inferred from scheduled LTA passenger-trip times for run ${esc(r.run)}. LTA doesn't say which physical train runs it.
           <details><summary>How we know</summary>${proof.filter(Boolean).map(x => evHTML(x)).join("")}</details></div></details>`;
     } catch (e) { diag("warn", "Today's journey failed: " + (e && e.message || e)); return ""; }
   }
