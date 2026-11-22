@@ -55,7 +55,7 @@
       if (!p || !p[2] || !p[2].length) return null;
       var from = Number(p[0]), end = from + Number(p[1]) * (p[2].length - 1);
       var origin = nameOf(code, from), dest = nameOf(code, end);
-      var routeKey = [origin, dest].sort().join(" ↔ ");
+      var routeKey = origin + " → " + dest; // preserve direction: reversals are operational changes
       var tid = String(x[3] || "");
       // LRT final numeric suffix is a trip index, not a duty/run number.
       var pattern = LRT.has(code) ? tid.replace(/_(?:WD|WE|PH)(?:_SPECIAL)?_\d+$/, "").replace(/^(?:BPLRT|SKLRT|PGLRT)_/, "") : "";
@@ -85,7 +85,8 @@
         if (g.trips[0] !== t && t.route !== g.trips[g.trips.indexOf(t)-1].route) transitionTimes.push(hhmm(t.time));
       });
       if (paths.length > 1) varied.push({slot:g.slot, service:g.service, trips:g.trips.length,
-        routes:paths, times:transitionTimes.slice(0,6), first:hhmm(g.trips[0].time), last:hhmm(g.trips[g.trips.length-1].endTime)});
+        routes:paths, times:transitionTimes.slice(0,6), first:hhmm(g.trips[0].time), last:hhmm(g.trips[g.trips.length-1].endTime),
+        timeline:g.trips.map(function(t){return {time:hhmm(t.time),end:hhmm(t.endTime),origin:t.origin,dest:t.dest,direction:t.direction,id:t.id};})});
     });
     varied.sort(function (a, b) { return Number(a.slot) - Number(b.slot) || a.service - b.service; });
     return {line:code, date:date, trips:trips.length, runs:bySlot.size, varied:varied,
@@ -212,7 +213,7 @@
     var variations=data.isLrt ? data.patterns.map(function(p){
       return '<li><b>'+esc(p.pattern)+'</b> · '+p.count+' timetable trips</li>';
     }).join("") : data.varied.slice(0,80).map(function(r){
-      return '<li><b>Slot '+esc(r.slot)+'</b> · '+r.trips+' trips · '+esc(r.routes.join(" | "))+'<small> Route variations from '+esc(r.first)+' to '+esc(r.last)+'; route changes near '+esc(r.times.join(", ")||"not available")+'</small></li>';
+      return '<li><details><summary><b>Slot '+esc(r.slot)+'</b> · '+r.trips+' trips · '+esc(r.routes.join(" | "))+'</summary><small>Route changes near '+esc(r.times.join(", ")||"not available")+'</small><ol>'+r.timeline.map(function(t){return '<li>'+esc(t.time)+'–'+esc(t.end)+' · '+esc(t.origin)+' → '+esc(t.dest)+'</li>';}).join("")+'</ol></details></li>';
     }).join("");
     var history=changes.slice(0,3).map(function(c){
       return '<p>'+esc(c.from)+' → '+esc(c.to)+': '+c.changes.map(function(x){return esc(x.line+" — "+x.detail);}).join("; ")+'</p>';
