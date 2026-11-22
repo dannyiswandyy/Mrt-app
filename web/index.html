@@ -1810,6 +1810,26 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
   });
 
   function later(){
+    // The public website stays open for hours: recheck the hourly published LTA timetable.
+    // Reload only when actual trips, routes or service dates changed, not just the build timestamp.
+    let timetableCheckedAt = Date.now(), timetableBusy = false;
+    const refreshPublishedTimetable = async () => {
+      if (timetableBusy || document.hidden || Date.now() - timetableCheckedAt < 60 * 60 * 1000) return;
+      timetableCheckedAt = Date.now();
+      timetableBusy = true;
+      try {
+        const raw = await getText("data/timetable.json?hour=" + Math.floor(Date.now() / 3600000), 8000);
+        if (!raw || !raw.startsWith("{")) return;
+        const incoming = JSON.parse(raw), previous = tt ? JSON.parse(tt) : null;
+        if (!incoming.lines || Object.keys(incoming.lines).length < 7 || !Array.isArray(incoming.services) || !incoming.services.length) return;
+        const same = previous && ["services", "except", "lines"].every(k => JSON.stringify(previous[k]) === JSON.stringify(incoming[k]));
+        if (!same) { tt = raw; location.reload(); } // Rebuild every train's destination, platform and calendar caches
+      } catch (_) {
+        // Retain the current valid timetable during an outage.
+      } finally { timetableBusy = false; }
+    };
+    setInterval(refreshPublishedTimetable, 60 * 1000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshPublishedTimetable(); });
 
     // check the relay again now and then, so a short relay or LTA outage doesn't leave the page on
     // "Live data unavailable" until it is reloaded (relay trouble is not "offline": that follows the browser)
