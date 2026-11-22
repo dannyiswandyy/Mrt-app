@@ -1,0 +1,75 @@
+name: "🔢 Train run / timetable correction"
+description: "Report an incorrect slot, duty label, direction, timing, turnback or special working."
+title: "[Rail data] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        MRT Spotter uses LTA GTFS timetable data and, where necessary, estimates. A **scheduled run / slot number is not a physical trainset ID**. Include evidence and the timetable's service date whenever possible.
+  - type: dropdown
+    id: line
+    attributes:
+      label: MRT / LRT line
+      options:
+        - North-South Line (NSL)
+        - East-West Line / Changi Airport (EWL / CGL)
+        - North East Line (NEL)
+        - Circle Line (CCL)
+        - Downtown Line (DTL)
+        - Thomson-East Coast Line (TEL)
+        - LRT / other
+    validations:
+      required: true
+  - type: input
+    id: station
+    attributes:
+      label: Station and direction
+      placeholder: "e.g. NS24 Dhoby Ghaut, towards Marina South Pier"
+    validations:
+      required: true
+  - type: input
+    id: slot
+    attributes:
+      label: Scheduled slot / run number (if shown)
+      placeholder: "e.g. 323 — not a fleet/trainset number"
+  - type: input
+    id: service_date
+    attributes:
+      label: Service date and time (Singapore time, UTC+8)
+      placeholder: "YYYY-MM-DD, HH:MM"
+    validations:
+      required: true
+  - type: dropdown
+    id: problem
+    attributes:
+      label: Type of correction
+      options:
+        - Incorrect time / departure
+        - Incorrect run or slot number
+        - Duty label (FD / HD / AM / PM / OP / LN)
+        - Direction, destination or short working
+        - Turnback / train rotation
+        - Platform
+        - Special event / extended service
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: App currently shows
+      placeholder: "Include the exact text and values shown."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected value and supporting evidence
+      description: "Say how you know: LTA timetable, station observations, official notice, etc. Avoid claims that a trainset is confirmed without independent evidence."
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshot / source reference
+      description: "Attach a screenshot or link to an official publication where available."

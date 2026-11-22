@@ -1,0 +1,31 @@
+# Used only if a maintainer chooses GitHub's "Generate release notes".
+# The existing Android GitHub Actions release workflow continues to own the APK.
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: "🚆 Train intelligence & timetable"
+      labels:
+        - timetable
+        - train-runs
+        - rail-intelligence
+    - title: "🗺️ Map & station improvements"
+      labels:
+        - map
+        - station-data
+        - ui
+    - title: "🧭 Planner & spotting"
+      labels:
+        - spotting
+        - planner
+    - title: "🐛 Fixes & reliability"
+      labels:
+        - bug
+        - reliability
+    - title: "📚 Documentation"
+      labels:
+        - documentation
+    - title: "🔧 Other improvements"
+      labels:
+        - "*"

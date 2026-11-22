@@ -1,0 +1,78 @@
+name: "🐛 App or website bug"
+description: "Report a reproducible problem in the public MRT Spotter app or website."
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve MRT Spotter! Please report **public app / website** bugs here. Do not share API keys, passwords or other private data.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android (public APK)
+        - Website (GitHub Pages)
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version or capture date
+      description: "From the app's About / Updates area, or give the date and time you tested the website."
+      placeholder: "e.g. Android 2026.11.xx or web 22 Nov 2026"
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Affected feature
+      options:
+        - Network map / 3D map
+        - Line Board / train journey
+        - Spotter Planner / spotting log
+        - Trip planner
+        - Bus arrivals
+        - Service alerts / weather
+        - RailCam / Ask
+        - Installation / update / widget
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: "Describe what should have happened."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      placeholder: "Describe the issue, including any error messages."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots / diagnostics (optional)
+      description: "Attach screenshots or redacted log snippets if helpful. Remove personal information and credentials."
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: "I checked existing issues for a duplicate."
+          required: true
+        - label: "I have not included passwords, API keys or private user information."
+          required: true

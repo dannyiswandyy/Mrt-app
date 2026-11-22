@@ -1,0 +1,50 @@
+name: "🗺️ Map / station correction"
+description: "Report an incorrect rail alignment, station card, connection or map display."
+title: "[Map] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Rail geometry, station details and 3D buildings may use different source datasets or fallback paths. Please provide a precise location and evidence.
+  - type: dropdown
+    id: part
+    attributes:
+      label: Area affected
+      options:
+        - MRT track / line geometry
+        - LRT / Sentosa Express / other rail geometry
+        - Station name / code / interchange
+        - Train direction arrow
+        - Platform or station information
+        - 3D map / building imagery
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Line, station(s), or map area
+      placeholder: "e.g. station code and adjacent section"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where did you see it?
+      options:
+        - Android public app
+        - Public website
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Current appearance and expected correction
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: Supporting references
+      description: "Official track or station information, OpenStreetMap reference, or annotated screenshot."

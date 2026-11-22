@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🌐 Open MRT Spotter"
+    url: "https://dannyiswandyy.github.io/Mrt-app/"
+    about: "Try the public web tracker before reporting a problem."
+  - name: "📖 Documentation & FAQ"
+    url: "https://github.com/dannyiswandyy/Mrt-app/blob/main/docs/faq.md"
+    about: "Installation, timetable accuracy and spotting questions."
+  - name: "🔒 Sensitive security reports"
+    url: "https://github.com/dannyiswandyy/Mrt-app/security"
+    about: "Check available private security reporting options; do not post secrets or vulnerabilities in a public issue."

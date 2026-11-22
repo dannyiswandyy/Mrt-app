@@ -1,0 +1,44 @@
+name: "💡 Feature suggestion"
+description: "Suggest a user-facing feature or improvement for the public MRT Spotter app."
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggestions for **public MRT Spotter** are welcome. Experimental or maintainer-only tools are not promised for release; public features should be practical, understandable and privacy-conscious.
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who would benefit most?
+      options:
+        - Train enthusiasts / spotters
+        - Everyday commuters
+        - Accessibility users
+        - Everyone
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: Problem or goal
+      description: "What is currently difficult or missing?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed feature
+      description: "What would the feature look like or do?"
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Examples or sketches (optional)
+  - type: checkboxes
+    id: assumptions
+    attributes:
+      label: Notes
+      options:
+        - label: "I understand feature requests are suggestions, not a commitment to a release."
+          required: true
