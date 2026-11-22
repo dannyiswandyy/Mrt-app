@@ -1,132 +1,147 @@
-# MRT Spotter
+<div align="center">
 
-A Singapore MRT/LRT tracker for Android, plus a website at [dannyiswandyy.github.io/Mrt-app](https://dannyiswandyy.github.io/Mrt-app/). It shows the network map (2D and 3D), trains and timings, station and train-model information, weather, news, disruptions, and a trip planner.
+<img src="docs/assets/mrt-spotter-hero.svg" alt="MRT Spotter — Singapore rail, beyond the platform" width="100%" />
 
-**MRT Spotter** is the public / beta app for day-to-day use. It is built from `.github/workflows/build-android.yml`. Each build publishes `mrt-tracker.apk` and `version.json` under the repository's **latest** release. The app can check that release and install newer builds in-app. The public app does **not** contain the private Dev build or Dev workflow.
+<br />
 
-3D buildings are downloaded in smaller parts with retries and cached between builds, so when OpenStreetMap is slow the missing station areas fill in over the next few builds. If the LTA timetable can't be downloaded, the build summary says whether the key was refused or the file link failed, and the app falls back to estimates.
+**More than a next-train timer. A deeper look at Singapore's MRT and LRT network.**
 
-A separate private Dev build exists for the maintainer's own testing and is kept in the private `mrt-dev-app` repository. Dev builds are not part of this public repository or its public updater.
+MRT Spotter is an independent, fan-made rail companion for **train enthusiasts**, curious commuters and everyone who wants to explore how the network operates.
 
-## Current features
+<br />
 
-- Singapore MRT/LRT network map, with interchange **code pills** and a 3D map you can move, turn and tilt
-- Train positions and arrival times from LTA's packed timetable, with a fallback to estimates built from the operators' train duty rosters (weekday, Saturday, Sunday and public holiday)
-- When you **log a sighting** from a train's sheet, a small tag (model, Spotted or Rode) stays on that train's arrow on the 2D and 3D maps for the rest of that service day, and the train is **moved to the station and time you logged** so the map, Line Board and next-train times follow
-- Station search, station sheets, favourites, and train-model information and photos (with source attribution)
-- Trip planner: the fastest way by train, with the next departures, changes, duration, arrival time, fare, and the route drawn on the map
-- Live weather (NEA via data.gov.sg), disruptions, crowds and news
-- Live cam tab (RailCam Singapore on YouTube): the stream, Sound off, Check for live, Open in YouTube, and credit
-- Live cam detection uses YouTube's mobile page, and if the canonical link is missing it reads the video id from videoDetails, so a live RailCam stream is not reported as not live
-- Engineering sightings (locomotives and works trains) are included in the page for the dev app only. On this public app and website the module stays hidden and stores nothing.
-- Home-screen widget for the next trains at your first saved station
-- Trip reminders from a planned trip, and disruption alerts for your saved lines (including while the app is closed)
-- Offline mode: saved map tiles and fonts still show when the connection drops
-- Ask tab (built-in answers, or Claude if an `ANTHROPIC_API_KEY` secret is set)
-- Share the spotter's log, in-app update checking, and API timeout/failure handling with cached-data fallback
-- 3D buildings near stations (OpenStreetMap, packed at build time) and real track shapes for the **RTS Link** and **Sentosa Express** (also from OpenStreetMap at build time)
-- Tuned for typical phones: the map caches static layers and skips extra redraws, timers pause when the tab is in the background, 3D and the Live cam start only when you open them, search is debounced, and a few caches are capped. The arrows, shadows and direction of travel are unchanged.
-- App icon: Danny's train-front design (white train with a red and green stripe, yellow headlights and rails) on a dark rounded square, drawn as vector shapes that fit inside Android's adaptive-icon safe zone
-- Tapping a station's name, on the map, the Line Board or a planned trip, opens the same station card as tapping its circle. Trip planning finds stations as you type, including codes, short names and small typos, and tablets from about 600px wide get a split map and a card that isn't stretched edge to edge.
+[![Open Web App](https://img.shields.io/badge/OPEN%20WEB%20APP-006C82?style=for-the-badge&logo=googlechrome&logoColor=white)](https://dannyiswandyy.github.io/Mrt-app/)
+[![Download for Android](https://img.shields.io/badge/DOWNLOAD%20ANDROID%20APK-00A650?style=for-the-badge&logo=android&logoColor=white)](https://github.com/dannyiswandyy/Mrt-app/releases/latest)
+[![Latest Release](https://img.shields.io/badge/VIEW%20LATEST%20RELEASE-263448?style=for-the-badge&logo=github&logoColor=white)](https://github.com/dannyiswandyy/Mrt-app/releases/tag/latest)
 
-## Train counts and timetable estimates
+**Singapore MRT • LRT • Train runs • Spotting • Journey planning**
 
-When LTA's timetable isn't available for a line, the app estimates trains from how many are out at each time of day. These counts come from the operators' **train duty rosters**. Each run is counted by its duty: FD = full day (morning to 8pm), HD = half day (to 2pm), (AM) = 7–9.30am peak, (PM) = 5–8pm peak, (OP) = between the peaks, and LN = late night. Depot transfers aren't counted.
+</div>
 
-| Line | Weekday | Saturday | Sunday | Public holiday |
-| --- | --- | --- | --- | --- |
-| North-South | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 |
-| East-West | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 |
-| Changi Airport branch | same every day: 2 trains, 3 in the 5–8pm peak | | | |
-| North East | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 (also extended-service nights, 7 Nov 2026) |
-| Thomson-East Coast | 12 Nov 2026 | 31 Oct 2026 | 1 Nov 2026 | 9 Nov 2026 (extended-service nights: 7 Nov 2026) |
-| Circle | 12 Nov 2026 (both loops and the Dhoby Ghaut service, counted along the whole line) | 31 Oct 2026 loops (short shuttles not counted) | 1 Nov 2026 loops | 9 Nov 2026 loops; extended-service nights: 7 Nov 2026 loops |
+---
 
-- **Train run number roster sheet:** the [NSEWL roster sheet](https://docs.google.com/spreadsheets/d/1O65RS9SMggfmGiQh7gCNQU-1l7l1sV0q85euH3gIAwQ/edit) gives the same weekday totals. It also supplies the short trips:
-  - About one in 7 North-South Line trains in the weekday morning peak turn back at Yishun.
-  - Outside the peaks, every other East-West Line train towards Tuas Link ends at Joo Koon.
-- **Downtown Line:** uses its usual gaps, because its rosters are incomplete. The run lists so far (weekdays 3 Nov 2026, weekends 1 Nov 2026, public holidays 9 Nov 2026) are kept as notes in the app page.
-- **Thomson-East Coast Sundays and public holidays:** those rosters have no late-night marks. Full-day trains run until the last trains, and PM trains stop around 8pm.
-- **Updating counts:** the counts and short trips live in `NSL_TRAINS`, `EWL_TRAINS`, `CG_TRAINS`, `NEL_TRAINS`, `TEL_TRAINS`, `CCL_TRAINS` and `SHORT_PEAK` in the app page.
-- **Extended-service nights:** these are in `EXT_DAYS` and `EXT_LAST`. Add the date and each line's later last trains.
+## 🚆 Why MRT Spotter?
 
-## Timetable checks
+Most journey apps tell you *when* your train should arrive. **MRT Spotter explores the service behind that arrival:** scheduled train slots, where a run goes next, short trips and turnbacks, how trains move across the network, and the information that makes train spotting more interesting.
 
-`.github/workflows/timetable-check.yml` runs on every push and pull request. It checks, in Node, how many trains are in service and the gap between them in `web/index.html`, for the North-South, East-West (including the Changi Airport branch), North East, Circle, Downtown and Thomson-East Coast lines, on weekdays, Saturdays, Sundays, public holidays and holiday eves, across the day's time bands. The Downtown Line keeps its usual gaps: 2.5 minutes in the weekday peaks, 4.5 minutes off-peak, and 7 minutes late. The same checks are run on the page packed inside `build-android.yml`, and those results have to match the website.
+| 🗺️ **Explore the network** | 🔢 **Follow train runs** | 📷 **Make every sighting count** |
+|:---|:---|:---|
+| Navigate Singapore's MRT/LRT network in interactive **2D and 3D**, with directional train arrows, stations, interchange codes and nearby buildings where data is available. | Open train journeys, view scheduled slot/run numbers, inspect trip sequences and check short workings, turnbacks and late-night duties. | Log **Spotted** or **Rode** from a train sheet, keep a record of sightings and see your own sighting markers on the maps for the service day. |
 
-## Website
+## 🔎 Built for Singapore rail enthusiasts
 
-The website is the full web version of the **normal public app**, not MRT Dev, at:
+### 🚉 Line Board & train journeys
+See more than an arrival countdown. Explore a line's train information, station stops, directions, next departures and first/last services. Open a train's journey to look at its scheduled movements and remaining trips, including services that terminate short of the line's end.
 
-**[https://dannyiswandyy.github.io/Mrt-app/](https://dannyiswandyy.github.io/Mrt-app/)**
+### 📋 Spotter Planner
+Choose a **line, station, date and time window** to find scheduled train movements. Depending on the available timetable data, the planner can show slot numbers, direction, terminal station, platform, first/last and short-trip indicators, and when a run is due back at the station. For curious spotters, GTFS trip identifiers are available too.
 
-It is published by GitHub Pages (the `web/` folder, workflow `.github/workflows/deploy-web.yml`). Anyone can open it; no GitHub account is needed. The deploy also packs LTA's timetable, 3D buildings and RTS Link / Sentosa Express tracks the same way the Android app build does. Without the tracks file, those two lines stay straight on the map.
+### 🔁 Run graph & rail intelligence
+Explore how scheduled trips are linked together into train duties and get context around service patterns, rotations and disruptions. The app distinguishes timetable evidence and inferences; it does **not** treat a run number as proof of a particular physical trainset.
 
-Live disruptions, crowds, news and LTA data go through an optional **Cloudflare Worker** relay so the LTA key is not exposed in the browser:
+### 📝 Train spotting & rolling stock
+Record sightings, revisit your log and explore rolling-stock information and photographs where available. Trainset-related information derived from logged sightings is evidence-based and may be incomplete.
 
-1. Create a Worker named `mrt-relay` and deploy the code from `worker/worker.js`.
-2. Under **Settings → Variables and Secrets**, add:
-   - `ALLOWED_ORIGINS` (Text): `https://dannyiswandyy.github.io` (no trailing slash, and no `/Mrt-app`)
-   - `LTA_KEY` (Secret): your LTA DataMall API key. Prefer a key that is not committed in this repository.
-   - `ANTHROPIC_API_KEY` (Secret, optional): only if you want the Ask tab on the website to use Claude. You pay for questions people ask.
-3. Point `web/config.js` at the Worker address, for example `https://mrt-relay.yourname.workers.dev`.
+### 🌍 Your railway, on a map
+Switch between **2D and 3D views**, search for stations, open station information cards and follow the map's direction-of-travel arrows. Some 3D buildings and track geometry are packed from OpenStreetMap during the build and may vary with data availability.
 
-Without the relay, the site still works on timetable estimates and shows a "Live data unavailable" banner.
+## ✨ More than spotting
 
-## GitHub Actions secrets (Android builds)
+| Feature | What you can do |
+|:---|:---|
+| 🧭 **Trip planner** | Compare train routes with transfers, next departures, estimated journey duration, fares and the route shown on the map. |
+| 🕐 **Next trains** | Check station arrival estimates, save favourite stations and use the Android home-screen widget for a saved station. |
+| 🚦 **Service updates** | View disruption information, crowd information and rail news when their data sources are available. |
+| 🌦️ **Weather on the map** | See Singapore weather information from NEA / data.gov.sg, including map effects where supported. |
+| 📺 **RailCam** | Watch the RailCam Singapore YouTube stream through the Live cam section, subject to stream availability. |
+| 🚌 **Bus information** | Explore bus arrival information available in the public app. |
+| 💬 **Ask MRT Spotter** | Ask questions about Singapore rail using built-in app information; AI-assisted answers depend on configuration. |
+| 🔔 **Useful reminders** | Android trip reminders, saved-line disruption notifications and in-app update checking. |
+| 📶 **Resilient offline experience** | Continue using packaged timetables and previously cached map resources when network connectivity is limited. Some live features still require an internet connection. |
 
-Set these under **Settings → Secrets and variables → Actions**. Do not commit the values.
+## 📲 Try it now
 
-| Secret | Used by | Purpose |
-| --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Public Android app (optional) | Lets the Ask tab use Claude. Without it, the Ask tab gives built-in answers. |
+| **Android app** | **Web app** |
+|:---|:---|
+| **[Download the latest APK](https://github.com/dannyiswandyy/Mrt-app/releases/download/latest/mrt-tracker.apk)** | **[Open MRT Spotter in your browser](https://dannyiswandyy.github.io/Mrt-app/)** |
+| Open the APK on your Android phone to install. Future public releases can be checked from inside the app. | No install is needed. You can also add the website to your home screen on supported browsers. |
+| Includes phone-specific functions such as widgets, notifications and trip reminders. | Shares the core public map, timetable, spotting and planning experience; phone-only features are omitted. |
 
-The public updater does **not** need a GitHub token. Each public build puts `mrt-tracker.apk` and `version.json` in this repository's **latest** release, and the normal app checks that public release, compares versions, then downloads and installs the newer APK when one is available.
+> [!NOTE]
+> MRT Spotter is distributed as a **public beta / enthusiast project**, not as an official public-transport application. The website and Android app aim to share the same public features, but browser permissions, data access and device capabilities can affect what is shown.
 
-The private Dev app is deliberately excluded from this updater. It is maintained separately in the private `mrt-dev-app` repository and is installed manually from its private Releases.
+## 🧠 Where do the train timings come from?
 
-The LTA DataMall key used by the website belongs in the Cloudflare Worker secret `LTA_KEY`, not in this repository.
+MRT Spotter uses **LTA's GTFS train timetable** when a suitable packed timetable is available. If that data cannot be used, the app can fall back to estimates informed by known train duty rosters and operating patterns.
 
-## Train model information
+- **Scheduled slot / run number ≠ physical fleet or trainset ID.** The slot represents a duty in the timetable, not confirmation of which trainset is operating it.
+- A train arrow or arrival estimate may be **timetable-derived or inferred**, rather than a continuously measured live GPS position.
+- Duty descriptions can include **FD (full day), HD (half day), AM peak, PM peak, OP (off-peak) and LN (late night)**. Combinations such as **FD LN** or **OP LN** describe operating patterns and are interpreted from available timing evidence.
+- Sightings can provide additional user-entered evidence, but cannot guarantee the real-time location or identity of a train.
+- Future stations, incomplete rail geometry, temporary operating changes and special services may not be reflected accurately until supported data is available.
 
-The train model section can include model-specific photographs and information for Singapore rolling stock such as:
+**Use MRT Spotter as an enthusiast and journey-planning companion, and verify important journeys with official transport sources.**
 
-- C151
-- C151A
-- C151B
-- C151C
-- C751B
-- R151
-- Other supported MRT/LRT rolling stock as the database expands
+<details>
+<summary><b>🛠️ For developers and contributors — project structure</b></summary>
 
-Train photographs are used for informational purposes and are attributed to their respective source websites. External images should not be downloaded, redistributed, or used commercially unless the relevant licence/permission allows it.
+<br />
 
-## Credits & data sources
+This is the **public** MRT Spotter repository. The Android app and website use the same core public page.
 
-This project may use information and imagery from Singapore transport and mapping sources, including:
+| Path | Purpose |
+|:---|:---|
+| [`web/index.html`](web/index.html) | Main public MRT Spotter interface |
+| [`web/spotter-planner.js`](web/spotter-planner.js) | Timetable-based spotter planning |
+| [`web/run-graph.js`](web/run-graph.js) | Scheduled run and trip linkage |
+| [`web/trainset-intelligence.js`](web/trainset-intelligence.js) | Sighting-based trainset evidence |
+| [`web/bus.js`](web/bus.js) | Bus arrivals module |
+| [`tools/`](tools) | Build-time timetable, track, station and building data preparation |
+| [`.github/workflows/build-android.yml`](.github/workflows/build-android.yml) | Public Android build and release |
+| [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml) | GitHub Pages deployment |
+| [`.github/workflows/timetable-check.yml`](.github/workflows/timetable-check.yml) | Timetable and service-pattern checks |
+| [`worker/`](worker) | Optional data relay and its configuration |
+| [`web/README.md`](web/README.md) | Website setup and platform-specific details |
+| [`AGENTS.md`](AGENTS.md) | Repository safety and contribution guidelines |
 
-- Land Transport Authority (LTA) — DataMall timetable, alerts and related APIs
-- National Environment Agency (NEA) via data.gov.sg — live weather
-- OpenStreetMap contributors — 3D building outlines and RTS Link / Sentosa Express tracks
-- SMRT (including train duty rosters)
-- SBS Transit (including train duty rosters)
-- SGTrains
-- Land Transport Guru
-- RailCam Singapore (@railcamsg) — the Live cam stream
-- Google Maps Platform (MRT Dev timing match only, when configured)
+Data may be packed during builds and is not necessarily committed as a browsable file. Build outputs should report when source downloads fail or a fallback is used.
 
-All third-party trademarks, photographs, logos, and copyrighted material remain the property of their respective owners.
+**Do not commit API keys, tokens or other credentials.** Follow [`AGENTS.md`](AGENTS.md) before modifying the public app or release pipeline.
 
-## Disclaimer
+</details>
 
-This is a fan project and should not be treated as an official LTA, SMRT, SBS Transit, or Google application.
+<details>
+<summary><b>🗂️ Data sources, credits and attribution</b></summary>
 
-Train locations, arrival information, route information, service status, and other live data may be delayed, incomplete, unavailable, or inaccurate.
+<br />
 
-Always verify important travel information with official transport sources.
+MRT Spotter draws upon or references the following sources where relevant and available:
 
-## License
+- **Land Transport Authority (LTA)** — timetable and related rail data / service information.
+- **National Environment Agency (NEA)** via **data.gov.sg** — weather information.
+- **OpenStreetMap contributors** — map features, some building data and track geometry.
+- **SMRT** and **SBS Transit** — publicly available rail operations and service information.
+- **RailCam Singapore** — YouTube live-camera content, with credit to its owner.
+- Other third-party rail reference material, imagery and attributions as identified in the app.
 
-Unless otherwise stated, the original source code in this repository is provided under the license specified by the repository owner.
+Photographs, logos, fonts, geographic data and other third-party assets remain subject to the rights and conditions of their respective owners. Their presence in the project does not grant redistribution or commercial-use permission.
 
-Third-party data, photographs, APIs, trademarks, and other external content are **not automatically covered by the project's source-code licence** and remain subject to their respective terms and licences.
+</details>
+
+## 💬 Feedback & community
+
+Found an incorrect train slot, an unusual working, a station detail that needs correcting, or a UI issue? **[Open a GitHub issue](https://github.com/dannyiswandyy/Mrt-app/issues)** with the line, station, date, time and screenshot if possible. Clear reports help improve the tracker.
+
+If you enjoy exploring Singapore rail, consider **starring this repository** to support the project. ⭐
+
+---
+
+<div align="center">
+
+**Made for the people who notice every train, every turnback and every unusual working.**
+
+[🌐 Web app](https://dannyiswandyy.github.io/Mrt-app/) · [📥 Android APK](https://github.com/dannyiswandyy/Mrt-app/releases/latest) · [🐛 Report an issue](https://github.com/dannyiswandyy/Mrt-app/issues)
+
+<sub>MRT Spotter is an independent fan project. It is not affiliated with or endorsed by LTA, SMRT, SBS Transit or other transport operators. Schedules, predicted positions, service conditions and other information may be delayed, incomplete or inaccurate. Always check official sources for time-critical travel decisions.</sub>
+
+</div>
