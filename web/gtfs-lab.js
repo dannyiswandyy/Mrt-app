@@ -91,7 +91,7 @@
       const n = r.trips.length;
       return `<details class="td"><summary><b>Today's journey</b><small>${esc(r.run)} ${esc(duty.code)} · ${n} trip${n === 1 ? "" : "s"} · LTA estimate</small><i>⌄</i></summary>
         <ol class="td-list">${rows.join("")}</ol>
-        <div class="td-foot"><p><b>LTA-timed duty estimate ≠ official roster or live operating status.</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). ${finalScheduledTrip ? "This is the final listed passenger trip in the scheduled run; a depot withdrawal is not confirmed." : "A train can finish its current trip while its rostered duty continues."}</p>Inferred from scheduled LTA passenger-trip times for run ${esc(r.run)}. LTA doesn't say which physical train runs it.
+        <div class="td-foot"><p><b>LTA-timed duty estimate ≠ official roster or live operating status.</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm); OP LN = Off-Peak start with scheduled passenger service beyond 11pm. ${finalScheduledTrip ? "This is the final listed passenger trip in the scheduled run; a depot withdrawal is not confirmed." : "A train can finish its current trip while its rostered duty continues."}</p>Inferred from scheduled LTA passenger-trip times for run ${esc(r.run)}. LTA doesn't say which physical train runs it.
           <details><summary>How we know</summary>${proof.filter(Boolean).map(x => evHTML(x)).join("")}</details></div></details>`;
     } catch (e) { diag("warn", "Today's journey failed: " + (e && e.message || e)); return ""; }
   }

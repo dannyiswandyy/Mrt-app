@@ -27,6 +27,15 @@ test("AM, HD and OP are inferred from their scheduled windows", () => {
   assert.equal(code(run([11, 12.5], [13.1, 15])), "(OP)");
 });
 
+test("OP LN starts during off-peak and runs beyond 23:00", () => {
+  assert.equal(code(run([11, 12.4], [14, 15], [20, 23.2])), "OP LN");
+  assert.equal(code(run([11, 12.4], [15, 22.75], [22.75, 23.4])), "OP LN");
+  assert.equal(code(run([11, 12.4], [14, 15])), "(OP)", "off-peak-only remains OP");
+  assert.notEqual(code(run([11, 12.4], [14, 23])), "OP LN", "23:00 exact is not LN");
+  assert.equal(code(run([5.5, 8], [11, 13], [20, 23.2])), "FD LN", "morning start remains FD LN");
+  assert.equal(code(run([17, 20], [20, 23.2])), "(PM) LN", "afternoon start remains PM LN");
+});
+
 test("PM, PM LN and cross-midnight special trains are distinguished", () => {
   assert.equal(code(run([17, 18], [19.1, 20.2])), "(PM)");
   assert.equal(code(run([17, 18], [23, 24.5])), "(PM) LN");
