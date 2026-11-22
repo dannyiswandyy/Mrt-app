@@ -149,8 +149,20 @@
       "Map route is an illustrative estimate; final station/track alignment is not confirmed.")+
       '</small></div><div class="mi-row"><small>No passenger timetable, arrivals or live trains are available for this future route.</small></div>';
   }
+  function activate(){
+    if(!dev())return false;
+    if(enabled)return true;
+    enabled=true;updateToggleLabel();
+    const toggle=document.getElementById("futureRailToggle");
+    if(toggle)toggle.setAttribute("aria-pressed","true");
+    const routes=document.getElementById("futureRailRoutes");
+    if(routes)routes.hidden=false;
+    if(typeof api.invalidate==="function")api.invalidate();
+    return true;
+  }
   function selectStation(line,code){
-    if(!dev() || !enabled)return false;
+    if(!dev())return false;
+    if(!enabled)activate();
     const ref=byCode(line,code);if(!ref)return false;
     const pt=coords(ref.station,root.mrtFutureStationMap||{});
     selected={line,code,x:pt[0],y:pt[1],name:ref.station.name};
@@ -200,8 +212,42 @@
       .catch(()=>{geometry=null;geometryStatus="unavailable";updateToggleLabel();renderPanel();});
   }
   const dev = () => root.MRT_DEV_FEATURES === true && root.MRT_PRODUCTION !== true;
+  // Register with the app's existing line-board registry like RTS, without
+  // appending to ORDER (which is intentionally reserved for operating trains).
+  // Future routes are selectable, but have no passenger service or departures.
+  function registerCore(){
+    if(!dev()||!root.document||typeof LINES==="undefined")return;
+    const tabs=document.getElementById("tabs");
+    if(!tabs)return;
+    const names={JRL_W:"JRL West",JRL_E:"JRL East",JRL_N:"JRL NTU",
+      CRL:"CRL",CPE:"CRL Punggol",WCE:"West Coast",
+      DTL2E:"DTL2e",DTL3E:"DTL3e",TEL5:"TEL5",TELe:"TEL T5",
+      CRL_T5:"CRL T5",NS6:"NS6",NS3A:"Brickland"};
+    const available=lines.filter(line=>!line.concept);
+    for(const line of available){
+      if(!LINES[line.id]){
+        LINES[line.id]={name:line.name,tab:names[line.id]||line.id,
+          future:true,expect:line.stage,stage:line.stage,
+          stations:line.nodes.map(n=>[n.code,n.name,"9999-12-31"])};
+      }
+      document.documentElement.style.setProperty("--"+line.id,line.color);
+    }
+    if(document.getElementById("tab-"+available[0].id))return;
+    const heading=document.createElement("span");
+    heading.className="tabsep";heading.textContent="Future · not in service";
+    tabs.appendChild(heading);
+    for(const line of available){
+      const tab=document.createElement("button");
+      tab.type="button";tab.className="tab";tab.id="tab-"+line.id;
+      tab.setAttribute("role","tab");tab.setAttribute("aria-selected","false");
+      tab.dataset.c=line.id;tab.style.setProperty("--c",line.color);
+      tab.textContent=names[line.id]||line.id;
+      tabs.appendChild(tab);
+    }
+  }
   function attach(){
     if (!dev() || !root.document) return;
+    registerCore();
     const wrap=document.getElementById("mapWrap");
     if (!wrap || document.getElementById("futureRailToggle")) return;
     const button=document.createElement("button");
@@ -280,7 +326,7 @@
     ctx.fillStyle="#ffda82";ctx.fillText("FUTURE RAIL · URA indicative geometry + estimates · NOT IN SERVICE",14,22);
     ctx.restore();
   }
-  const api={lines,network,source:LTA,draw,attach,coverage,byCode,hitTest,stationHTML,connectionsHTML,
+  const api={lines,network,source:LTA,draw,attach,registerCore,activate,coverage,byCode,hitTest,stationHTML,connectionsHTML,
     selectStation,invalidate:null,get selected(){return selected;},get enabled(){return dev()&&enabled;}};
   root.mrtFutureRail=api;
   if(dev()){
