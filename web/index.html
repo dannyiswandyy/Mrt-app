@@ -3396,6 +3396,36 @@ function tick(){
   for (const id in trainEls) if (!seen.has(id)){ trainEls[id].remove(); delete trainEls[id]; }
 
   // labels and the selected-train card
+  // GTFS journey details for the selected scheduled trip, not estimated headways.
+  // Never infer a platform or physical fleet ID from a route direction.
+  const journeyClock = seconds => {
+    const minute = Math.floor(seconds / 60), day = Math.floor(minute / 1440);
+    const hour = ((Math.floor(minute / 60) % 24) + 24) % 24;
+    const mm = ((minute % 60) + 60) % 60;
+    return String(hour).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + (day > 0 ? " +" + day + "d" : "");
+  };
+  const journeyHTML = tr => {
+    const r = tr && tr.ref, p = r && r.p;
+    if (!p || !Array.isArray(p.arr) || !p.arr.length || !Number.isFinite(r.s)) return "";
+    const rows = [];
+    const first = Math.max(0, Math.min(p.arr.length - 1, (tr.next - p.f) * p.d));
+    for (let k = first; k < p.arr.length; k++) {
+      const station = act[p.f + p.d * k];
+      if (!station) continue;
+      const arrival = journeyClock(r.s + p.arr[k]);
+      const departure = p.dep && Number.isFinite(p.dep[k]) ? journeyClock(r.s + p.dep[k]) : arrival;
+      rows.push('<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border,#4443)"><span>' +
+        esc(station[1]) + (k === first ? ' <small class="muted">Next</small>' : '') +
+        '</span><span style="white-space:nowrap;font-variant-numeric:tabular-nums">' +
+        esc(arrival) + (departure !== arrival ? ' / ' + esc(departure) : '') + '</span></div>');
+    }
+    if (!rows.length) return "";
+    const expanded = !!document.getElementById("trainJourney")?.open;
+    return '<details id="trainJourney"' + (expanded ? ' open' : '') +
+      ' style="margin-top:10px;max-height:280px;overflow:auto"><summary style="cursor:pointer;font-weight:600">Scheduled journey · ' +
+      rows.length + ' remaining stops</summary><small class="muted">LTA GTFS schedule · arrival / departure in SGT. Not confirmed live times. Platform only shown when verified.</small>' +
+      rows.join("") + '</details>';
+  };
   const terminus = tr => destOf(L, tr.dir, act, tr.to);
   for (const tr of running){
     const el = trainEls[tr.id], stop = act[tr.next][1];
@@ -3416,7 +3446,7 @@ function tick(){
     const wetHTML = wetNote(current, s) ? `<small class="posnote">${wetNote(current, s)}</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
       <div>${trainSVG(s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${wetHTML}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${wetHTML}${journeyHTML(s)}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
       <span class="eta">${s.atStation ? "Boarding" : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min"}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
