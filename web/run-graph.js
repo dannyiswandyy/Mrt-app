@@ -435,8 +435,10 @@
     const midday = trips.some(t => Number(t.dep) < H(15) && Number(t.arr) > H(11));
     // Singapore early-morning special trains may be 02:30 in a new service day,
     // or 26:30 on the previous service day. Treat both as late-night trips.
+    // LN begins only when scheduled passenger service continues beyond 23:00
+    // (or operates in the early hours of the next calendar day).
     const overnightStart = start < H(4.5);
-    const lateNight = overnightStart || end >= H(22);
+    const lateNight = overnightStart || end > H(23);
     let code = "Unclassified";
     if (overnightStart && end <= H(6)) code = "LN";
     else if (start < H(10) && end >= H(18) && midday && trips.length >= 2) code = lateNight ? "FD LN" : "FD";
@@ -447,7 +449,7 @@
     else if (lateNight) code = "LN";
     const evidence = [
       `${trips.length} LTA scheduled passenger trip(s), ${hm(start)} first departure to ${hm(end)} last arrival (GTFS service-day time).`,
-      `Midday passenger coverage (11:00–15:00): ${midday ? "yes" : "not shown"}. Late-night coverage (after 22:00 or early-hours special): ${lateNight ? "yes" : "not shown"}.`,
+      `Midday passenger coverage (11:00–15:00): ${midday ? "yes" : "not shown"}. Late-night coverage (scheduled passenger service beyond 23:00 or early-hours special): ${lateNight ? "yes" : "not shown"}.`,
       "Duty code is inferred from scheduled times, not an operator-issued roster, confirmed physical train identity or depot withdrawal."
     ];
     return {code, start, end, trips: trips.length, source: "LTA timetable estimate", evidence};
