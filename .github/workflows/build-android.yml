@@ -745,6 +745,25 @@ jobs:
               private boolean pageLoaded = false;
               private long timetableVersionSeen = 0L;
               private boolean updating = false;
+              /** Also check when the app remains open for more than an hour. */
+              private boolean timetableForeground = false;
+              private final android.os.Handler timetableHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+              private final Runnable timetablePoll = new Runnable() {
+                  @Override public void run() {
+                      if (!timetableForeground) return;
+                      if (pageLoaded && web != null && timetableVersionSeen != HourlyTimetable.version(MainActivity.this)) {
+                          pageLoaded = false;
+                          web.reload();
+                      }
+                      HourlyTimetable.checkIfDue(MainActivity.this, () -> {
+                          if (timetableForeground && web != null) {
+                              pageLoaded = false;
+                              web.reload();
+                          }
+                      });
+                      timetableHandler.postDelayed(this, 60L * 1000L);
+                  }
+              };
               /** Shared bounded pool for native network/update work; avoids creating a fresh thread per request. */
               private final ExecutorService io = Executors.newFixedThreadPool(3);
               /** A video shown full screen (the Live cam's full-screen button), and how to hand it back. */
@@ -934,6 +953,9 @@ jobs:
               protected void onResume() {
                   super.onResume();
                   current = new java.lang.ref.WeakReference<>(this);
+                  timetableForeground = true;
+                  timetableHandler.removeCallbacks(timetablePoll);
+                  timetableHandler.post(timetablePoll);
                   web.onResume();
                   if (pageLoaded && timetableVersionSeen != HourlyTimetable.version(this)) {
                       pageLoaded = false;
@@ -1068,6 +1090,8 @@ jobs:
                   } catch (Exception ignored) {
                   }
                   netCallback = null;
+                  timetableForeground = false;
+                  timetableHandler.removeCallbacks(timetablePoll);
                   io.shutdownNow();
                   try {
                       if (web != null) {
@@ -1100,6 +1124,8 @@ jobs:
 
               @Override
               protected void onPause() {
+                  timetableForeground = false;
+                  timetableHandler.removeCallbacks(timetablePoll);
                   // The Live cam stops streaming while the app is in the background (it saves mobile data).
                   leaveFullScreen();
                   // DEV:START
