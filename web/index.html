@@ -3120,8 +3120,8 @@ function ttFirstTrain(code, now){
   const list = ttTrips(code, now.iso); return list && list.length ? list[0].s / 60 : null;
 }
 
-// next-train times: phones show the THIS TRIP badge for a train that's here; tablets and computers show "Arriving"
-const fmt = m => m < 0.75 ? (matchMedia("(min-width:701px)").matches ? "Arriving" : `<strong class="trip-now">THIS TRIP</strong>`) : Math.round(m) + " min";
+// Next-train arrivals use the same ARRIVING wording on every MRT/LRT line and screen size.
+const fmt = m => m < 0.75 ? (matchMedia("(min-width:701px)").matches ? "Arriving" : `<strong class="trip-now">ARRIVING</strong>`) : Math.round(m) + " min";
 const boardMins = m => m < 0.75 ? "Now" : Math.round(m) + " min";
 /* Minutes since the service day began → "5:31am". */
 const clockText = m => { m = Math.round(m) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
