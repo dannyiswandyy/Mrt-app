@@ -93,6 +93,7 @@
     if (label.includes("spotter schedule") || label.includes("plan a spotting run")) el.remove();
   }
   if (tiles && btn.parentNode !== tiles) tiles.appendChild(btn);
+  else if (!tiles && !btn.isConnected) document.body.appendChild(btn);
 
   const mask = document.createElement("div");
   mask.id = "splMask"; mask.setAttribute("role", "presentation");
