@@ -188,7 +188,26 @@ function checkMatch(web, app) {
   }
 }
 
+function checkDutyThreshold() {
+  const RG = require("../web/run-graph.js");
+  const duty = legs => RG.classifyDuty({trips: legs.map(([start, end]) => ({dep: start * 3600, arr: end * 3600}))}).code;
+  const cases = [
+    ["full day ending before 23:00", [[5.5, 8], [11, 13], [17, 22.75]], "FD"],
+    ["full day ending exactly 23:00", [[5.5, 8], [11, 13], [17, 23]], "FD"],
+    ["full day running after 23:00", [[5.5, 8], [11, 13], [17, 23.1]], "FD LN"],
+    ["afternoon peak ending before 23:00", [[17, 22.75]], "(PM)"],
+    ["afternoon peak ending exactly 23:00", [[17, 23]], "(PM)"],
+    ["afternoon peak running after 23:00", [[17, 23.1]], "(PM) LN"],
+    ["past-midnight service-day time", [[17, 24.3]], "(PM) LN"],
+  ];
+  for (const [name, legs, expected] of cases) {
+    const actual = duty(legs);
+    if (actual !== expected) fail("GTFS duty " + name + ": expected " + expected + ", got " + actual);
+  }
+}
+
 function main() {
+  checkDutyThreshold();
   const html = pageHtml();
   checkFingerprints(html, "web/index.html");
   const web = loadPage(html);
