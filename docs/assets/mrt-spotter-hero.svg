@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<title id="title">MRT Spotter — Singapore rail, beyond the platform</title>
+<desc id="desc">MRT Spotter branding with the current white train icon from the Android launcher and a decorative abstract rail network.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#09131e"/><stop offset="0.55" stop-color="#102238"/><stop offset="1" stop-color="#101929"/></linearGradient>
+  <linearGradient id="shine" x1="0" x2="1"><stop stop-color="#00a650"/><stop offset=".48" stop-color="#3d8af0"/><stop offset="1" stop-color="#e4002b"/></linearGradient>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#d8e9ff" stroke-width=".6" opacity=".07"/></pattern>
+  <filter id="glow"><feGaussianBlur stdDeviation="10"/></filter>
+</defs>
+<rect width="1200" height="360" rx="20" fill="url(#bg)"/>
+<rect width="1200" height="360" rx="20" fill="url(#grid)"/>
+<circle cx="1000" cy="100" r="220" fill="#284c74" opacity=".14"/>
+<circle cx="780" cy="300" r="150" fill="#3c6b90" opacity=".12"/>
+<g opacity=".16" stroke-width="16" fill="none" filter="url(#glow)">
+ <path d="M650 -20V65Q650 100 690 100H1120Q1160 100 1160 145V400" stroke="#d42e12"/>
+ <path d="M570 360H790Q825 360 825 320V230Q825 200 855 200H1200" stroke="#00a650"/>
+ <path d="M790 -20V110Q790 150 830 150H990Q1030 150 1030 200V380" stroke="#3d8af0"/>
+</g>
+<g fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".82">
+ <path d="M680 -20V56Q680 98 718 98H1100Q1140 98 1140 140V400" stroke="#e4002b"/>
+ <path d="M580 366H756Q806 366 806 318V252Q806 213 846 213H1208" stroke="#00a650"/>
+ <path d="M786 -20V112Q786 154 824 154H980Q1024 154 1024 195V386" stroke="#3d8af0"/>
+ <path d="M946 -20V49Q946 77 970 77H1002Q1060 77 1060 127V370" stroke="#f6a217"/>
+</g>
+<g fill="#eff6ff" stroke="#122338" stroke-width="5">
+ <circle cx="680" cy="98" r="12"/><circle cx="786" cy="154" r="12"/><circle cx="806" cy="213" r="12"/><circle cx="1024" cy="213" r="12"/><circle cx="1140" cy="98" r="12"/><circle cx="1060" cy="77" r="12"/><circle cx="1024" cy="154" r="12"/>
+</g>
+<g transform="translate(50 79)">
+ <rect width="180" height="180" rx="38" fill="#07101a" stroke="#34516a" stroke-width="2"/>
+ <rect x="19" y="19" width="142" height="142" rx="30" fill="#0a0e14"/>
+ <g transform="translate(19 19) scale(1.315)">
+ <path fill="#E9EEF4" d="M39.09,23.81H69A8.53,8.53 0,0 1 77.53,32.34V68.81A8.53,8.53 0,0 1 69,77.34H39.09A8.53,8.53 0,0 1 30.56,68.81V32.34A8.53,8.53 0,0 1 39.09,23.81Z"/>
+ <path fill="#1D2A36" d="M36.19,31.31H71.91V51.09H36.19Z"/>
+ <path fill="#E4002B" d="M30.56,58.5H77.53V62.25H30.56Z"/>
+ <path fill="#00A650" d="M30.56,62.25H77.53V65.16H30.56Z"/>
+ <path fill="#FFD65A" d="M35.25,71.48A3.61,3.61 0,1 1 42.47,71.48A3.61,3.61 0,1 1 35.25,71.48ZM65.62,71.48A3.61,3.61 0,1 1 72.84,71.48A3.61,3.61 0,1 1 65.62,71.48Z"/>
+ <path fill="#E9EEF4" d="M41.62,79.12L48.28,79.12L40.71,88.59L34.05,88.59ZM59.72,79.12L66.38,79.12L73.95,88.59L67.29,88.59Z"/>
+ </g>
+</g>
+<g font-family="Arial,Helvetica,sans-serif">
+ <text x="258" y="143" fill="#ffffff" font-size="59" font-weight="800" letter-spacing="3">MRT SPOTTER</text>
+ <text x="261" y="190" fill="#c7d9e7" font-size="24" font-weight="500">Singapore rail, beyond the platform.</text>
+ <rect x="262" y="218" width="334" height="4" rx="2" fill="url(#shine)"/>
+ <text x="262" y="253" fill="#a3b8cc" font-size="15" font-weight="700" letter-spacing="2">TRACK RUNS  ·  PLAN TRIPS  ·  LOG SIGHTINGS</text>
+ <text x="262" y="292" fill="#90a9ba" font-size="13" letter-spacing="1.1">INDEPENDENT RAIL ENTHUSIAST PROJECT</text>
+</g>
+</svg>
