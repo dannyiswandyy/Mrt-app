@@ -122,3 +122,18 @@ test("public Android bundles timetable intelligence while production hides Dev U
   assert.match(page,/window\.MRT_PRODUCTION=true;window\.MRT_DEV_FEATURES=false;/);
   assert.match(src,/window\.MRT_PRODUCTION === true \|\| window\.MRT_DEV_FEATURES !== true/);
 });
+
+test("every public website script is bundled in the public APK", () => {
+  if (isDev) return;
+  const page = readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
+  const workflow = readFileSync(new URL("../.github/workflows/build-android.yml",import.meta.url),"utf8");
+  const scripts = [...new Set([...page.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)]
+    .map(m => m[1]).filter(x => !/^(https?:|\/\/|data:)/i.test(x)))];
+  assert.ok(scripts.length >= 10, "found all local public script tags");
+  for (const script of scripts) {
+    assert.ok(!script.includes(".."), "unsafe local script path: "+script);
+    assert.ok(workflow.includes("web/"+script), "public APK must bundle "+script+" referenced by the website");
+  }
+  assert.match(page,/window\.MRT_PRODUCTION=true;window\.MRT_DEV_FEATURES=false;/,
+    "production flags must disable experimental UI");
+});
