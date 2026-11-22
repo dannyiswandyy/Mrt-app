@@ -230,6 +230,11 @@ jobs:
                       android:name=".UpdateJob"
                       android:permission="android.permission.BIND_JOB_SERVICE"
                       android:exported="false" />
+
+                  <service
+                      android:name=".HourlyTimetable"
+                      android:permission="android.permission.BIND_JOB_SERVICE"
+                      android:exported="false" />
           
                   <receiver
                       android:name=".InstallReceiver"
@@ -738,6 +743,7 @@ jobs:
               private String cachedAiKey = null;
               private SharedPreferences prefs;
               private boolean pageLoaded = false;
+              private long timetableVersionSeen = 0L;
               private boolean updating = false;
               /** Shared bounded pool for native network/update work; avoids creating a fresh thread per request. */
               private final ExecutorService io = Executors.newFixedThreadPool(3);
@@ -869,6 +875,7 @@ jobs:
                       @Override
                       public void onPageFinished(WebView view, String url) {
                           pageLoaded = true;
+                          timetableVersionSeen = HourlyTimetable.version(MainActivity.this);
                           checkForUpdate();
                       }
 
@@ -883,8 +890,9 @@ jobs:
                   setContentView(web);
                   web.loadUrl(PAGE_URL);
 
-                  // Updates: check in the background every few hours, and ask once to allow notifications.
+                  // APK update checks are separate from the one-hour GTFS timetable checks.
                   Updater.schedule(this);
+                  HourlyTimetable.schedule(this);
                   // Notification channels (disruptions, trip reminders) and the background disruption check
                   Alerts.channels(this);
                   Alerts.schedule(this);
@@ -927,6 +935,16 @@ jobs:
                   super.onResume();
                   current = new java.lang.ref.WeakReference<>(this);
                   web.onResume();
+                  if (pageLoaded && timetableVersionSeen != HourlyTimetable.version(this)) {
+                      pageLoaded = false;
+                      web.reload(); // A newer schedule was saved while the app was in the background.
+                  }
+                  HourlyTimetable.checkIfDue(this, () -> {
+                      if (web != null) {
+                          pageLoaded = false;
+                          web.reload(); // Load the latest valid GTFS schedule.
+                      }
+                  });
                   if (pageLoaded) checkForUpdate();
                   // Fresh status every time the app is opened or brought back to the front.
                   if (pageLoaded) {
@@ -1101,14 +1119,10 @@ jobs:
                       return !ltaKey().isEmpty();
                   }
 
-                  /** LTA's official train timetable, packed into the app at build time ("" if this build has none). */
+                  /** Validated hourly GTFS schedule, falling back to the bundled APK copy. */
                   @JavascriptInterface
                   public String getTimetable() {
-                      try (InputStream in = getAssets().open("timetable.json")) {
-                          return readAll(in);
-                      } catch (Exception e) {
-                          return "";
-                      }
+                      return HourlyTimetable.current(getApplicationContext());
                   }
 
                   /** Building outlines and heights near stations (OpenStreetMap), packed at build time ("" if none). */
@@ -2430,6 +2444,8 @@ jobs:
           rootProject.name = "MRT Tracker"
           include ':app'
           MRTAPP_EOF
+          # The public app uses the same one-hour GTFS updates as the website.
+          cp tools/android-public/HourlyTimetable.java mrt-tracker-app/app/src/main/java/sg/mrttracker/app/HourlyTimetable.java
           mkdir -p 'mrt-tracker-app/tools'
           mkdir -p 'mrt-tracker-app/tools'
           mkdir -p 'mrt-tracker-app/tools'
