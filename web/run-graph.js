@@ -444,10 +444,11 @@
     else if (start < H(10) && end >= H(18) && midday && trips.length >= 2) code = lateNight ? "FD LN" : "FD";
     else if (!overnightStart && start < H(10) && end <= H(11.5)) code = "(AM)";
     else if (!overnightStart && start < H(10) && end > H(11.5) && end <= H(16.5)) code = "HD";
-    // An off-peak (around 11:00) injection continuing past 23:00 is OP LN,
-    // not an afternoon-peak duty or an unclassified late-night run.
-    else if (start >= H(10.25) && start <= H(12.5) && midday && end > H(23)) code = "OP LN";
-    else if (start >= H(10.25) && start <= H(12.5) && end >= H(13.5) && end <= H(16.5)) code = "(OP)";
+    // OP duty windows include starts from 10:00, just before the 11:00–15:00
+    // off-peak period. A 10:01 start continuing past 23:00 is OP LN,
+    // not an afternoon-peak duty or a generic late-night-only run.
+    else if (start >= H(10) && start <= H(12.5) && midday && end > H(23)) code = "OP LN";
+    else if (start >= H(10) && start <= H(12.5) && end >= H(13.5) && end <= H(16.5)) code = "(OP)";
     else if (start >= H(13) && start < H(20.5) && end >= H(17)) code = lateNight ? "(PM) LN" : "(PM)";
     else if (lateNight) code = "LN";
     const evidence = [
