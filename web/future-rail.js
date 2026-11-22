@@ -78,6 +78,24 @@
       P("TG-BM","Bukit Merah area",-2400,7800),P("TG-G","Greater Southern Waterfront",1400,10500)
     ]}
   ];
+  // Projected routes use the same line/station-code model as RTS, but are deliberately
+  // excluded from active GTFS, service planning and simulated passenger movements.
+  // Coordinates are corridor estimates except where the build supplies URA candidates.
+  const network = Object.freeze(Object.fromEntries(lines.map(line => [line.id, {
+    id:line.id, name:line.name, color:line.color, stage:line.stage, future:true,
+    concept:!!line.concept, passengerService:false,
+    stations:line.nodes.map(n=>({code:n.code,name:n.name,existing:n.existing||null,x:n.x,y:n.y}))
+  }])));
+  const stationIndex = new Map();
+  for(const line of lines) for(const node of line.nodes){
+    const ref={line:line.id,route:line,station:node};
+    stationIndex.set(line.id+":"+node.code,ref);
+  }
+  let selected = null, browseLine = "CRL";
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const byCode=(line,code)=>stationIndex.get(line+":"+code)||null;
+  const coords=(node,map)=>node.existing && map && map[node.existing] || [node.x,node.y];
+  const isExisting=(node,map)=>!!(node.existing && map && map[node.existing]);
   let enabled = false;
   let geometry = null;
   let geometryStatus = "pending";
@@ -90,6 +108,76 @@
     const withURA=routes.filter(line=>Array.isArray(matched[line.id])&&matched[line.id].length>0);
     return {loaded:!!geometry,status:geometryStatus,withURA:withURA.map(line=>line.id),
       estimated:routes.filter(line=>!withURA.includes(line)).map(line=>line.id),total:routes.length};
+  }
+  function connectionsHTML(name){
+    if(!dev() || !enabled) return "";
+    const refs=[...stationIndex.values()].filter(x=>x.station.name===name && !x.route.concept);
+    if(!refs.length)return "";
+    return '<div class="mi-row"><span><b>Future rail connections · NOT IN SERVICE</b><small style="display:block">'+
+      refs.map(x=>esc(x.station.code)+" · "+esc(x.route.name)).join(" · ")+'</small></span></div>';
+  }
+  // Map hit-testing uses the exact same screen projection as the main RTS/MRT map.
+  function hitTest(x,y,opts){
+    if(!dev() || !enabled || !opts || typeof opts.sx!=="function")return null;
+    const map=opts.stations||{}, radius=Math.min(20,Math.max(11,4+(opts.zoom||1)*1.7));
+    let best=null,dist=radius;
+    for(const [key,ref] of stationIndex){
+      const node=ref.station;
+      // Existing interchanges retain the normal active station card.
+      if(isExisting(node,map))continue;
+      const pt=coords(node,map),d=Math.hypot(opts.sx(pt[0])-x,opts.sy(pt[1])-y);
+      if(d<dist){dist=d;best={line:ref.line,code:node.code,x:pt[0],y:pt[1],name:node.name};}
+    }
+    return best;
+  }
+  function stationHTML(hit){
+    if(!dev() || !enabled)return "";
+    const entry=byCode(hit.line,hit.code);
+    if(!entry)return '<p class="hint">Future station unavailable.</p>';
+    const line=entry.route,node=entry.station;
+    const shared=[...stationIndex.values()].filter(x=>x.station.code!==node.code &&
+      x.station.name===node.name && x.route.id!==line.id);
+    const hasURA=coverage().withURA.includes(line.id);
+    return '<div class="mi-h"><span class="code" style="background:'+esc(line.color)+'">'+esc(node.code)+
+      '</span><b>'+esc(node.name)+'</b><button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>'+
+      '<div class="mi-row"><span><b>'+esc(line.name)+'</b></span><span class="mi-t">NOT IN SERVICE</span></div>'+
+      '<div class="mi-row"><span>'+esc(line.stage)+'</span></div>'+
+      (node.existing?'<div class="mi-row"><span>Interchange with existing '+esc(node.existing)+'</span></div>':"")+
+      (shared.length?'<div class="mi-row"><span>Planned connections: '+shared.map(x=>esc(x.route.name)).join(", ")+'</span></div>':"")+
+      '<div class="mi-row"><small>'+(hasURA?
+      "Indicative URA rail corridor segments available; exact station/track alignment is not confirmed.":
+      "Map route is an illustrative estimate; final station/track alignment is not confirmed.")+
+      '</small></div><div class="mi-row"><small>No passenger timetable, arrivals or live trains are available for this future route.</small></div>';
+  }
+  function selectStation(line,code){
+    if(!dev() || !enabled)return false;
+    const ref=byCode(line,code);if(!ref)return false;
+    const pt=coords(ref.station,root.mrtFutureStationMap||{});
+    selected={line,code,x:pt[0],y:pt[1],name:ref.station.name};
+    if(typeof root.selectFutureRailStation==="function")root.selectFutureRailStation(selected);
+    if(typeof api.invalidate==="function")api.invalidate();
+    return true;
+  }
+  function renderPanel(){
+    if(!dev()||!root.document)return;
+    const panel=document.getElementById("futureRailPanel");
+    if(!panel)return;
+    const line=lines.find(l=>l.id===browseLine)||lines[0], matched=coverage().withURA.includes(line.id);
+    panel.innerHTML='<div style="font-weight:750;margin-bottom:8px">Future lines &amp; stations <span style="font-size:11px;font-weight:400">NOT IN SERVICE</span></div>'+
+      '<label for="futureRailLine" style="display:block;font-size:12px;margin-bottom:4px">Rail project</label>'+
+      '<select id="futureRailLine" style="width:100%;padding:8px;background:#102a37;color:#fff;border:1px solid #718999;border-radius:6px">'+
+      lines.map(l=>'<option value="'+esc(l.id)+'" '+(l.id===line.id?"selected":"")+'>'+esc(l.name)+'</option>').join("")+'</select>'+
+      '<p style="font-size:12px;margin:8px 0">'+esc(line.stage)+'</p>'+
+      '<p style="font-size:11px;margin:6px 0 10px">'+(matched?"URA candidate geometry + estimates":"Indicative alignment only; no URA corridor match")+'</p>'+
+      '<div style="display:grid;gap:5px">'+line.nodes.map(n=>
+      '<button type="button" data-future-line="'+esc(line.id)+'" data-future-code="'+esc(n.code)+'" style="text-align:left;padding:7px 8px;border:1px solid #597789;border-radius:6px;background:#183847;color:#fff;cursor:pointer">'+
+      '<b style="color:'+esc(line.color)+'">'+esc(n.code)+'</b> · '+esc(n.name)+'</button>').join("")+'</div>'+
+      '<p style="font-size:11px;margin:9px 0 0">Select a station to view its future-service information on the map. No trains or ETAs are simulated.</p>';
+    panel.querySelector("#futureRailLine").addEventListener("change",e=>{browseLine=e.target.value;renderPanel();});
+    panel.querySelectorAll("[data-future-code]").forEach(b=>b.addEventListener("click",()=>{
+      selectStation(b.dataset.futureLine,b.dataset.futureCode);
+      panel.hidden=true;
+    }));
   }
   function updateToggleLabel(){
     if (!root.document) return;
@@ -108,8 +196,8 @@
     fetch("future-rail-geometry.json", {cache:"no-store"})
       .then(r=>{if(!r.ok)throw Error("future geometry unavailable");return r.json();})
       .then(d=>{geometry=d&&d.matched?d:null;geometryStatus=geometry?"loaded":"unavailable";
-        updateToggleLabel();if(enabled&&typeof api.invalidate==="function")api.invalidate();})
-      .catch(()=>{geometry=null;geometryStatus="unavailable";updateToggleLabel();});
+        updateToggleLabel();renderPanel();if(enabled&&typeof api.invalidate==="function")api.invalidate();})
+      .catch(()=>{geometry=null;geometryStatus="unavailable";updateToggleLabel();renderPanel();});
   }
   const dev = () => root.MRT_DEV_FEATURES === true && root.MRT_PRODUCTION !== true;
   function attach(){
@@ -124,16 +212,28 @@
     button.title="Experimental: sourced URA Master Plan geometry where available, dashed estimates elsewhere. Not open for passenger service.";
     button.style.cssText="position:absolute;z-index:24;left:12px;bottom:68px;max-width:185px;padding:9px 12px;border-radius:9px;border:1px solid #7a94a7;background:#17313dcc;color:#fff;font:700 12px system-ui;cursor:pointer";
     wrap.appendChild(button);
+    const routes=document.createElement("button");
+    routes.id="futureRailRoutes";routes.type="button";routes.hidden=true;
+    routes.textContent="Routes & stations";
+    routes.style.cssText="position:absolute;z-index:25;left:12px;bottom:113px;padding:8px 11px;border:1px solid #7a94a7;border-radius:9px;background:#17313d;color:white;font:700 12px system-ui;cursor:pointer";
+    wrap.appendChild(routes);
+    const panel=document.createElement("section");
+    panel.id="futureRailPanel";panel.hidden=true;
+    panel.style.cssText="position:absolute;z-index:26;left:10px;bottom:157px;width:min(340px,calc(100% - 20px));max-height:min(62vh,480px);overflow:auto;background:#102a37;color:white;padding:13px;border:1px solid #658298;border-radius:11px;box-shadow:0 8px 24px #0006;font:13px system-ui";
+    wrap.appendChild(panel);
+    routes.addEventListener("click",()=>{panel.hidden=!panel.hidden;if(!panel.hidden)renderPanel();});
     updateToggleLabel();
     button.addEventListener("click",()=>{
       enabled=!enabled;updateToggleLabel();
       button.setAttribute("aria-pressed",String(enabled));
+      routes.hidden=!enabled;if(!enabled){panel.hidden=true;selected=null;}
       if (typeof api.invalidate === "function") api.invalidate();
     });
   }
   function draw(ctx, opts) {
     if (!dev() || !enabled || !ctx || !opts || typeof opts.sx!=="function") return;
     const sx=opts.sx, sy=opts.sy, zoom=opts.zoom||1, stationMap=opts.stations||{};
+    root.mrtFutureStationMap=stationMap;
     const width=Math.max(1.4,Math.min(4.4,2+(zoom-1)*.3));
     ctx.save();
     ctx.lineJoin="round";ctx.lineCap="round";ctx.globalAlpha=.78;
@@ -168,6 +268,11 @@
         ctx.fillStyle="#ffffff";ctx.fillText(label,x+7,y-5);
       }
     }
+    if(selected){
+      const p=coords(byCode(selected.line,selected.code).station,stationMap);
+      ctx.setLineDash([]);ctx.globalAlpha=1;ctx.beginPath();
+      ctx.arc(sx(p[0]),sy(p[1]),11,0,Math.PI*2);ctx.lineWidth=2.6;ctx.strokeStyle="#fff";ctx.stroke();
+    }
     ctx.setLineDash([]);
     ctx.globalAlpha=1;
     ctx.font="bold 11px system-ui";ctx.lineWidth=3;
@@ -175,7 +280,8 @@
     ctx.fillStyle="#ffda82";ctx.fillText("FUTURE RAIL · URA indicative geometry + estimates · NOT IN SERVICE",14,22);
     ctx.restore();
   }
-  const api={lines,source:LTA,draw,attach,coverage,invalidate:null,get enabled(){return dev()&&enabled;}};
+  const api={lines,network,source:LTA,draw,attach,coverage,byCode,hitTest,stationHTML,connectionsHTML,
+    selectStation,invalidate:null,get selected(){return selected;},get enabled(){return dev()&&enabled;}};
   root.mrtFutureRail=api;
   if(dev()){
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{attach();loadGeometry();});
