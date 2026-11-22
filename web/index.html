@@ -3228,6 +3228,11 @@ function buildBoard(){
 }
 function toggle(i){
   const L = LINES[current];
+  if (L.future){
+    const station=L.stations[i];
+    if(station && window.mrtFutureRail)window.mrtFutureRail.selectStation(current,station[0]);
+    return;
+  }
   if (i >= activeStations(L, sgNow().iso).length) return;
   openIdx = openIdx === i ? -1 : i; tick();
   if (openIdx >= 0 && window.syncMapStation){ window.syncMapStation(L.stations[i][1]); }
@@ -3330,6 +3335,19 @@ function trainSVG(dir){
 function tick(){
   const now = sgNow(), L = LINES[current], act = activeStations(L, now.iso);
   $("clock").textContent = now.clock;
+  // A registered future route has station-board navigation, like RTS,
+  // but must never enter runsFor(), headway(), GTFS or estimated trains.
+  if (L.future){
+    setHTML($("status"),'<div class="bar" style="background:var(--'+current+')"></div><b>'+esc(L.name)+
+      '</b><span>Not in service · proposed / announced railway</span>');
+    setHTML($("notice"),'<div class="notice">'+esc(L.stage||"Future rail project")+
+      '. Exact alignments may be indicative. No passenger train times available.</div>');
+    for(let i=0;i<L.stations.length;i++){
+      const stop=$("nx"+i);
+      if(stop)setHTML(stop,'<span class="s">Not in service · no departures</span>');
+    }
+    return;
+  }
 
   // status card
   const running = trainsOn(current, now);
@@ -4921,6 +4939,11 @@ function nameAt(list, x, y){
 }
 /* The station card: the same one you get from tapping the circle on the map. */
 function openStationCard(name, line){
+  // Future route rows open the regular map information card; no train predictions.
+  if (line && LINES[line] && LINES[line].future && window.mrtFutureRail){
+    const st=LINES[line].stations.find(x=>x[1]===name);
+    if (st){ window.mrtFutureRail.selectStation(line,st[0]); return; }
+  }
   if (!name || !byName[name]) return;
   const lines = byName[name].map(x => x[0]);
   mSel = {type: "station", name};
