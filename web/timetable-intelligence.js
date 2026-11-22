@@ -275,7 +275,15 @@
     });
     document.addEventListener("keydown",function(e){if(e.key==="Escape")close();});
   }
+  // The production website and public APK share the intelligence engine but do not
+  // expose the experimental analysis drawer or its Home shortcut.
   function mount() {
+    if (window.MRT_PRODUCTION === true || window.MRT_DEV_FEATURES !== true) {
+      var old=document.querySelector("#ttiHome");
+      if (old) old.remove();
+      checkFeed(false);
+      return;
+    }
     setup();
     var home=document.querySelector("#viewHome .tiles"), old=document.querySelector("#ttiHome");
     if(home&&!old){
