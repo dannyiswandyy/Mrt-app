@@ -19,4 +19,6 @@ jobs:
           node-version: "22"
 
       - name: Check trains in service and headways
-        run: node tests/timetable-check.js
+        run: |
+          node tests/timetable-check.js
+          node --test tests/special-events.test.mjs
