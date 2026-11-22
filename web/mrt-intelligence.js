@@ -224,3 +224,38 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
     if (typeof root.addEventListener === "function") root.addEventListener("focus", render);
   }
 })(typeof window !== "undefined" ? window : globalThis);
+
+/* Pre-03:00 map bridge: use the real Sunday GTFS trips published with a Sunday service_id.
+   The page considers 00:00-02:59 part of the previous operating day; 02:30 Sunday
+   can be Saturday 26:30 OR Sunday 02:30 in GTFS. This wrapper only combines those
+   representations when actually viewing the event's early-morning operating window.
+   No synthetic headway, route, or train is created. */
+(function (root) {
+  "use strict";
+  const original = root.ttTrips;
+  if (typeof original !== "function" || original.__mrtMarathonBridge) return;
+  function withSundayEarlyTrips(code, iso) {
+    const base = original.apply(this, arguments);
+    if (iso !== "2026-12-05" || !["NSL", "EWL", "CCL"].includes(code)) return base;
+    let now;
+    try { now = typeof root.sgNow === "function" ? root.sgNow() : null; } catch (_) { return base; }
+    if (!now || now.iso !== iso || now.mins < 1440 || now.mins >= 1620) return base;
+    const sunday = original(code, "2026-12-06");
+    if (!sunday) return base;
+    const existing = base || [];
+    const seen = new Set(existing.map(r => String(r.tid) + "|" + r.s + "|" + r.pi));
+    const additional = [];
+    for (const r of sunday) {
+      if (r.s >= 3 * 3600) continue;
+      const shifted = Object.assign({}, r, {s: r.s + 86400});
+      const key = String(shifted.tid) + "|" + shifted.s + "|" + shifted.pi;
+      if (!seen.has(key)) { additional.push(shifted); seen.add(key); }
+    }
+    if (!additional.length) return base;
+    const out = existing.concat(additional).sort((a, b) => a.s - b.s);
+    out.code = code;
+    return out;
+  }
+  withSundayEarlyTrips.__mrtMarathonBridge = true;
+  root.ttTrips = withSundayEarlyTrips;
+})(typeof window !== "undefined" ? window : globalThis);
