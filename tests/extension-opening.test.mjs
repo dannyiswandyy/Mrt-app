@@ -62,7 +62,7 @@ function loadGuard(testing=false) {
   const guard = intelligence.indexOf("/* TEL5 / DTL3e passenger-opening safeguard");
   assert.ok(guard >= 0, "opening safety module must be present");
   const fake = (code, iso) => {
-    const first = code === "TEL" ? 26 : 33;
+    const first = code === "TEL" ? 25 : 33;
     const arr = [0, 120, 240, 360];
     const run = {s: 21600, tid: code+"_TEST_001", p: {f:first,d:1,arr,dep:arr,end:360,to:first+3}};
     const a=[run];a.code=code;return a;
@@ -77,7 +77,7 @@ test("pre-opening passenger runs cannot claim unopened stations", () => {
   const tel = w.ttTrips("TEL","2026-12-25");
   const dtl = w.ttTrips("DTL","2026-12-25");
   assert.equal(tel[0].p.arr.length,2);
-  assert.equal(tel[0].p.to,27); // Bayshore
+  assert.equal(tel[0].p.to,26); // Bayshore
   assert.equal(dtl[0].p.arr.length,2);
   assert.equal(dtl[0].p.to,34); // Expo
   assert.deepEqual(Array.from(tel[0].p.arr), [0,120]);
