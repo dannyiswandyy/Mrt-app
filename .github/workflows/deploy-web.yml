@@ -95,6 +95,8 @@ jobs:
         run: |
           if [ -f mrt-tracker-app/tools/build_ura_rail.py ]; then
             python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
+            python3 mrt-tracker-app/tools/build_future_rail.py mrt-tracker-app osm-cache
+            cp mrt-tracker-app/app/src/main/assets/future-rail-geometry.json _site/future-rail-geometry.json
             if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
           fi
 
