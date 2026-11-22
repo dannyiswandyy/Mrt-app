@@ -295,6 +295,7 @@ jobs:
           cp web/smart.js mrt-tracker-app/app/src/main/assets/smart.js
           cp web/bus.js mrt-tracker-app/app/src/main/assets/bus.js
           cp web/taxi-availability.js mrt-tracker-app/app/src/main/assets/taxi-availability.js
+          cp web/future-rail.js mrt-tracker-app/app/src/main/assets/future-rail.js
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
