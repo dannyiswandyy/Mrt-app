@@ -1,0 +1,33 @@
+# Refresh the existing public Android release when LTA publishes opening-week
+# schedules. No parallel dev APKs, no workflow file rewriting and no API keys.
+# GitHub's cron is UTC: 22:21 UTC -> 06:21 SGT the following day.
+name: TEL5 / DTL3e opening-week APK refresh
+
+on:
+  schedule:
+    - cron: '21 22 24-26 12 *' # 25-27 December morning Singapore time
+    - cron: '21 4 26 12 *'    # 26 December lunchtime Singapore time
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only refresh in the 2026 opening window
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          day=$(TZ=Asia/Singapore date +%F)
+          case "$day" in
+            2026-12-25|2026-12-26|2026-12-27)
+              echo "Refresh public Android timetable and APK for TEL5 / DTL3e: $day"
+              gh workflow run build-android.yml --repo "$GITHUB_REPOSITORY" --ref main
+              ;;
+            *)
+              echo "Outside 2026 opening window; nothing to do."
+              ;;
+          esac

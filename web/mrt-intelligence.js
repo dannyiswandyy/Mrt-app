@@ -259,3 +259,128 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
   withSundayEarlyTrips.__mrtMarathonBridge = true;
   root.ttTrips = withSundayEarlyTrips;
 })(typeof window !== "undefined" ? window : globalThis);
+
+
+/* TEL5 / DTL3e passenger-opening safeguard (shared with website and Android).
+ * Before 26 Dec 2026, LTA may publish extension test trips. They are not public
+ * arrivals. Only Dev's explicit testing sandbox may expose them as experiments.
+ * From opening day, use published LTA calls; never manufacture extra GTFS trips. */
+(function (root) {
+  "use strict";
+  const OPEN = "2026-12-26";
+  const TARGETS = Object.freeze({ TEL: ["TE30","TE31"], DTL: ["DT36","DT37"] });
+  const LTA = "https://www.lta.gov.sg/content/ltagov/en/newsroom/2026/11/news-releases/tel5-dtl3e-passenger-service-26-dec-2026.html";
+  function network() {
+    try { return typeof LINES === "undefined" ? root.LINES : LINES; }
+    catch (_) { return root.LINES; }
+  }
+  function sgDate() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
+  function testMode() {
+    return !!(root.MRT_DEV_FEATURES && root.mrtDevScenario && root.mrtDevScenario.type === "testing");
+  }
+  function publicStops(code, iso) {
+    const line = network() && network()[code];
+    if (!line || !line.stations) return 0;
+    if (testMode()) return line.stations.length;
+    const date = iso || sgDate();
+    // Future stations are a terminal suffix on both extensions; count only
+    // the already-open prefix, including Expo/Bayshore before opening day.
+    let count = 0;
+    for (const s of line.stations) {
+      if (s[2] && date < s[2]) break;
+      count++;
+    }
+    return count;
+  }
+  function publicPattern(p, count) {
+    if (!p || !Array.isArray(p.arr) || !Array.isArray(p.dep)) return null;
+    let keep = 0;
+    while (keep < p.arr.length && keep < p.dep.length) {
+      const index = p.f + p.d * keep;
+      if (index < 0 || index >= count) break;
+      keep++;
+    }
+    // A trip entirely in an unopened section (or only touching its terminus)
+    // is not evidence of a public journey.
+    if (keep < 2) return null;
+    if (keep === p.arr.length && keep === p.dep.length) return p;
+    const arr = p.arr.slice(0, keep), dep = p.dep.slice(0, keep);
+    return Object.assign({}, p, {
+      arr, dep, end: arr[arr.length - 1], to: p.f + p.d * (keep - 1)
+    });
+  }
+  const original = root.ttTrips;
+  if (typeof original === "function" && !original.__mrtOpeningGuard) {
+    function protectedTrips(code, iso) {
+      const src = original.apply(this, arguments);
+      if (!src || !Object.prototype.hasOwnProperty.call(TARGETS, code) || iso >= OPEN || testMode()) return src;
+      const count = publicStops(code, iso);
+      const safe = [];
+      for (const run of src) {
+        const pattern = publicPattern(run.p, count);
+        if (pattern) safe.push(pattern === run.p ? run : Object.assign({}, run, {p: pattern}));
+      }
+      safe.code = code;
+      return safe.length ? safe : null;
+    }
+    protectedTrips.__mrtOpeningGuard = true;
+    root.ttTrips = protectedTrips;
+  }
+  function inspect(date) {
+    const iso = date || sgDate(), lines = network() || {};
+    const reports = {};
+    for (const code of Object.keys(TARGETS)) {
+      const line = lines[code];
+      const codes = line && line.stations ? line.stations.map(s => s[0]) : [];
+      const terminalCode = TARGETS[code][1], terminalIndex = codes.indexOf(terminalCode);
+      let trips = [];
+      try { if (typeof root.ttTrips === "function") trips = root.ttTrips(code, iso) || []; } catch (_) {}
+      const atTerminal = trips.filter(r => r && r.p && r.p.arr && r.p.arr.length &&
+        r.p.f + r.p.d * (r.p.arr.length - 1) === terminalIndex);
+      reports[code] = {
+        stations: TARGETS[code], total: codes.length,
+        openStops: publicStops(code, iso),
+        terminalInNetwork: terminalIndex >= 0,
+        gtfsTerminalTrips: atTerminal.length,
+        // Timetable coverage is a scheduled prediction, not a proof of operation.
+        status: iso < OPEN ? "NOT_OPEN" : atTerminal.length ? "GTFS_SCHEDULED" : "AWAITING_LTA_GTFS"
+      };
+    }
+    return {date: iso, scheduledOpening: OPEN, lines: reports, dataSource: "LTA GTFS schedule (when available)"};
+  }
+  function render() {
+    if (typeof document === "undefined") return;
+    const day = sgDate(), existing = document.getElementById("mrt-opening-readiness");
+    if (day < "2026-12-19" || day > "2027-01-10") { if (existing) existing.remove(); return; }
+    const header = document.querySelector("header.app-header");
+    if (!header || !header.parentNode) return;
+    const state = inspect(day);
+    const a = state.lines.TEL, b = state.lines.DTL;
+    const label = day < OPEN ? "Opening 26 Dec 2026" : "Opening-day timetable";
+    const coverage = [ ["TEL5",a], ["DTL3e",b] ].map(([name,s]) =>
+      name + ": " + (s.status === "NOT_OPEN" ? "passenger stations not yet open" :
+        s.status === "GTFS_SCHEDULED" ? s.gtfsTerminalTrips + " LTA trips to the new terminus" :
+          "new terminus timetable not yet found")).join(" · ");
+    const signature = state.date + "|" + a.status + ":" + a.gtfsTerminalTrips +
+      "|" + b.status + ":" + b.gtfsTerminalTrips;
+    if (existing && existing.dataset.signature === signature) return;
+    const el = existing || document.createElement("div");
+    el.id = "mrt-opening-readiness";
+    el.dataset.signature = signature;
+    el.setAttribute("role", "status");
+    el.style.cssText = "margin:8px 0;padding:10px 12px;background:var(--panel,#fff);color:var(--fg,#111);border:1px solid var(--rule,#ddd);border-left:4px solid #9d5b25;border-radius:9px;font-size:12px;line-height:1.45";
+    el.innerHTML = "<b>TEL5 &amp; DTL3e · " + label + "</b><div>Bedok South (TE30), " +
+      "Xilin (DT36), Sungei Bedok (TE31/DT37). " + coverage + ".</div>" +
+      "<small>Until opening day, test movements are not public train services. " +
+      "Scheduled trips are not independently confirmed as live train positions. " +
+      '<a href="' + LTA + '" target="_blank" rel="noopener noreferrer">LTA announcement</a></small>';
+    if (!existing) header.parentNode.insertBefore(el, header.nextSibling);
+  }
+  root.mrtExtensionOpening = Object.freeze({OPEN, TARGETS, publicStops, publicPattern, inspect, render});
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", render);
+    else render();
+    if (typeof root.setInterval === "function") root.setInterval(render, 120000);
+    if (typeof root.addEventListener === "function") root.addEventListener("focus", render);
+  }
+})(typeof window !== "undefined" ? window : globalThis);
