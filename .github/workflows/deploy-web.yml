@@ -8,10 +8,10 @@ on:
     branches: [main]
     paths: ['web/**', 'tools/**']
   workflow_dispatch:
-  # Refresh the published LTA GTFS timetable every morning (06:17 Singapore time).
-  # Calendar exceptions and extra early services may be published after an APK release.
+  # Rebuild the published LTA GTFS timetable every hour (at minute 17 UTC).
+  # GitHub scheduled jobs may start late; keep the last good schedule if LTA is unavailable.
   schedule:
-    - cron: '17 22 * * *'
+    - cron: '17 * * * *'
 
 permissions:
   contents: read
