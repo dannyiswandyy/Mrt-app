@@ -66,6 +66,16 @@
     ]}
   ];
   let enabled = false;
+  let geometry = null;
+  // Generated during builds from URA Master Plan GeoJSON; never replace it
+  // with invented coordinate chains. The approximations remain only as fallback.
+  function loadGeometry(){
+    if (!dev() || typeof fetch !== "function") return;
+    fetch("future-rail-geometry.json", {cache:"no-store"})
+      .then(r=>{if(!r.ok)throw Error("future geometry unavailable");return r.json();})
+      .then(d=>{geometry=d&&d.matched?d:null;if(enabled&&typeof api.invalidate==="function")api.invalidate();})
+      .catch(()=>{geometry=null;});
+  }
   const dev = () => root.MRT_DEV_FEATURES === true && root.MRT_PRODUCTION !== true;
   function attach(){
     if (!dev() || !root.document) return;
@@ -76,7 +86,7 @@
     button.type="button";
     button.textContent="Future rail · OFF";
     button.setAttribute("aria-pressed","false");
-    button.title="Experimental future line overlay: dashed, illustrative geometry only. Not open for passenger service.";
+    button.title="Experimental: sourced URA Master Plan geometry where available, dashed estimates elsewhere. Not open for passenger service.";
     button.style.cssText="position:absolute;z-index:24;left:12px;bottom:68px;max-width:185px;padding:9px 12px;border-radius:9px;border:1px solid #7a94a7;background:#17313dcc;color:#fff;font:700 12px system-ui;cursor:pointer";
     wrap.appendChild(button);
     button.addEventListener("click",()=>{
@@ -94,9 +104,21 @@
     for(const line of lines) {
       const pts=line.nodes.map(n=>stationMap[n.existing]||[n.x,n.y]);
       ctx.strokeStyle=line.color;ctx.lineWidth=width*(line.concept?.65:1);
+      const sourced=geometry && geometry.matched && geometry.matched[line.id];
+      // Approximate chain remains faint, showing where no source match was
+      // available; coloured solid fragments follow actual URA feature points.
+      ctx.globalAlpha=sourced&&sourced.length?0.23:0.48;
       ctx.setLineDash(line.concept?[2,8]:[8,5]);ctx.beginPath();
       pts.forEach((p,i)=>i?ctx.lineTo(sx(p[0]),sy(p[1])):ctx.moveTo(sx(p[0]),sy(p[1])));
       ctx.stroke();
+      if(sourced&&sourced.length){
+        ctx.globalAlpha=0.94;ctx.setLineDash([]);ctx.lineWidth=width+0.7;ctx.beginPath();
+        for(const part of sourced){if(!Array.isArray(part)||part.length<2)continue;
+          part.forEach((p,i)=>i?ctx.lineTo(sx(p[0]),sy(p[1])):ctx.moveTo(sx(p[0]),sy(p[1])));
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha=0.78;ctx.lineWidth=width;
       if(zoom<1.45)continue;
       const stride=zoom>3?1:3;
       for(let i=0;i<pts.length;i+=stride){
@@ -113,14 +135,14 @@
     ctx.setLineDash([]);
     ctx.globalAlpha=1;
     ctx.font="bold 11px system-ui";ctx.lineWidth=3;
-    ctx.strokeStyle="#13242d";ctx.strokeText("FUTURE RAIL · conceptual alignment · NOT IN SERVICE",14,22);
-    ctx.fillStyle="#ffda82";ctx.fillText("FUTURE RAIL · conceptual alignment · NOT IN SERVICE",14,22);
+    ctx.strokeStyle="#13242d";ctx.strokeText("FUTURE RAIL · URA indicative geometry + estimates · NOT IN SERVICE",14,22);
+    ctx.fillStyle="#ffda82";ctx.fillText("FUTURE RAIL · URA indicative geometry + estimates · NOT IN SERVICE",14,22);
     ctx.restore();
   }
   const api={lines,source:LTA,draw,attach,invalidate:null,get enabled(){return dev()&&enabled;}};
   root.mrtFutureRail=api;
   if(dev()){
-    if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",attach);
-    else attach();
+    if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{attach();loadGeometry();});
+    else {attach();loadGeometry();}
   }
 })(typeof window!=="undefined"?window:this);
