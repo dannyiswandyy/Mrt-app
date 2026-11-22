@@ -48,7 +48,10 @@
       P("DT1","Bukit Panjang",-6417,-2897,"DT1"),P("DTX","Towards Sungei Kadut · conceptual",-11600,-5000)
     ]},
     {id:"TELe",name:"Thomson-East Coast Line · Terminal 5",color:"#9a7049",stage:"Announced corridor · exact alignment not final",nodes:[
-      P("TE29","Bayshore",13634,4310,"TE29"),P("TE-T5","Changi Airport Terminal 5 (planned)",18500,2800)
+      P("TE31","Sungei Bedok",15300,3800),P("TE32","Changi Terminal 5",18500,2800)
+    ]},
+    {id:"CRL_T5",name:"Cross Island Line · Terminal 5",color:"#82be35",stage:"Announced T5 interchange · approximate alignment",nodes:[
+      P("CR1","Changi Terminal 5",18500,2800),P("CR2","Aviation Park",19500,-3200)
     ]},
     {id:"NS3A",name:"North-South · Brickland infill",color:"#e4272e",stage:"Announced infill · illustrative",nodes:[
       P("NS3","Bukit Gombak",-7565,-751,"NS3"),P("NS3A","Brickland",-8050,-1900),P("NS4","Choa Chu Kang",-8376,-3610,"NS4")
