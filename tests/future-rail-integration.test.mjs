@@ -31,6 +31,26 @@ test("main map can select future stations and display information in the normal 
   assert.match(page,/mrtFutureRail\.connectionsHTML\(e\.name\)/);
 });
 
+test("Dev-only routes join the native RTS-style line registry without entering operational ORDER",()=>{
+  const children=[],registry={NSL:{name:"North-South Line"}};
+  const tabs={appendChild(item){children.push(item);}};
+  const document={
+    readyState:"loading",addEventListener(){},
+    documentElement:{style:{setProperty(){}}},
+    getElementById:id=>id==="tabs"?tabs:null,
+    createElement:()=>({dataset:{},style:{setProperty(){}},setAttribute(){}})
+  };
+  const window={MRT_DEV_FEATURES:true,MRT_PRODUCTION:false,document};
+  vm.runInNewContext(source,{window,document,LINES:registry,console},{timeout:2500});
+  window.mrtFutureRail.registerCore();
+  for(const id of ["CRL","CPE","JRL_W","DTL2E","DTL3E","TEL5","NS6"]){
+    assert.equal(registry[id].future,true,id);
+    assert.ok(registry[id].stations.every(st=>st[2]==="9999-12-31"),id);
+    assert.ok(children.some(child=>child.id==="tab-"+id),id);
+  }
+  assert.ok(!registry.SEL && !registry.TGL,"concept corridors stay outside operational line tabs");
+});
+
 test("public channel cannot hit or display future station data",()=>{
   const api=moduleFor(false);
   const screen={sx:x=>x,sy:y=>y,stations:{},zoom:3};
