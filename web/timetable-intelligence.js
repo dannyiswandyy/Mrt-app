@@ -102,7 +102,7 @@
       var line = T.lines[code], pats = line.pats || [], h = 2166136261;
       (line.trips || []).forEach(function (t) {
         var p = pats[t[1]] || [], a = p[2] || [], b = p[3] || [];
-        var sig = [t[0],t[1],t[2],t[3],p[0],p[1],p[4],a.length,a[a.length-1],b[b.length-1]].join("|");
+        var sig = [t[0],t[1],t[2],t[3],p[0],p[1],p[4],a.join(","),b.join(",")].join("|");
         for (var i=0; i<sig.length; i++) h=Math.imul(h ^ sig.charCodeAt(i), 16777619) >>> 0;
       });
       lines[code] = {hash:h.toString(16), trips:(line.trips || []).length, patterns:pats.length};
