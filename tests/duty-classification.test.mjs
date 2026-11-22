@@ -36,6 +36,18 @@ test("OP LN starts during off-peak and runs beyond 23:00", () => {
   assert.equal(code(run([17, 20], [20, 23.2])), "(PM) LN", "afternoon start remains PM LN");
 });
 
+test("EWL 323 at 10:01 to 24:29 is OP LN, not generic LN", () => {
+  // Representative GTFS duty with daytime trips and the last arrival after midnight.
+  const EWL323 = run([10 + 1 / 60, 11.4], [11.57, 13], [13.1, 14.5],
+    [14.65, 16], [16.23, 17.6], [17.75, 19.1], [19.2, 20.5],
+    [20.65, 22], [22.15, 23.5], [23.6, 24 + 29 / 60]);
+  assert.equal(EWL323.trips.length, 10);
+  assert.equal(code(EWL323), "OP LN");
+  assert.equal(code(run([10, 12], [13, 15])), "(OP)", "10:00 start also counts for off-peak-only duties");
+  assert.equal(code(run([10, 12], [20, 23])), "Unclassified", "ending at 23:00 cannot be LN");
+  assert.equal(code(run([9.98, 11.3], [13, 15], [19, 24.3])), "FD LN", "morning-duty boundary stays FD LN");
+});
+
 test("PM, PM LN and cross-midnight special trains are distinguished", () => {
   assert.equal(code(run([17, 18], [19.1, 20.2])), "(PM)");
   assert.equal(code(run([17, 18], [23, 24.5])), "(PM) LN");
