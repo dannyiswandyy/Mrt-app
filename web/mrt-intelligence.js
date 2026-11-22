@@ -92,3 +92,135 @@ function discover(){for(let i=0;i<localStorage.length;i++){let k=localStorage.ke
 discover();addEventListener("storage",discover);setInterval(()=>{if(!document.hidden)discover()},30000);window.mrtIntelligenceDiscover=discover;
 window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),observations:S.observations.slice(-20),journeys:S.journeys.length,graphStations:Object.keys(S.graph).length,timetableLines:Object.keys(S.timetable?.lines||{}).length,timetableLoadedAt:S.loadedAt});
 })();
+
+/* MRT SPECIAL EVENT OPERATIONS (shared production-safe module) */
+(function (root) {
+  "use strict";
+  // Announcement metadata is not a train timetable. Never create trains from a press release.
+  const MARATHON = Object.freeze({
+    id: "byd-marathon-2026", date: "20261206", from: 150, to: 270,
+    lines: ["NSL", "EWL", "CCL"], announcedHeadwayMinutes: 15,
+    announcement: "SMRT and the marathon organiser",
+    url: "https://singaporeinternationalmarathon.com/faqs/",
+    routes: [
+      "NSL southbound: Bukit Batok to City Hall",
+      "EWL eastbound: Jurong East to Kallang",
+      "EWL westbound: Tanah Merah to City Hall",
+      "CCL clockwise: Serangoon to Promenade"
+    ]
+  });
+
+  function minusDay(day) {
+    const ms = Date.UTC(+day.slice(0, 4), +day.slice(4, 6) - 1, +day.slice(6, 8)) - 86400000;
+    return new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
+  }
+  function inService(tt, service, day) {
+    const row = tt && tt.services && tt.services[service];
+    if (!row) return false;
+    const dow = (new Date(Date.UTC(+day.slice(0, 4), +day.slice(4, 6) - 1, +day.slice(6, 8))).getUTCDay() + 6) % 7;
+    let active = day >= row[2] && day <= row[3] && String(row[1] || "")[dow] === "1";
+    for (const entry of (tt.except && tt.except[day]) || []) {
+      if (+entry[0] === +service) active = +entry[1] === 1;
+    }
+    return active;
+  }
+  // A 02:30 Sunday call may be GTFS Sunday 02:30 or Saturday 26:30. Keep both.
+  function scheduledDuring(tt, event) {
+    const result = [];
+    if (!tt || !tt.lines || !Array.isArray(tt.services)) return result;
+    const previous = minusDay(event.date);
+    const start = event.from * 60, end = event.to * 60;
+    for (const line of event.lines) {
+      const data = tt.lines[line];
+      if (!data || !Array.isArray(data.trips) || !Array.isArray(data.pats)) continue;
+      for (const [day, delta] of [[previous, -86400], [event.date, 0]]) {
+        for (const trip of data.trips) {
+          if (!inService(tt, trip[2], day)) continue;
+          const pattern = data.pats[trip[1]];
+          if (!pattern || !Array.isArray(pattern[2])) continue;
+          const calls = Array.isArray(pattern[3]) ? pattern[3] : pattern[2];
+          let time = null, atIndex = -1;
+          for (let i = 0; i < calls.length; i++) {
+            const seconds = +trip[0] + (+calls[i]) + delta;
+            if (seconds >= start && seconds <= end) { time = seconds; atIndex = i; break; }
+          }
+          if (time == null) continue;
+          const tid = String(trip[3] || "");
+          const pieces = tid.split("_"), candidate = pieces[pieces.length - 2] || "";
+          result.push({
+            line, date: day, time, tripId: tid,
+            stationIndex: +pattern[0] + (+pattern[1]) * atIndex,
+            run: /^\d+$/.test(candidate) ? candidate : null,
+            evidence: "LTA GTFS scheduled trip on " + day + " (not independently confirmed as an event train)"
+          });
+        }
+      }
+    }
+    return result.sort((a, b) => a.time - b.time || a.line.localeCompare(b.line));
+  }
+  function inspect(tt) {
+    const trips = scheduledDuring(tt, MARATHON);
+    const countByLine = {};
+    for (const line of MARATHON.lines) countByLine[line] = trips.filter(t => t.line === line).length;
+    return {
+      event: MARATHON, trips, countByLine,
+      timetablePresent: !!(tt && tt.feed && tt.lines),
+      timetableBuilt: String(tt && tt.feed && tt.feed.built || ""),
+      proof: trips.length ? "GTFS_SCHEDULED_TRIPS_IN_WINDOW" : "OPERATOR_ANNOUNCEMENT_ONLY"
+    };
+  }
+  function nowSG() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10).replace(/-/g, ""); }
+  function localTime(s) {
+    const n = Math.floor(s / 60);
+    return String(Math.floor(n / 60) % 24).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0");
+  }
+  function htmlNotice(report) {
+    const ev = MARATHON;
+    const byLine = ev.lines.map(line => {
+      const train = report.trips.filter(t => t.line === line);
+      return "<li><b>" + line + "</b>: " + (train.length
+        ? train.length + " GTFS scheduled trip(s) calling in the early window; first listed call " + localTime(train[0].time)
+          + (train[0].run ? " (slot " + train[0].run + ")" : "")
+        : "Special services announced; individual trips not verified in the loaded LTA feed") + "</li>";
+    }).join("");
+    return '<div style="font-size:12px;line-height:1.45;color:var(--fg,#1f2937)">' +
+      '<b>Special MRT operations · Sun 6 Dec 2026</b>' +
+      '<div>BYD Singapore International Marathon: selected NSL, EWL and CCL services from 02:30 to 04:30. ' +
+      'SMRT announced 15-minute intervals and complimentary rides for the public; the final early departures ' +
+      'from Bukit Batok, Jurong East, Tanah Merah and Serangoon are at 04:30.</div>' +
+      '<details style="margin-top:4px"><summary style="cursor:pointer">Routes and GTFS verification</summary>' +
+      '<div style="margin-top:5px">' + ev.routes.join(" · ") + '</div>' +
+      '<ul style="margin:5px 0;padding-left:18px">' + byLine + '</ul>' +
+      '<small>GTFS detection does not prove an individual train is part of the marathon service. ' +
+      'No train position or departure is generated from the announcement. Feed date: ' +
+      (report.timetableBuilt || "unavailable") +
+      '. <a href="' + ev.url + '" rel="noopener noreferrer" target="_blank">Official event FAQ</a></small></details></div>';
+  }
+  function render() {
+    if (typeof document === "undefined") return;
+    const day = nowSG();
+    const el = document.getElementById("mrt-special-event-2026");
+    if (day < "20261122" || day > MARATHON.date) { if (el) el.remove(); return; }
+    const header = document.querySelector("header.app-header");
+    if (!header || !header.parentNode) return;
+    let tt = null;
+    try { tt = typeof TT !== "undefined" ? TT : root.TT || null; } catch (_) { tt = root.TT || null; }
+    const report = inspect(tt);
+    const signature = report.timetableBuilt + "|" + report.trips.length + "|" + day;
+    if (el && el.dataset.signature === signature) return;
+    const box = el || document.createElement("div");
+    box.id = "mrt-special-event-2026";
+    box.dataset.signature = signature;
+    box.setAttribute("role", "status");
+    box.style.cssText = "margin:8px 0;padding:10px 12px;background:var(--panel,#fff);border:1px solid var(--rule,#d6dce3);border-left:4px solid #f59e0b;border-radius:9px;";
+    box.innerHTML = htmlNotice(report);
+    if (!el) header.parentNode.insertBefore(box, header.nextSibling);
+  }
+  root.mrtSpecialEvents = Object.freeze({ MARATHON, minusDay, inService, scheduledDuring, inspect, render });
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", render);
+    else render();
+    if (typeof root.setInterval === "function") root.setInterval(render, 30000);
+    if (typeof root.addEventListener === "function") root.addEventListener("focus", render);
+  }
+})(typeof window !== "undefined" ? window : globalThis);
