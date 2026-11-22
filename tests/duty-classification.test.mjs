@@ -37,7 +37,9 @@ test("PM, PM LN and cross-midnight special trains are distinguished", () => {
 test("empty and unsupported windows are unclassified, never fabricated", () => {
   assert.equal(code(run()), "Unclassified");
   assert.equal(code(run([11, 12])), "Unclassified");
-  const duty = RG.classifyDuty(run([5.5, 8], [11, 13], [17, 23]));
+  assert.equal(code(run([5.5, 8], [11, 13], [17, 23])), "FD",
+    "finishing exactly at 23:00 is not an LN duty");
+  const duty = RG.classifyDuty(run([5.5, 8], [11, 13], [17, 23.1]));
   assert.equal(duty.code, "FD LN");
   assert.ok(duty.evidence.some(x => x.includes("LTA scheduled passenger")));
   assert.ok(duty.evidence.some(x => x.includes("not an operator-issued roster")));
