@@ -4821,6 +4821,9 @@ function mapDutyHTML(code, tid, iso){
 function mapInfoHTML(){
   const now = sgNow();
   if (!mSel) return `<p class="hint" style="margin:0">Tap any train or station on the map · Pinch or scroll to zoom.</p>`;
+  // Future stations are map-native information objects, never scheduled train stops.
+  if (mSel.type === "future-station" && window.mrtFutureRail && window.mrtFutureRail.enabled)
+    return window.mrtFutureRail.stationHTML(mSel);
   if (mSel.type === "train"){
     const L = LINES[mSel.line], t = trainById(trainsOn(mSel.line, now), mSel.id);
     if (!t){ mSel = null; return mapInfoHTML(); }
@@ -4855,7 +4858,7 @@ function mapInfoHTML(){
   const dis = e.codes.some(x => hit.has(x.code));
   const cw = e.codes.map(x => crowdChip(x.code)).some(Boolean)
     ? `<div class="mi-crowd">Platform crowds now:${e.codes.filter((x, i, a) => a.findIndex(y => y.code === x.code) === i).map(x => crowdChip(x.code) ? `<span>${codePills([[x.line, x.code]])}${crowdChip(x.code)}</span>` : "").join("")}</div>` : "";
-  return `<div class="mi-h"><b>${esc(e.name)}</b>${codePills(e.codes.map(x => [x.line, x.code]))}${dis ? `<span class="chip">Disrupted</span>` : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>${cw}${typeof wxLine === "function" ? wxLine(e) : ""}${rows.join("")}
+  return `<div class="mi-h"><b>${esc(e.name)}</b>${codePills(e.codes.map(x => [x.line, x.code]))}${dis ? `<span class="chip">Disrupted</span>` : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>${cw}${typeof wxLine === "function" ? wxLine(e) : ""}${rows.join("")}${window.mrtFutureRail && window.mrtFutureRail.connectionsHTML(e.name) || ""}
     <div class="mi-act"><button class="btn ghost" type="button" data-act="hist">Station history</button>${window.repMapBtn ? repMapBtn() : ""}</div>`;
 }
 function mapInfo(){ setHTML($("mapInfo"), mapInfoHTML()); }
@@ -4929,6 +4932,19 @@ function openStationCard(name, line){
   if (isDesktop()) select(target, name);
   else if (window.mapFocus) window.mapFocus(name);
 }
+// Future rail shares the existing RTS/MRT map projections and card surface,
+ // but its project routes do not enter the operational train timetable.
+window.selectFutureRailStation = hit => {
+  if (!window.MRT_DEV_FEATURES || window.MRT_PRODUCTION || !window.mrtFutureRail || !window.mrtFutureRail.enabled || !hit) return;
+  if (typeof showView === "function") showView("trains");
+  if (typeof setTrainView === "function") setTrainView("map");
+  mSel = {type:"future-station",line:hit.line,code:hit.code,name:hit.name};
+  mDirty = true; mapInfo();
+  if (view) flyTo(hit.x,hit.y,Math.max(view.s,fitScale*6));
+  if (!isDesktop()) requestAnimationFrame(() => {
+    const card = $("mapInfo"); if (card && card.scrollIntoView) card.scrollIntoView({block:"start",behavior:"smooth"});
+  });
+};
 function mapTap(x, y){
   let best = null, bd = 16;
   for (const h of mHits){ const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } }
@@ -4941,6 +4957,8 @@ function mapTap(x, y){
   if (named){ openStationCard(named); return; }
   let bs = null, bsd = 18;
   for (const e of MSTN) for (const p of e.pts){ const d = Math.hypot(sx(p[0]) - x, sy(p[1]) - y); if (d < bsd){ bsd = d; bs = e; } }
+  const futureHit = !bs && window.mrtFutureRail && window.mrtFutureRail.hitTest(x,y,{sx,sy,zoom:view.s/fitScale,stations:MAP.stations});
+  if (futureHit){ window.selectFutureRailStation(futureHit); return; }
   if (bs) openStationCard(bs.name);
   else { mSel = null; mDirty = true; mapInfo(); }
 }
