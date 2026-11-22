@@ -4741,6 +4741,8 @@ function dutyLabel(run, iso){
     if (end <= 12) code = "(AM)";
     else if (end <= 15) code = "HD";
     else if (end >= 18) code = "FD";
+  } else if (run.trips.length > 1 && start >= 10.5 && start <= 11.5 && end >= 14 && end <= 15.5){
+    code = "(OP)"; // Off-Peak working, approximately 11am to 3pm.
   } else if (run.trips.length > 2 && start >= 14 && start < 20 && end >= 17){
     code = "(PM)";
   }
@@ -4769,6 +4771,7 @@ function mapDutyHTML(code, tid, iso){
     );
   if (!dutyTrip || !dutyTrip.run || !dutyTrip.run.trips || !dutyTrip.run.trips.length) return "";
   const run = dutyTrip.run;
+  const finalScheduledTrip = String(run.trips[run.trips.length - 1].tid) === String(tid);
   const clock = x => { x=Math.round(Number(x)||0); const m=Math.floor(x/60)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
   const rows = run.trips.map(x => {
     const here = String(x.tid) === String(tid);
@@ -4777,7 +4780,8 @@ function mapDutyHTML(code, tid, iso){
   }).join("");
   return '<details class="mi-run"><summary><span>Train duty · '+esc(dutyLabel(run, iso))+'</span><span>'+run.trips.length+' trips</span></summary>'+
     '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>Today</span></div>'+rows+
-    '</details>';
+    '<p class="hint" style="margin:8px 0 0"><b>Roster duty, not live status:</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). '+
+    (finalScheduledTrip ? 'This is the last scheduled passenger trip in this run; depot withdrawal is unconfirmed.' : 'Ending this trip does not mean the full duty has ended.')+'</p></details>';
 }
 function mapInfoHTML(){
   const now = sgNow();
@@ -8848,9 +8852,15 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       const trips = cur.run.trips.filter(t => t.service === cur.service);
       if (trips.length < 2) return "";
       const idx = Math.max(0, trips.indexOf(cur));
+      const dutyText = dutyLabel(cur.run, T.now.iso);
+      const lastTrip = trips[trips.length - 1];
+      // A full-day roster and an early-ending scheduled run can disagree.
+      // Show that discrepancy, but never infer a confirmed depot withdrawal.
+      const earlyRosterMismatch = /\bFD\b/.test(dutyText) && dutyText.includes("Spotter roster") &&
+        Number(lastTrip && lastTrip.arr) > 0 && Number(lastTrip.arr) < 16 * 3600;
       const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now" style="background:var(--${x.line});color:#fff;font-weight:800;letter-spacing:.04em">THIS TRIP</span>` : ""}</li>`).join("");
-      const current = `<div class="cdt-current"><span>Today’s journey · ${esc(dutyLabel(cur.run, T.now.iso))}</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today</small></div>`;
-      return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">Based on LTA’s timetable. This groups scheduled trips together; it does not identify the physical trainset.</p></details></div>`;
+      const current = `<div class="cdt-current"><span>Today’s journey · ${esc(dutyText)}</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today${idx === trips.length - 1 ? " · Last listed trip of this run" : ""}</small>${earlyRosterMismatch ? `<p class="hint" style="margin:8px 0 0">Roster/timetable mismatch: this FD duty has no later passenger trip listed after ${esc(api.clock(lastTrip.arr))}. Withdrawal is not confirmed.</p>` : ""}</div>`;
+      return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm). These describe rostered duty, not the train's live operating status. ${idx === trips.length - 1 ? "This is the last scheduled passenger trip in the run, but a depot withdrawal is not confirmed." : "The end of this individual trip does not mean the entire duty has ended."} LTA's timetable groups scheduled trips; it does not identify the physical trainset.</p></details></div>`;
     }catch(e){ return ""; }
   }
   function trainLive(x){
