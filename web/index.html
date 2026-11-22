@@ -2581,8 +2581,8 @@ function nextArrivalsRaw(code, s, dir, now, count, reach){
   const base = nextArrivalsBase(code, s, dir, now, count, reach);
   const rep = window.repArrivals ? repArrivals(code, s, dir, now) : [];
   if (!rep.length) return base;
-  const all = base.map((m, k) => ({m, to: base.to[k]})).concat(rep).sort((a, b) => a.m - b.m).slice(0, count);
-  const out = all.map(x => x.m); out.to = all.map(x => x.to);
+  const all = base.map((m, k) => ({m, to: base.to[k], phase: base.phase && base.phase[k]})).concat(rep).sort((a, b) => a.m - b.m).slice(0, count);
+  const out = all.map(x => x.m); out.to = all.map(x => x.to); out.phase = all.map(x => x.phase || null);
   return out;
 }
 function nextArrivalsBase(code, s, dir, now, count, reach){
@@ -3097,11 +3097,23 @@ function ttNext(list, s, dir, now, count, reach){
     if (reach != null && (reach - p.f) * p.d > p.arr.length - 1) continue;
     if (r.s + p.arr[k] + (r.tl || 0) < sec - 3600 && !(mv && mv.get(`${list.code}t${r.s}p${r.pi}`)) && !(live && r.tid && live[r.tid])) continue;   // long gone
     const t = ttAt(list.code, r, k, mv);
-    if (t >= sec - 10){ res.push({m: (t - sec) / 60, to: p.to}); keep(t); }
+    // Use the stop's scheduled dwell, not an arbitrary global "Now" threshold.
+    // ttAt applies the same timetable/live corrections to the arrival.
+    const dwell = Math.max(0, (p.dep[k] ?? p.arr[k]) - p.arr[k]);
+    const leaving = t + dwell, terminal = k === p.arr.length - 1;
+    const phase = terminal ? (t - sec <= 45 && t >= sec ? "ARRIVING" : null)
+      : sec >= leaving - 10 && sec <= leaving + 15 ? "DEPARTING"
+      : sec >= t && sec < leaving - 10 ? "ARRIVED"
+      : t - sec <= 45 && t >= sec ? "ARRIVING" : null;
+    if (t >= sec - 10 || (!terminal && phase === "ARRIVED") || (!terminal && phase === "DEPARTING")){
+      res.push({m: Math.max(0, (t - sec) / 60), to: p.to, phase});
+      keep(Math.max(t, sec));
+    }
   }
   res.sort((a, b) => a.m - b.m);
   const top = res.slice(0, count), out = top.map(x => x.m);
   out.to = top.map(x => x.to);
+  out.phase = top.map(x => x.phase);
   return out;
 }
 /* The real gap between trains around now, measured at a station in the middle of the line. */
@@ -3120,9 +3132,10 @@ function ttFirstTrain(code, now){
   const list = ttTrips(code, now.iso); return list && list.length ? list[0].s / 60 : null;
 }
 
-// Next-train arrivals use the same ARRIVING wording on every MRT/LRT line and screen size.
-const fmt = m => m < 0.75 ? (matchMedia("(min-width:701px)").matches ? "Arriving" : `<strong class="trip-now">ARRIVING</strong>`) : Math.round(m) + " min";
-const boardMins = m => m < 0.75 ? "Now" : Math.round(m) + " min";
+// Platform phases come from the trip's arrival and departure offsets, where GTFS is available.
+// Estimated/non-GTFS lines retain the normal imminent-arrival wording.
+const fmt = (m, phase) => phase ? `<strong class="trip-now">${phase}</strong>` : m < 0.75 ? `<strong class="trip-now">ARRIVING</strong>` : Math.round(m) + " min";
+const boardMins = (m, phase) => phase || (m < 0.75 ? "Arriving" : Math.round(m) + " min");
 /* Minutes since the service day began → "5:31am". */
 const clockText = m => { m = Math.round(m) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
 
@@ -3350,7 +3363,7 @@ function tick(){
     // a special-bound next train shows the code of the station it ends at
     const sbc = (d, arr) => arr.length && isShortTo(L, d, act, arr.to[0]) ? `<i class="sbc" title="Ends at ${esc(act[arr.to[0]][1])}">→${act[arr.to[0]][0]}</i>` : "";
     const lc = (d, arr) => arr.length && isLastCall(current, i, d, now, arr[0]) ? lastTag : "";
-    setHTML(nx, `<span>${a.length ? "↓ <em>"+boardMins(a[0])+"</em>"+sbc(0, a)+lc(0, a) : "&nbsp;"}</span><span>${b.length ? "↑ <em>"+boardMins(b[0])+"</em>"+sbc(1, b)+lc(1, b) : "&nbsp;"}</span>`);
+    setHTML(nx, `<span>${a.length ? "↓ <em>"+boardMins(a[0], a.phase && a.phase[0])+"</em>"+sbc(0, a)+lc(0, a) : "&nbsp;"}</span><span>${b.length ? "↑ <em>"+boardMins(b[0], b.phase && b.phase[0])+"</em>"+sbc(1, b)+lc(1, b) : "&nbsp;"}</span>`);
     row.classList.toggle("open", i === openIdx);
     if (i === openIdx){
       dt.hidden = false;
@@ -3362,7 +3375,7 @@ function tick(){
         arr.forEach((m, k) => {
           const sb = isShortTo(L, d, act, arr.to[k]), name = destOf(L, d, act, arr.to[k]);
           let g = groups.find(x => x.name === name); if (!g) groups.push(g = {name, sb, ms: []});
-          g.ms.push(boardMins(m) + (isLastCall(current, i, d, now, m) ? lastTag : "")); if (sb) anyShort = true;
+          g.ms.push(boardMins(m, arr.phase && arr.phase[k]) + (isLastCall(current, i, d, now, m) ? lastTag : "")); if (sb) anyShort = true;
         });
         return groups.map(g => `<div${g.sb ? ' class="sbrow"' : ""}><span>${esc(toW(g.name))}${g.sb && !L.bound ? `<span class="sb">special-bound</span>` : ""}</span><span class="t">${g.ms.join(" · ")}</span></div>`).join("");
       };
@@ -4830,7 +4843,7 @@ function mapInfoHTML(){
     for (const d of [0, 1]){
       const i = idxs.find(i => L.bound ? !(d && i === 0) : d ? i > 0 : i < n - 1); if (i === undefined) continue;
       const arr = nextArrivals(x.line, i, d, now, 3);
-      const tms = arr.map((m, k) => (isShortTo(L, d, act, arr.to[k]) ? `${fmt(m)}<i class="sbc" title="Ends at ${esc(act[arr.to[k]][1])}">→${act[arr.to[k]][0]}</i>` : fmt(m)) + (isLastCall(x.line, i, d, now, m) ? lastTag : ""));
+      const tms = arr.map((m, k) => (isShortTo(L, d, act, arr.to[k]) ? `${fmt(m, arr.phase && arr.phase[k])}<i class="sbc" title="Ends at ${esc(act[arr.to[k]][1])}">→${act[arr.to[k]][0]}</i>` : fmt(m, arr.phase && arr.phase[k])) + (isLastCall(x.line, i, d, now, m) ? lastTag : ""));
       rows.push(`<button class="mi-row mi-go" type="button" data-act="lineat" data-line="${x.line}"><span>${codePills([[x.line, x.code]])}${esc(toW(dest(L, d, act)))}</span><span class="mi-t">${arr.length ? tms.join(" · ") : arr.cut ? "No service · disruption" : "No more trains"}</span></button>`);
     }
   }
