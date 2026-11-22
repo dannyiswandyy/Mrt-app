@@ -2561,6 +2561,7 @@ jobs:
             exit 1
           fi
           python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
+          python3 mrt-tracker-app/tools/build_future_rail.py mrt-tracker-app osm-cache
           if [ ! -s mrt-tracker-app/app/src/main/assets/tracks.json ]; then
             echo "::error::URA rail build did not produce tracks.json"
             exit 1
