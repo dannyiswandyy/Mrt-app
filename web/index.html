@@ -4769,7 +4769,7 @@ function mapDutyHTML(code, tid, iso){
     );
   if (!dutyTrip || !dutyTrip.run || !dutyTrip.run.trips || !dutyTrip.run.trips.length) return "";
   const run = dutyTrip.run;
-  const finalScheduledTrip = String(run.trips[run.trips.length - 1].tid) === String(dutyTrip.tid);
+  const finalScheduledTrip = String(run.trips[run.trips.length - 1].tid) === String(tid);
   const clock = x => { x=Math.round(Number(x)||0); const m=Math.floor(x/60)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
   const rows = run.trips.map(x => {
     const here = String(x.tid) === String(tid);
