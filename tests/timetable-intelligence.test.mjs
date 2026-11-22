@@ -110,3 +110,15 @@ test("trip-specific termini include short-turn MRT, LRT loop and Circle Line pat
   assert.equal(helpers.destOf({bound:["Anticlockwise","Clockwise"]}, 0, ccl, 1), "Stadium");
   assert.equal(helpers.isShortTo({bound:["Anticlockwise","Clockwise"]}, 0, ccl, -1), false);
 });
+
+// Public website and Android APK must ship the same timetable intelligence module,
+// without accidentally showing the experimental Dev analysis entry point.
+test("public Android bundles timetable intelligence while production hides Dev UI", () => {
+  if (isDev) return;
+  const workflow = readFileSync(new URL("../.github/workflows/build-android.yml",import.meta.url),"utf8");
+  const page = readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
+  assert.match(workflow,/cp web\/timetable-intelligence\.js mrt-tracker-app\/app\/src\/main\/assets\/timetable-intelligence\.js/);
+  assert.match(page,/<script src="timetable-intelligence\.js"><\/script>/);
+  assert.match(page,/window\.MRT_PRODUCTION=true;window\.MRT_DEV_FEATURES=false;/);
+  assert.match(src,/window\.MRT_PRODUCTION === true \|\| window\.MRT_DEV_FEATURES !== true/);
+});
