@@ -4616,6 +4616,11 @@ function mapDraw(){
       ctx.restore();
     }
   } catch(e){}
+  // Shared future-line overlay; production code stays inactive until approval.
+  if (window.mrtFutureRail){
+    window.mrtFutureRail.invalidate = mapDraw;
+    window.mrtFutureRail.draw(ctx,{sx,sy,zoom,lw,stations:MAP.stations});
+  }
   // stations
   const r = clampN(lw * 0.62, 2, 5);
   for (const e of MSTN){
@@ -9576,4 +9581,4 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
 <script src="run-graph.js"></script>
 <script src="gtfs-lab.js"></script><script src="timetable-intelligence.js"></script>
 <script src="disruption-engine.js"></script>
-<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script><script src="taxi-availability.js"></script>
+<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script><script src="taxi-availability.js"></script><script src="future-rail.js"></script>
