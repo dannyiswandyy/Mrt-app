@@ -4706,12 +4706,42 @@ function canvasPills(ctx, list, x, y, fs, draw = true){
 /* ---- info card under your finger ---- */
 
 /* ---- info card under your finger & desktop split sync ---- */
-function mrtRunDayHTML(tid){
+const nslNov22 = {
+  "HD": [201, 206, 218, 408, 412, 416, 418],
+  "FD": [216, 220, 417],
+  "FD LN": [202, 203, 204, 205, 207, 208, 209, 210, 211, 212, 214, 215, 217, 219, 221,
+    401, 402, 403, 404, 405, 406, 407, 411, 414, 415],
+  "(AM)": [213, 409, 410, 413],
+  "(PM) LN": [419, 420, 421, 422, 423, 424, 425, 426, 427, 428]
+};
+
+function dutyLabel(run, iso){
+  const slot = Number(run.run);
+  if (run.line === "NSL" && iso === "2026-11-22" && TT &&
+      window.mrtRunGraph.activeServices(TT, iso).includes(run.service)){
+    for (const [code, slots] of Object.entries(nslNov22)){
+      if (slots.includes(slot)) return slot + " " + code + " · Spotter roster";
+    }
+  }
+  const start = run.start / 3600, end = run.end / 3600;
+  let code = "";
+  if (run.trips.length > 2 && start < 9.5){
+    if (end <= 12) code = "(AM)";
+    else if (end <= 15) code = "HD";
+    else if (end >= 18) code = "FD";
+  } else if (run.trips.length > 2 && start >= 14 && start < 20 && end >= 17){
+    code = "(PM)";
+  }
+  if (!code) return "Run " + run.run + " · Duty unclassified";
+  if (end >= 23) code += " LN";
+  return run.run + " " + code + " · Timetable estimate";
+}
+function mapDutyHTML(code, tid, iso){
   const g = window.mrtRunGraphToday;
   if (!g || !tid) return "";
   const p = window.mrtRunGraph && window.mrtRunGraph.parseTripId ? window.mrtRunGraph.parseTripId(tid) : null;
-  if (!p || p.run == null || !g.lines || !g.lines[p.system]) return "";
-  const line = g.lines[p.system];
+  if (!p || p.run == null || !g.lines || !g.lines[code]) return "";
+  const line = g.lines[code];
   const trip = (line.trips || []).find(x => String(x.tid) === String(tid));
   // Some special-bound trips use a timetable identifier that isn't present verbatim
   // in the validated graph. If so, recover the same scheduled duty by run + day type.
@@ -4733,7 +4763,7 @@ function mrtRunDayHTML(tid){
     const label = x.origin && x.dest ? esc(x.origin)+" → "+esc(x.dest) : esc(x.tid);
     return '<div class="mi-run-row'+(here?' here':'')+'"><span class="mi-run-time">'+clock(x.dep)+'</span><span class="mi-run-route">'+label+'</span><span class="mi-run-arr">arr '+clock(x.arr)+'</span></div>';
   }).join("");
-  return '<details class="mi-run"><summary><span>Train duty · run '+esc(String(run.run))+'</span><span>'+run.trips.length+' trips</span></summary>'+
+  return '<details class="mi-run"><summary><span>Train duty · '+esc(dutyLabel(run, iso))+'</span><span>'+run.trips.length+' trips</span></summary>'+
     '<div class="mi-run-head"><span>'+clock(run.start)+'–'+clock(run.end)+'</span><span>Today</span></div>'+rows+
     '</details>';
 }
@@ -4750,7 +4780,7 @@ function mapInfoHTML(){
     const slot = typeof ttSlotOf === "function" ? ttSlotOf(tid) : "";
     const trainMeta = slot || run ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot || "—")}</b>${run ? ` · run ${esc(run)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
-      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mrtRunDayHTML(tid)}
+      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
       ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
       ${window.smartTrainNote && smartTrainNote(mSel.line, t) ? `<div class="mi-row">${smartTrainNote(mSel.line, t)}</div>` : ""}
       <div class="mi-act"><button class="btn ghost" type="button" data-act="line">Open on Line Board</button></div>`;
@@ -8807,7 +8837,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       if (trips.length < 2) return "";
       const idx = Math.max(0, trips.indexOf(cur));
       const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now" style="background:var(--${x.line});color:#fff;font-weight:800;letter-spacing:.04em">THIS TRIP</span>` : ""}</li>`).join("");
-      const current = `<div class="cdt-current"><span>Today’s journey</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today</small></div>`;
+      const current = `<div class="cdt-current"><span>Today’s journey · ${esc(dutyLabel(cur.run, T.now.iso))}</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today</small></div>`;
       return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">Based on LTA’s timetable. This groups scheduled trips together; it does not identify the physical trainset.</p></details></div>`;
     }catch(e){ return ""; }
   }
