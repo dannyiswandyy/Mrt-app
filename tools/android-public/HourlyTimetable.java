@@ -130,6 +130,7 @@ public final class HourlyTimetable extends JobService {
                 conn.setConnectTimeout(12000);
                 conn.setReadTimeout(20000);
                 conn.setUseCaches(false);
+                conn.setRequestProperty("Cache-Control", "no-cache");
                 conn.setRequestProperty("Accept", "application/json");
                 if (conn.getResponseCode() != 200) return false;
                 try (InputStream in = conn.getInputStream()) {
@@ -141,15 +142,28 @@ public final class HourlyTimetable extends JobService {
             JSONObject incoming = new JSONObject(raw);
             JSONObject feed = incoming.optJSONObject("feed");
             JSONObject lines = incoming.optJSONObject("lines");
-            if (feed == null || lines == null || lines.length() < 7
+            if (feed == null || lines == null || lines.length() < 12
                     || incoming.optJSONArray("services") == null
-                    || incoming.getJSONArray("services").length() == 0) return false;
+                    || incoming.getJSONArray("services").length() == 0
+                    || feed.optString("built", "").isEmpty()) return false;
+            // An incomplete feed must never silently erase an MRT/LRT line.
+            for (java.util.Iterator<String> keys = lines.keys(); keys.hasNext();) {
+                JSONObject line = lines.optJSONObject(keys.next());
+                if (line == null || line.optJSONArray("pats") == null
+                        || line.optJSONArray("trips") == null) return false;
+            }
 
             // Do not replace a newer bundled/cached timetable with older published data.
             String old = current(c);
             if (!old.isEmpty()) {
                 JSONObject previous = new JSONObject(old);
                 JSONObject oldFeed = previous.optJSONObject("feed");
+                JSONObject oldLines = previous.optJSONObject("lines");
+                if (oldLines != null) {
+                    for (java.util.Iterator<String> keys = oldLines.keys(); keys.hasNext();) {
+                        if (!lines.has(keys.next())) return false;
+                    }
+                }
                 String priorDate = oldFeed == null ? "" : oldFeed.optString("built", "");
                 String nextDate = feed.optString("built", "");
                 if (!priorDate.isEmpty() && !nextDate.isEmpty()
