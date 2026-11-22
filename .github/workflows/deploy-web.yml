@@ -92,8 +92,6 @@ jobs:
         run: |
           if [ -f mrt-tracker-app/tools/build_ura_rail.py ]; then
             python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
-            python3 mrt-tracker-app/tools/build_future_rail.py mrt-tracker-app osm-cache
-            cp mrt-tracker-app/app/src/main/assets/future-rail-geometry.json _site/future-rail-geometry.json
             if [ -f mrt-tracker-app/app/src/main/assets/tracks.json ]; then cp mrt-tracker-app/app/src/main/assets/tracks.json _site/data/tracks.json; fi
           fi
 
@@ -131,7 +129,6 @@ jobs:
         run: |
           # an empty file when there's no data: the site then uses estimates / no buildings, without a "not found"
           for f in timetable buildings tracks exits; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
-          cmp web/future-rail-geometry.json _site/future-rail-geometry.json
           ls -la _site _site/data
           if grep -rlE 'sha256[-]|integ[r]ity=' _site --include='*.html' --include='*.js'; then echo "::error::fingerprints found"; exit 1; fi
           grep -q "script-src 'self' 'unsafe-inline'" _site/index.html
@@ -169,7 +166,7 @@ jobs:
       - name: Timetable checks
         run: |
           node tests/timetable-check.js
-          node --test tests/future-rail-integration.test.mjs
+          node --test tests/future-lines.test.mjs
       - name: Page starts and doesn't freeze (headless Chrome)
         run: |
           npm install --no-save --no-package-lock --silent playwright@1.49.1

@@ -295,8 +295,7 @@ jobs:
           cp web/smart.js mrt-tracker-app/app/src/main/assets/smart.js
           cp web/bus.js mrt-tracker-app/app/src/main/assets/bus.js
           cp web/taxi-availability.js mrt-tracker-app/app/src/main/assets/taxi-availability.js
-          cp web/future-rail.js mrt-tracker-app/app/src/main/assets/future-rail.js
-          cp web/future-rail-geometry.json mrt-tracker-app/app/src/main/assets/future-rail-geometry.json
+          cp web/future-lines.js mrt-tracker-app/app/src/main/assets/future-lines.js
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
@@ -2562,7 +2561,6 @@ jobs:
             exit 1
           fi
           python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
-          python3 mrt-tracker-app/tools/build_future_rail.py mrt-tracker-app osm-cache
           if [ ! -s mrt-tracker-app/app/src/main/assets/tracks.json ]; then
             echo "::error::URA rail build did not produce tracks.json"
             exit 1
@@ -2721,7 +2719,7 @@ jobs:
       - name: Timetable checks
         run: |
           node tests/timetable-check.js
-          node --test tests/future-rail-integration.test.mjs
+          node --test tests/future-lines.test.mjs
       - name: Page starts and doesn't freeze (headless Chrome)
         run: |
           npm install --no-save --no-package-lock --silent playwright@1.49.1

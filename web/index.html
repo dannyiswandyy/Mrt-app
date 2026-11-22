@@ -1870,6 +1870,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
   }
 })();
 </script>
+<script id="mrt-future-switch">window.MRT_SHOW_FUTURE = false;  /* future lines (future-lines.js): set to true to show them in MRT Spotter too */</script><script src="future-lines.js"></script>
 <script type="text/plain" id="mrt-main">
 
 /* ---------- Network data (as of Nov 2026) ---------- */
@@ -2028,6 +2029,34 @@ function renderFleet(c){
     <p class="s" style="margin:8px 0 0">Tap a train model for its history. Source: ${c === "RTS" ? "Wikipedia (RTS Link)" : c === "SEN" ? "SGTrains and Wikipedia (Sentosa Express)" : "SGTrains (sgtrains.com)"}</p></div></details>`;
 }
 const ORDER = ["NSL","EWL","NEL","CCL","DTL","TEL","CG","BP","SE","SW","PE","PW","SEN","RTS"];
+/* Future lines (future-lines.js), in the network like the RTS Link and the Sungai Bedok extension: real lines whose
+   stations aren't open yet ("TBA" with the expected timing), so the map draws them dashed, the line board and station
+   cards say when they open, and no trains or timetable use them. Only when window.MRT_SHOW_FUTURE is true (set just
+   before this script); otherwise the network is exactly as before.
+   - lines:  new lines, with their own tabs under "Future"
+   - extend: stations added to the end of an open line (the TEL beyond Sungei Bedok), like TEL5 was
+   - infill: new stations on open lines: station dots and cards only ("NSLF" and so on), as their line's own station
+             list (and with it the timetable's station numbers) must stay as it is until they open */
+const FUTURE = window.MRT_SHOW_FUTURE === true && window.MRT_FUTURE_LINES && typeof window.MRT_FUTURE_LINES === "object" ? window.MRT_FUTURE_LINES : null;
+if (FUTURE) try {
+  const css = document.documentElement.style, base = {peak: 4, off: 6, late: 8, run: 2.5, dwell: 0.5};
+  for (const [c, F] of Object.entries(FUTURE.lines || {})){
+    if (LINES[c] || !Array.isArray(F.stations) || F.stations.length < 2) continue;
+    LINES[c] = {...base, name: F.name, tab: F.tab, future: true, when: F.when, about: F.about, stations: F.stations.map(x => x.slice())};
+    ORDER.push(c); css.setProperty("--" + c, F.color);
+  }
+  for (const [c, F] of Object.entries(FUTURE.extend || {})){
+    const L = LINES[c]; if (!L || !Array.isArray(F.stations) || L.stations.some(x => x[0] === F.stations[0][0])) continue;
+    for (const x of F.stations) L.stations.push(x.slice());
+    L.futureAbout = F.about;
+  }
+  for (const [c, F] of Object.entries(FUTURE.infill || {})){
+    const P = LINES[F.of]; if (!P || LINES[c] || !Array.isArray(F.stations)) continue;
+    LINES[c] = {...base, name: P.name, infillOf: F.of, future: true, stations: F.stations.map(x => x.slice())};
+    ORDER.push(c); css.setProperty("--" + c, `var(--${F.of})`);
+    (P.planned ||= []).push(...F.stations.map(x => x.slice()));
+  }
+} catch(e){}
 /* Where a train in this direction is headed, e.g. "Marina South Pier" or "Sengkang via Compassvale". */
 /* The Circle Line is signed by direction round the loop, not by an end station (LTA's wording since the
    loop closed in July 2026): stations in code order (Dhoby Ghaut → Stadium → Bishan → HarbourFront → Keppel →
@@ -2215,9 +2244,31 @@ function activeStations(L, iso){
   return L.stations.filter(s => !s[2] || iso >= s[2]);
 }
 /* When a station that isn't open yet opens: a date ("2026-12-26"), or "TBA" with the line's expected month. */
+/* The line board's notice for a line's stations that aren't open yet, grouped by when they open, and the new
+   stations planned on it (future-lines.js "infill"). "" if there are none. */
+function futureNotice(L, iso){
+  const groups = [];
+  for (const st of L.stations.filter(x => x[2] && iso < x[2])){
+    const t = opensText(L, st), g = groups.find(x => x.t === t);
+    g ? g.n.push(st[1]) : groups.push({t, n: [st[1]]});
+  }
+  const and = a => a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a[a.length - 1] : a[0];
+  const out = groups.map(g => `${and(g.n)} ${g.n.length > 1 ? "open" : "opens"} ${g.t}.`);
+  if (L.futureAbout && groups.length > 1) out.push(L.futureAbout);
+  if (L.planned && L.planned.length) out.push("New stations planned on this line: " +
+    L.planned.map(st => `${st[1]} (${st[0]}) ${opensText(L, st).replace(" (expected)", "")}`).join("; ") + ".");
+  return out.join(" ");
+}
 const LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function opensText(L, st, short){
-  if (st[2] === "TBA") return short ? "Expected " + L.expect.replace(/^(\w{3})\w*/, "$1") : `in ${L.expect} (expected)`;
+  if (st[2] === "TBA"){
+    // a future station can carry its own expected timing (future-lines.js): "2030", "mid-2028", "the late 2030s", "by 2040"
+    const ex = st[3] != null ? String(st[3]) : String(L.expect || "");
+    if (!ex) return short ? "Date TBA" : "on a date not announced yet";
+    if (/^[A-Z][a-z]+ \d{4}$/.test(ex)) return short ? "Expected " + ex.replace(/^(\w{3})\w*/, "$1") : `in ${ex} (expected)`;
+    if (/^(by|with) /.test(ex)) return short ? "Expected " + ex : `${ex} (expected)`;
+    return short ? "Expected " + ex.replace(/^the /, "") : `in ${ex} (expected)`;
+  }
   const [y, m, d] = st[2].split("-").map(Number);
   return short ? `Opens ${d} ${LONG_MONTHS[m - 1].slice(0, 3)}` : `on ${d} ${LONG_MONTHS[m - 1]} ${y}`;
 }
@@ -2543,6 +2594,7 @@ function trainsOnRaw(code, now, noReports){
   const extra = !noReports && window.repTrains ? repTrains(code, now) : [];
   if (ttl) return extra.length ? ttTrainsOn(code, now, ttl).concat(extra) : ttTrainsOn(code, now, ttl);
   const L = LINES[code], n = activeStations(L, now.iso).length, out = [];
+  if (n < 2) return extra;     // not open yet (RTS, future lines): no trains, not even placeless ones
   const stay = L.shuttle ? L.shuttle.turn : 0;                     // shuttle trains wait at the end before heading back
   for (const dir of [0,1]){
     const T0 = legsOf(code, dir, n), late0 = camAdj(code, dir), mv = moved(code, now.iso);
@@ -3173,7 +3225,7 @@ function codePills(list, cls){
 const esc = t => String(t ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 
 function buildTabs(){
-  $("tabs").innerHTML = ORDER.map(c => (c==="BP" ? '<span class="tabsep">LRT</span>' : c==="SEN" ? '<span class="tabsep">Monorail</span>' : c==="RTS" ? '<span class="tabsep">Cross-border</span>' : "") +
+  $("tabs").innerHTML = ORDER.filter(c => !LINES[c].infillOf).map((c, i, a) => (LINES[c].future && !(i && LINES[a[i - 1]].future) ? '<span class="tabsep">Future · not open yet</span>' : c==="BP" ? '<span class="tabsep">LRT</span>' : c==="SEN" ? '<span class="tabsep">Monorail</span>' : c==="RTS" ? '<span class="tabsep">Cross-border</span>' : "") +
     `<button class="tab" role="tab" id="tab-${c}" style="--c:var(--${c})" aria-selected="${c===current}" data-c="${c}">
        <span class="sw"></span>${c==="CG"?"Changi branch":(LINES[c].tab||c)}</button>`).join("");
   window.afterTabs && afterTabs();
@@ -3228,11 +3280,6 @@ function buildBoard(){
 }
 function toggle(i){
   const L = LINES[current];
-  if (L.future){
-    const station=L.stations[i];
-    if(station && window.mrtFutureRail)window.mrtFutureRail.selectStation(current,station[0]);
-    return;
-  }
   if (i >= activeStations(L, sgNow().iso).length) return;
   openIdx = openIdx === i ? -1 : i; tick();
   if (openIdx >= 0 && window.syncMapStation){ window.syncMapStation(L.stations[i][1]); }
@@ -3335,19 +3382,6 @@ function trainSVG(dir){
 function tick(){
   const now = sgNow(), L = LINES[current], act = activeStations(L, now.iso);
   $("clock").textContent = now.clock;
-  // A registered future route has station-board navigation, like RTS,
-  // but must never enter runsFor(), headway(), GTFS or estimated trains.
-  if (L.future){
-    setHTML($("status"),'<div class="bar" style="background:var(--'+current+')"></div><b>'+esc(L.name)+
-      '</b><span>Not in service · proposed / announced railway</span>');
-    setHTML($("notice"),'<div class="notice">'+esc(L.stage||"Future rail project")+
-      '. Exact alignments may be indicative. No passenger train times available.</div>');
-    for(let i=0;i<L.stations.length;i++){
-      const stop=$("nx"+i);
-      if(stop)setHTML(stop,'<span class="s">Not in service · no departures</span>');
-    }
-    return;
-  }
 
   // status card
   const running = trainsOn(current, now);
@@ -3364,12 +3398,13 @@ function tick(){
   const closed = official && first != null && t < first ? `No trains yet · first train at ${clockText(first)}` : `Closed for the night · first trains from ${firstEst}`;
   const notOpen = !act.length;
   setHTML($("status"), `<div class="bar" style="background:var(--${current})"></div>
-    <b>${L.name}</b><button type="button" class="hb" data-hline="${current}">History</button>${/*DEV:START*/`<button type="button" class="hb" data-drive="${current}">Drive</button>` + /*DEV:END*/""}
-    ${notOpen ? `<span>Not open yet · passenger service expected ${opensText(L, L.stations[0]).replace(" (expected)", "")}</span>` : `<span>${inService ? `${running.length} train${running.length === 1 ? "" : "s"} running${hwText != null ? ` · every ${hwText} min` : ""}${peak ? " (peak)" : ""}${!official && L.shuttle ? ` · ${shuttleTrains(L, t, now.weekend)}-train shuttle` : ""}` : closed}
+    <b>${L.name}</b>${L.future ? "" : `<button type="button" class="hb" data-hline="${current}">History</button>`}${/*DEV:START*/`<button type="button" class="hb" data-drive="${current}">Drive</button>` + /*DEV:END*/""}
+    ${notOpen ? `<span>Not open yet · ${L.future && L.when ? "expected " + esc(L.when) : "passenger service expected " + opensText(L, L.stations[0]).replace(" (expected)", "")}</span>` : `<span>${inService ? `${running.length} train${running.length === 1 ? "" : "s"} running${hwText != null ? ` · every ${hwText} min` : ""}${peak ? " (peak)" : ""}${!official && L.shuttle ? ` · ${shuttleTrains(L, t, now.weekend)}-train shuttle` : ""}` : closed}
       · <span class="src">${official ? "LTA timetable" : "estimated"} for ${dayText(now)}</span>${current === "NSL" && window.spotNote && spotNote() ? ` · <span class="src">${spotNote()}</span>` : ""}</span>`}`);
   const fut = L.stations.filter(s => s[2] && now.iso < s[2]);
-  setHTML($("notice"), notOpen ? `<div class="notice">The ${L.name} isn't open yet. Trains between ${L.stations[0][1]} and ${L.stations[L.stations.length-1][1]} are expected to start ${opensText(L, L.stations[0]).replace(" (expected)", "")}.</div>`
-    : fut.length ? `<div class="notice">${fut.map(s=>s[1]).join(" and ")} ${fut.length > 1 ? "open" : "opens"} ${opensText(L, fut[0])}.</div>` : "");
+  setHTML($("notice"), notOpen && L.future ? `<div class="notice">The ${esc(L.name)} isn't open yet. ${esc(L.about || "")} No trains are shown until it opens.</div>`
+    : notOpen ? `<div class="notice">The ${L.name} isn't open yet. Trains between ${L.stations[0][1]} and ${L.stations[L.stations.length-1][1]} are expected to start ${opensText(L, L.stations[0]).replace(" (expected)", "")}.</div>`
+    : fut.length || L.planned ? `<div class="notice">${esc(futureNotice(L, now.iso))}</div>` : "");
 
   // per-station next trains
   const n = act.length;
@@ -4162,6 +4197,39 @@ try {
 } catch(e){}
 
 /* track pieces between consecutive stations, with running lengths */
+/* Future lines' stations and track (future-lines.js; see FUTURE). Added after the real-track step above, so it still
+   compares only the lines it knows; a station already on the map keeps its place; each piece is pinned to its stations. */
+if (FUTURE) try {
+  const P = MAP.stations;
+  for (const [c, q] of Object.entries(FUTURE.pos || {})) if (!P[c] && Array.isArray(q)) P[c] = q.slice();
+  for (const F of Object.values(FUTURE.extend || {})) for (const [k, v] of Object.entries(F.same || {})) if (P[v]) P[k] = P[v].slice();
+  const straight = (a, b) => P[a] && P[b] ? [P[a][0], P[a][1], P[b][0], P[b][1]] : null;
+  const piece = (raw, a, b) => {
+    if (typeof raw === "string"){        // "CG:1:rev": another line's own track piece, run backwards
+      const [l, i, rev] = raw.split(":"), f = MAP.paths[l] && MAP.paths[l][+i]; if (!f) return straight(a, b);
+      if (!rev) return f.slice();
+      const out = []; for (let k = f.length - 2; k >= 0; k -= 2) out.push(f[k], f[k + 1]); return out;
+    }
+    if (!Array.isArray(raw) || raw.length < 4) return straight(a, b);
+    const f = raw.slice();
+    if (P[a]){ f[0] = P[a][0]; f[1] = P[a][1]; }
+    if (P[b]){ f[f.length - 2] = P[b][0]; f[f.length - 1] = P[b][1]; }
+    return f;
+  };
+  for (const [c, F] of Object.entries(FUTURE.lines || {})){
+    const L = LINES[c]; if (!L || !L.future || MAP.paths[c]) continue;
+    MAP.paths[c] = L.stations.slice(0, -1).map((st, i) => piece((F.paths || [])[i], st[0], L.stations[i + 1][0]) || [0, 0, 0, 0]);
+  }
+  for (const [c, F] of Object.entries(FUTURE.extend || {})){
+    const L = LINES[c], segs = MAP.paths[c]; if (!L || !segs || !Array.isArray(F.paths)) continue;
+    const first = L.stations.findIndex(x => x[0] === F.stations[0][0]); if (first < 1) continue;
+    F.paths.forEach((raw, k) => {
+      const i = first - 1 + k;
+      if (segs.length === i && L.stations[i + 1]) segs.push(piece(raw, L.stations[i][0], L.stations[i + 1][0]) || [0, 0, 0, 0]);
+    });
+  }
+  for (const c of Object.keys(FUTURE.infill || {})) if (LINES[c] && !MAP.paths[c]) MAP.paths[c] = [];   // station dots only
+} catch(e){}
 const MSEG = {};
 for (const c in MAP.paths) MSEG[c] = MAP.paths[c].map(flat => {
   const pts = []; for (let i = 0; i < flat.length; i += 2) pts.push([flat[i], flat[i + 1]]);
@@ -4187,6 +4255,7 @@ const MSTN = (() => {
   for (const c of ORDER) LINES[c].stations.forEach((st, i) => {
     if (LINES[c].stations.findIndex(x => x[0] === st[0]) !== i) return;
     const p = MAP.stations[st[0]]; if (!p) return;
+    if (LINES[c].future && by[st[1]] && by[st[1]].codes.some(x => x.code === st[0])) return;   // a future branch's first station
     const e = (by[st[1]] ||= {name: st[1], codes: [], pts: []});
     e.codes.push({line: c, code: st[0], idx: i});
     // platforms further apart than this are drawn as linked dots (with URA's tracks each line's dot is on its own line)
@@ -4197,11 +4266,12 @@ const MSTN = (() => {
     e.ix = new Set(e.codes.map(x => x.line)).size > 1;
     e.x = e.pts.reduce((a, p) => a + p[0], 0) / e.pts.length;
     e.y = e.pts.reduce((a, p) => a + p[1], 0) / e.pts.length;
-    e.term = e.codes.some(x => { const L = LINES[x.line]; return !L.loop && (x.idx === 0 || x.idx === L.stations.length - 1); });
+    e.term = e.codes.some(x => { const L = LINES[x.line]; return !L.loop && !L.infillOf && (x.idx === 0 || x.idx === L.stations.length - 1); });
   }
   return list;
 })();
 const MDRAW = ["BP", "SE", "SW", "PE", "PW", "SEN", "CG", "EWL", "NSL", "NEL", "CCL", "DTL", "TEL", "RTS"];   // LRT underneath
+if (FUTURE) for (const c of Object.keys(FUTURE.lines || {}).reverse()) if (LINES[c] && LINES[c].future && MSEG[c]) MDRAW.unshift(c);   // future lines underneath
 
 /*
  * Ground-alignment correction:
@@ -4567,7 +4637,8 @@ function syncMapAttr(){
   a.hidden = false;
   a.textContent = (satOk === 0 && satFails >= 4 ? "Satellite photos couldn't load. Check your internet connection." : "Imagery: Esri, Vantor, Earthstar Geographics and the GIS User Community")
     + (bldShown || osmTracks ? " · " + (bldShown && osmTracks ? "Buildings and tracks" : bldShown ? "Buildings" : "Tracks") + " © OpenStreetMap contributors" : "")
-    + (uraTracks ? " · MRT tracks: URA Master Plan (data.gov.sg)" : "");
+    + (uraTracks ? " · MRT tracks: URA Master Plan (data.gov.sg)" : "")
+    + (FUTURE ? " · Future lines: LTA, URA Master Plan, © OpenStreetMap contributors" : "");
 }
 syncMapAttr(); sync3d();
 
@@ -4634,11 +4705,6 @@ function mapDraw(){
       ctx.restore();
     }
   } catch(e){}
-  // Shared future-line overlay; production code stays inactive until approval.
-  if (window.mrtFutureRail){
-    window.mrtFutureRail.invalidate = mapDraw;
-    window.mrtFutureRail.draw(ctx,{sx,sy,zoom,lw,stations:MAP.stations});
-  }
   // stations
   const r = clampN(lw * 0.62, 2, 5);
   for (const e of MSTN){
@@ -4839,9 +4905,6 @@ function mapDutyHTML(code, tid, iso){
 function mapInfoHTML(){
   const now = sgNow();
   if (!mSel) return `<p class="hint" style="margin:0">Tap any train or station on the map · Pinch or scroll to zoom.</p>`;
-  // Future stations are map-native information objects, never scheduled train stops.
-  if (mSel.type === "future-station" && window.mrtFutureRail && window.mrtFutureRail.enabled)
-    return window.mrtFutureRail.stationHTML(mSel);
   if (mSel.type === "train"){
     const L = LINES[mSel.line], t = trainById(trainsOn(mSel.line, now), mSel.id);
     if (!t){ mSel = null; return mapInfoHTML(); }
@@ -4876,7 +4939,7 @@ function mapInfoHTML(){
   const dis = e.codes.some(x => hit.has(x.code));
   const cw = e.codes.map(x => crowdChip(x.code)).some(Boolean)
     ? `<div class="mi-crowd">Platform crowds now:${e.codes.filter((x, i, a) => a.findIndex(y => y.code === x.code) === i).map(x => crowdChip(x.code) ? `<span>${codePills([[x.line, x.code]])}${crowdChip(x.code)}</span>` : "").join("")}</div>` : "";
-  return `<div class="mi-h"><b>${esc(e.name)}</b>${codePills(e.codes.map(x => [x.line, x.code]))}${dis ? `<span class="chip">Disrupted</span>` : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>${cw}${typeof wxLine === "function" ? wxLine(e) : ""}${rows.join("")}${window.mrtFutureRail && window.mrtFutureRail.connectionsHTML(e.name) || ""}
+  return `<div class="mi-h"><b>${esc(e.name)}</b>${codePills(e.codes.map(x => [x.line, x.code]))}${dis ? `<span class="chip">Disrupted</span>` : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>${cw}${typeof wxLine === "function" ? wxLine(e) : ""}${rows.join("")}
     <div class="mi-act"><button class="btn ghost" type="button" data-act="hist">Station history</button>${window.repMapBtn ? repMapBtn() : ""}</div>`;
 }
 function mapInfo(){ setHTML($("mapInfo"), mapInfoHTML()); }
@@ -4939,11 +5002,6 @@ function nameAt(list, x, y){
 }
 /* The station card: the same one you get from tapping the circle on the map. */
 function openStationCard(name, line){
-  // Future route rows open the regular map information card; no train predictions.
-  if (line && LINES[line] && LINES[line].future && window.mrtFutureRail){
-    const st=LINES[line].stations.find(x=>x[1]===name);
-    if (st){ window.mrtFutureRail.selectStation(line,st[0]); return; }
-  }
   if (!name || !byName[name]) return;
   const lines = byName[name].map(x => x[0]);
   mSel = {type: "station", name};
@@ -4955,24 +5013,6 @@ function openStationCard(name, line){
   if (isDesktop()) select(target, name);
   else if (window.mapFocus) window.mapFocus(name);
 }
-// Future rail shares the existing RTS/MRT map projections and card surface,
- // but its project routes do not enter the operational train timetable.
-window.clearFutureRailSelection = () => {
-  if (mSel?.type === "future-station"){ mSel=null; mDirty=true; mapInfo(); }
-};
-window.selectFutureRailStation = hit => {
-  if (!window.MRT_DEV_FEATURES || window.MRT_PRODUCTION || !window.mrtFutureRail || !window.mrtFutureRail.enabled || !hit) return;
-  if (typeof showView === "function") showView("trains");
-  if (typeof setTrainView === "function") setTrainView("map");
-  mSel = {type:"future-station",line:hit.line,code:hit.code,name:hit.name};
-  mDirty = true; mapInfo();
-  if (typeof M3 !== "undefined" && M3.on) M3.focus(hit.x,hit.y);
-  else if (view) flyTo(hit.x,hit.y,Math.max(view.s,fitScale*6));
-  // Use the same live station sheet on phones/tablets as existing MRT and RTS stations.
-  // The sheet's future-station branch shows project details, never arrival predictions.
-  if (!isDesktop() && typeof window.hxOpen === "function")
-    window.hxOpen({type:"future-station",line:hit.line,code:hit.code,name:hit.name}, false);
-};
 function mapTap(x, y){
   let best = null, bd = 16;
   for (const h of mHits){ const d = Math.hypot(h.x - x, h.y - y); if (d < bd){ bd = d; best = h; } }
@@ -4985,8 +5025,6 @@ function mapTap(x, y){
   if (named){ openStationCard(named); return; }
   let bs = null, bsd = 18;
   for (const e of MSTN) for (const p of e.pts){ const d = Math.hypot(sx(p[0]) - x, sy(p[1]) - y); if (d < bsd){ bsd = d; bs = e; } }
-  const futureHit = !bs && window.mrtFutureRail && window.mrtFutureRail.hitTest(x,y,{sx,sy,zoom:view.s/fitScale,stations:MAP.stations});
-  if (futureHit){ window.mrtFutureRail.selectStation(futureHit.line,futureHit.code); return; }
   if (bs) openStationCard(bs.name);
   else { mSel = null; mDirty = true; mapInfo(); }
 }
@@ -7920,7 +7958,6 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
   function drawOverlay(now){
     octx.setTransform(DPR, 0, 0, DPR, 0, 0); octx.clearRect(0, 0, W, H);
     if (M3.under) try { M3.under(octx, toScreen, W, H, now); } catch(e){}       // e.g. a planned trip, drawn under the stations
-    if (window.mrtFutureRail?.enabled) window.mrtFutureRail.draw(octx,{project:(x,y)=>toScreen(x,5,y),zoom:12000/M3.cam.d});
     const c = M3.cam, placed = [], shown = [];
     for (const e of MSTN){
       const q = toScreen(e.x, 6, e.z !== undefined ? e.z : e.y); if (!q || q[0] < -40 || q[0] > W + 40 || q[1] < -40 || q[1] > H + 40) continue;
@@ -8088,10 +8125,6 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
     camera();
     let bs = null, bsd = 22;
     for (const e of MSTN){ const q = toScreen(e.x, 6, e.y); if (!q) continue; const d = Math.hypot(q[0] - x, q[1] - y); if (d < bsd){ bsd = d; bs = e; } }
-    if (!bs && window.mrtFutureRail?.enabled){
-      const future=window.mrtFutureRail.hitTest(x,y,{project:(px,py)=>toScreen(px,5,py),zoom:12000/M3.cam.d});
-      if (future){ window.mrtFutureRail.selectStation(future.line,future.code); return; }
-    }
     mSel = bs ? {type: "station", name: bs.name} : null; mapInfo(); mDirty = true;
   }
 
@@ -8858,7 +8891,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
 
   /* ---- the sheet for a station or a train ---- */
   let HX = null;
-  const key = x => !x ? "" : x.type === "future-station" ? `f:${x.line}:${x.code}` : x.type === "train" ? `t:${x.line}:${x.id}` : `s:${x.name}`;
+  const key = x => !x ? "" : x.type === "train" ? `t:${x.line}:${x.id}` : `s:${x.name}`;
   function stationLive(name){
     const e = aByName(name); if (!e) return null;
     const rs = deps(e), now = sgNow();
@@ -8873,7 +8906,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       for (const g of groups) rows.push(`<div style="--c:var(--${r.line})"${g.sb ? ' class="sbrow"' : ""}><span>${codePills([[r.line, r.code]])}${esc(toW(g.nm))}${g.sb && !BOUND_RE.test(r.to) ? `<span class="sb">special-bound</span>` : ""}${r.dis ? `<span class="slow">disrupted</span>` : ""}${r.plat ? `<span class="pf">Platform ${esc(r.plat)}</span>` : ""}</span><span class="t"><em>${fmt(g.ms[0])}</em>${g.ls[0] ? lastTag : ""}${g.ms.slice(1).map((m, k) => " · " + mins(m) + (g.ls[k + 1] ? lastTag : "")).join("")}</span></div>`);
     }
     const seen = new Set(), cws = e.codes.filter(x => !seen.has(x.code) && seen.add(x.code)).map(x => { const c = crowdChip(x.code); return c ? `<span>${codePills([[x.line, x.code]])}${c}</span>` : ""; }).join("");
-    return `${window.mrtFutureRail?.connectionsHTML(name)||""}<div><p class="hsub">Next trains${TT && !SIM.est ? " · LTA timetable" : " · estimated"}</p><div class="plat">${rows.join("")}</div>
+    return `<div><p class="hsub">Next trains${TT && !SIM.est ? " · LTA timetable" : " · estimated"}</p><div class="plat">${rows.join("")}</div>
         ${anySb ? `<p class="hint">Special-bound trains end at that station instead of going all the way.</p>` : ""}
         ${anyDis ? `<p class="hint" style="color:var(--bad)">Disruption on this stretch: times may be later than shown. See Updates for LTA's notice.</p>` : ""}</div>
       <div><p class="hsub">Platform crowd${crowdFresh() ? ` · LTA, ${esc(crowdWindow())}` : ""}</p>${cws ? `<div class="hx-crowd">${cws}</div>` : `<p class="hint" style="margin:0">Crowd levels aren't available right now.</p>`}</div>
@@ -9011,14 +9044,6 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   }
   function hxRender(){
     if (!HX) return;
-    if (HX.type === "future-station"){
-      const api=window.mrtFutureRail;
-      if (!api?.enabled){ hxClose(); return; }
-      setHTML($("hxKick"),codePills([[HX.line,HX.code]])+" Future station");
-      $("hxTitle").textContent=HX.name;
-      setHTML($("hxLive"),api.stationHTML(HX,false));
-      return;
-    }
     const h = head(HX), live = h && (HX.type === "train" ? trainLive(HX) : stationLive(HX.name));
     if (!live){ hxClose(); return; }
     setHTML($("hxKick"), h[0]); if ($("hxTitle").textContent !== h[1]) $("hxTitle").textContent = h[1];
@@ -9027,9 +9052,9 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   function hxOpen(x, fromMap){
     const same = HX && key(HX) === key(x);
     HX = Object.assign({}, x, {fromMap: !!fromMap});
-    const c = x.type === "train" || x.type === "future-station" ? x.line : ((byName[x.name] || [])[0] || ["NSL"])[0];
+    const c = x.type === "train" ? x.line : ((byName[x.name] || [])[0] || ["NSL"])[0];
     $("hxSheet").style.setProperty("--c", `var(--${c})`);
-    if (!same){ $("hxStatic").innerHTML = x.type === "future-station" ? "" : x.type === "train" ? trainStatic(x) : stationStatic(x.name); $("hxLive")._h = null; $("hxBody").scrollTop = 0; }
+    if (!same){ $("hxStatic").innerHTML = x.type === "train" ? trainStatic(x) : stationStatic(x.name); $("hxLive")._h = null; $("hxBody").scrollTop = 0; }
     hxRender();
     if (!HX) return;
     $("hxSheet").hidden = false; $("hxBg").hidden = false;
@@ -9640,4 +9665,4 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
 <script src="run-graph.js"></script>
 <script src="gtfs-lab.js"></script><script src="timetable-intelligence.js"></script>
 <script src="disruption-engine.js"></script>
-<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script><script src="taxi-availability.js"></script><script src="future-rail.js"></script>
+<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script><script src="taxi-availability.js"></script>

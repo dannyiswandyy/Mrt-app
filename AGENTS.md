@@ -26,6 +26,7 @@ The user wants **public Android + public website + private Dev Android** to shar
 | Android project (Java, manifest, Gradle) | written by `.github/workflows/build-android.yml` |
 | Build tools (LTA timetable, buildings, RTS/Sentosa tracks, station exits) and the station list they use | `tools/` (`build_*.py`, `lines.json`), copied into the project by `build-android.yml` and used by `deploy-web.yml` too |
 | The website | `web/index.html` (the same page, made for browsers), published by `deploy-web.yml` |
+| Future lines and stations (not open yet) | `web/future-lines.js` (data only; the page adds them to `LINES` / `ORDER` / `MAP` like the RTS Link when `window.MRT_SHOW_FUTURE` is true, set just before the main script; it's **false** here until Danny approves showing them). Tested by `tests/future-lines.test.mjs` |
 | Data relay for the website | `worker/` (Cloudflare Worker; the LTA key is a Cloudflare secret, not in this repo) |
 | Tests | `tests/timetable-check.js`, run by `timetable-check.yml` |
 | App signing key | `signing/mrt-tracker.jks` (made by the first build; keep it, or updates won't install over the old app) |
