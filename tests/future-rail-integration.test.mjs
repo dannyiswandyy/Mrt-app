@@ -60,3 +60,53 @@ test("public channel cannot hit or display future station data",()=>{
   assert.equal(api.connectionsHTML("Choa Chu Kang"),"");
   assert.equal(api.selectStation("CRL","CR17"),false);
 });
+
+const geometry=JSON.parse(fs.readFileSync(new URL("../web/future-rail-geometry.json",import.meta.url),"utf8"));
+
+test("bundled shapes reference published features and stay on adjacent station pairs",()=>{
+  const api=moduleFor(true);
+  for(const [id,sections] of Object.entries(geometry.sections)){
+    const codes=api.network[id].stations.map(s=>s.code);
+    for(const section of sections){
+      assert.equal(codes[codes.indexOf(section.from)+1],section.to,id);
+      assert.ok(geometry.sources[section.source||"ura"]);
+      for(const part of section.parts){
+        assert.ok(Number.isInteger(part.id));
+        assert.ok(part.xy.length>=2 && part.xy.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)));
+      }
+    }
+  }
+  for(const id of ["JRL_W","JRL_E","JRL_N","CRL","CPE","DTL2E","TELe","TEL5","DTL3E","NS6","NS3A","TE10","TE21","TE22A","CC18","CRL_T5"]){
+    assert.equal(geometry.sections[id].length,api.network[id].stations.length-1,id);
+  }
+  assert.equal(geometry.sections.CRL.filter(s=>s.source==="osm").length,4);
+  assert.equal(geometry.sections.WCE.length,0);
+  assert.equal(api.network.SEL.stations.length+api.network.TGL.stations.length,0);
+  assert.equal(api.network.JRL_E.stations[0].code,"JS3");
+  assert.equal(api.network.JRL_N.stations[0].code,"JS7");
+  assert.equal(api.network.TELe.stations.at(-1).code,"TE35");
+});
+
+test("Dev draws real parts independently and never connects missing geometry",async()=>{
+  let ready;
+  const document={readyState:"loading",addEventListener(_,callback){ready=callback;},getElementById(){return null;}};
+  const window={MRT_DEV_FEATURES:true,MRT_PRODUCTION:false,document};
+  const marker=geometry.sections.JRL_W[0].parts[0].xy[0];
+  const moves=[],dashes=[];
+  const ctx=new Proxy({}, {get(_,name){
+    if(name==="moveTo")return (x,y)=>moves.push([x,y]);
+    if(name==="setLineDash")return values=>dashes.push(values.join(","));
+    return ()=>{};
+  }});
+  vm.runInNewContext(source,{window,document,console,fetch:async()=>({ok:true,json:async()=>geometry})});
+  ready();
+  await new Promise(resolve=>setImmediate(resolve));
+  const api=window.mrtFutureRail;
+  api.draw(ctx,{sx:x=>x,sy:y=>y,zoom:1});
+  assert.equal(moves.length,Object.values(geometry.sections).flat().reduce((n,s)=>n+s.parts.length,0));
+  assert.ok(moves.some(([x,y])=>x===marker[0]&&y===marker[1]));
+  assert.ok(dashes.includes("6,5"));
+  const station=api.byCode("JRL_E","JE1").station;
+  assert.equal(api.hitTest(station.x,station.y,{sx:x=>x,sy:y=>y,zoom:6}).code,"JE1");
+  assert.match(api.stationHTML({line:"CRL",code:"CR22"}),/OpenStreetMap/);
+});

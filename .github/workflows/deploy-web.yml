@@ -23,12 +23,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  prepare:
     needs: safety
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -134,17 +131,25 @@ jobs:
         run: |
           # an empty file when there's no data: the site then uses estimates / no buildings, without a "not found"
           for f in timetable buildings tracks exits; do [ -s _site/data/$f.json ] || : > _site/data/$f.json; done
+          cmp web/future-rail-geometry.json _site/future-rail-geometry.json
           ls -la _site _site/data
           if grep -rlE 'sha256[-]|integ[r]ity=' _site --include='*.html' --include='*.js'; then echo "::error::fingerprints found"; exit 1; fi
           grep -q "script-src 'self' 'unsafe-inline'" _site/index.html
           grep -q 'id="mrt-main"' _site/index.html
 
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # Runs before anything is published. If the page has a script error, doesn't start or freezes,
   # the build/deploy stops here and the app, the website and the release stay on the last good version.
@@ -162,7 +167,9 @@ jobs:
       - name: Scripts have no syntax errors
         run: node tests/syntax-check.mjs
       - name: Timetable checks
-        run: node tests/timetable-check.js
+        run: |
+          node tests/timetable-check.js
+          node --test tests/future-rail-integration.test.mjs
       - name: Page starts and doesn't freeze (headless Chrome)
         run: |
           npm install --no-save --no-package-lock --silent playwright@1.49.1

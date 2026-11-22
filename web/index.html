@@ -4957,16 +4957,17 @@ function openStationCard(name, line){
 }
 // Future rail shares the existing RTS/MRT map projections and card surface,
  // but its project routes do not enter the operational train timetable.
+window.clearFutureRailSelection = () => {
+  if (mSel?.type === "future-station"){ mSel=null; mDirty=true; mapInfo(); }
+};
 window.selectFutureRailStation = hit => {
   if (!window.MRT_DEV_FEATURES || window.MRT_PRODUCTION || !window.mrtFutureRail || !window.mrtFutureRail.enabled || !hit) return;
   if (typeof showView === "function") showView("trains");
   if (typeof setTrainView === "function") setTrainView("map");
   mSel = {type:"future-station",line:hit.line,code:hit.code,name:hit.name};
   mDirty = true; mapInfo();
-  if (view) flyTo(hit.x,hit.y,Math.max(view.s,fitScale*6));
-  if (!isDesktop()) requestAnimationFrame(() => {
-    const card = $("mapInfo"); if (card && card.scrollIntoView) card.scrollIntoView({block:"start",behavior:"smooth"});
-  });
+  if (typeof M3 !== "undefined" && M3.on) M3.focus(hit.x,hit.y);
+  else if (view) flyTo(hit.x,hit.y,Math.max(view.s,fitScale*6));
 };
 function mapTap(x, y){
   let best = null, bd = 16;
@@ -4981,7 +4982,7 @@ function mapTap(x, y){
   let bs = null, bsd = 18;
   for (const e of MSTN) for (const p of e.pts){ const d = Math.hypot(sx(p[0]) - x, sy(p[1]) - y); if (d < bsd){ bsd = d; bs = e; } }
   const futureHit = !bs && window.mrtFutureRail && window.mrtFutureRail.hitTest(x,y,{sx,sy,zoom:view.s/fitScale,stations:MAP.stations});
-  if (futureHit){ window.selectFutureRailStation(futureHit); return; }
+  if (futureHit){ window.mrtFutureRail.selectStation(futureHit.line,futureHit.code); return; }
   if (bs) openStationCard(bs.name);
   else { mSel = null; mDirty = true; mapInfo(); }
 }
@@ -7915,6 +7916,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
   function drawOverlay(now){
     octx.setTransform(DPR, 0, 0, DPR, 0, 0); octx.clearRect(0, 0, W, H);
     if (M3.under) try { M3.under(octx, toScreen, W, H, now); } catch(e){}       // e.g. a planned trip, drawn under the stations
+    if (window.mrtFutureRail?.enabled) window.mrtFutureRail.draw(octx,{project:(x,y)=>toScreen(x,5,y),zoom:12000/M3.cam.d});
     const c = M3.cam, placed = [], shown = [];
     for (const e of MSTN){
       const q = toScreen(e.x, 6, e.z !== undefined ? e.z : e.y); if (!q || q[0] < -40 || q[0] > W + 40 || q[1] < -40 || q[1] > H + 40) continue;
@@ -8082,6 +8084,10 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
     camera();
     let bs = null, bsd = 22;
     for (const e of MSTN){ const q = toScreen(e.x, 6, e.y); if (!q) continue; const d = Math.hypot(q[0] - x, q[1] - y); if (d < bsd){ bsd = d; bs = e; } }
+    if (!bs && window.mrtFutureRail?.enabled){
+      const future=window.mrtFutureRail.hitTest(x,y,{project:(px,py)=>toScreen(px,5,py),zoom:12000/M3.cam.d});
+      if (future){ window.mrtFutureRail.selectStation(future.line,future.code); return; }
+    }
     mSel = bs ? {type: "station", name: bs.name} : null; mapInfo(); mDirty = true;
   }
 
@@ -8848,7 +8854,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
 
   /* ---- the sheet for a station or a train ---- */
   let HX = null;
-  const key = x => !x ? "" : x.type === "train" ? `t:${x.line}:${x.id}` : `s:${x.name}`;
+  const key = x => !x ? "" : x.type === "future-station" ? `f:${x.line}:${x.code}` : x.type === "train" ? `t:${x.line}:${x.id}` : `s:${x.name}`;
   function stationLive(name){
     const e = aByName(name); if (!e) return null;
     const rs = deps(e), now = sgNow();
@@ -8863,7 +8869,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       for (const g of groups) rows.push(`<div style="--c:var(--${r.line})"${g.sb ? ' class="sbrow"' : ""}><span>${codePills([[r.line, r.code]])}${esc(toW(g.nm))}${g.sb && !BOUND_RE.test(r.to) ? `<span class="sb">special-bound</span>` : ""}${r.dis ? `<span class="slow">disrupted</span>` : ""}${r.plat ? `<span class="pf">Platform ${esc(r.plat)}</span>` : ""}</span><span class="t"><em>${fmt(g.ms[0])}</em>${g.ls[0] ? lastTag : ""}${g.ms.slice(1).map((m, k) => " · " + mins(m) + (g.ls[k + 1] ? lastTag : "")).join("")}</span></div>`);
     }
     const seen = new Set(), cws = e.codes.filter(x => !seen.has(x.code) && seen.add(x.code)).map(x => { const c = crowdChip(x.code); return c ? `<span>${codePills([[x.line, x.code]])}${c}</span>` : ""; }).join("");
-    return `<div><p class="hsub">Next trains${TT && !SIM.est ? " · LTA timetable" : " · estimated"}</p><div class="plat">${rows.join("")}</div>
+    return `${window.mrtFutureRail?.connectionsHTML(name)||""}<div><p class="hsub">Next trains${TT && !SIM.est ? " · LTA timetable" : " · estimated"}</p><div class="plat">${rows.join("")}</div>
         ${anySb ? `<p class="hint">Special-bound trains end at that station instead of going all the way.</p>` : ""}
         ${anyDis ? `<p class="hint" style="color:var(--bad)">Disruption on this stretch: times may be later than shown. See Updates for LTA's notice.</p>` : ""}</div>
       <div><p class="hsub">Platform crowd${crowdFresh() ? ` · LTA, ${esc(crowdWindow())}` : ""}</p>${cws ? `<div class="hx-crowd">${cws}</div>` : `<p class="hint" style="margin:0">Crowd levels aren't available right now.</p>`}</div>
@@ -9001,6 +9007,14 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   }
   function hxRender(){
     if (!HX) return;
+    if (HX.type === "future-station"){
+      const api=window.mrtFutureRail;
+      if (!api?.enabled){ hxClose(); return; }
+      setHTML($("hxKick"),codePills([[HX.line,HX.code]])+" Future station");
+      $("hxTitle").textContent=HX.name;
+      setHTML($("hxLive"),api.stationHTML(HX,false));
+      return;
+    }
     const h = head(HX), live = h && (HX.type === "train" ? trainLive(HX) : stationLive(HX.name));
     if (!live){ hxClose(); return; }
     setHTML($("hxKick"), h[0]); if ($("hxTitle").textContent !== h[1]) $("hxTitle").textContent = h[1];
@@ -9009,9 +9023,9 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   function hxOpen(x, fromMap){
     const same = HX && key(HX) === key(x);
     HX = Object.assign({}, x, {fromMap: !!fromMap});
-    const c = x.type === "train" ? x.line : ((byName[x.name] || [])[0] || ["NSL"])[0];
+    const c = x.type === "train" || x.type === "future-station" ? x.line : ((byName[x.name] || [])[0] || ["NSL"])[0];
     $("hxSheet").style.setProperty("--c", `var(--${c})`);
-    if (!same){ $("hxStatic").innerHTML = x.type === "train" ? trainStatic(x) : stationStatic(x.name); $("hxLive")._h = null; $("hxBody").scrollTop = 0; }
+    if (!same){ $("hxStatic").innerHTML = x.type === "future-station" ? "" : x.type === "train" ? trainStatic(x) : stationStatic(x.name); $("hxLive")._h = null; $("hxBody").scrollTop = 0; }
     hxRender();
     if (!HX) return;
     $("hxSheet").hidden = false; $("hxBg").hidden = false;
