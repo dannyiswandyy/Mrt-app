@@ -4706,20 +4706,32 @@ function canvasPills(ctx, list, x, y, fs, draw = true){
 /* ---- info card under your finger ---- */
 
 /* ---- info card under your finger & desktop split sync ---- */
-const nslNov22 = {
-  "HD": [201, 206, 218, 408, 412, 416, 418],
-  "FD": [216, 220, 417],
-  "FD LN": [202, 203, 204, 205, 207, 208, 209, 210, 211, 212, 214, 215, 217, 219, 221,
-    401, 402, 403, 404, 405, 406, 407, 411, 414, 415],
-  "(AM)": [213, 409, 410, 413],
-  "(PM) LN": [419, 420, 421, 422, 423, 424, 425, 426, 427, 428]
+const rostersNov22 = {
+  NSL: {
+    "HD": [201, 206, 218, 408, 412, 416, 418],
+    "FD": [216, 220, 417],
+    "FD LN": [202, 203, 204, 205, 207, 208, 209, 210, 211, 212, 214, 215, 217, 219, 221,
+      401, 402, 403, 404, 405, 406, 407, 411, 414, 415],
+    "(AM)": [213, 409, 410, 413],
+    "(PM) LN": [419, 420, 421, 422, 423, 424, 425, 426, 427, 428]
+  },
+  EWL: {
+    "FD": [111, 113, 308, 310],
+    "FD LN": [112, 115, 116, 118, 120, 121, 122, 123, 124, 126, 127, 301, 307, 309, 311, 312, 313, 314, 315, 316, 318, 319, 320, 321, 323, 326, 327],
+    "HD": [114, 119, 302, 303, 305, 317, 322, 324, 325],
+    "(AM)": [117, 125, 304, 306],
+    "(PM)": [132],
+    "(PM) LN": [128, 129, 130, 131, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142],
+    "(OP)": [328]
+  }
 };
 
 function dutyLabel(run, iso){
   const slot = Number(run.run);
-  if (run.line === "NSL" && iso === "2026-11-22" && TT &&
+  const roster = rostersNov22[run.line];
+  if (roster && iso === "2026-11-22" && TT &&
       window.mrtRunGraph.activeServices(TT, iso).includes(run.service)){
-    for (const [code, slots] of Object.entries(nslNov22)){
+    for (const [code, slots] of Object.entries(roster)){
       if (slots.includes(slot)) return slot + " " + code + " · Spotter roster";
     }
   }
