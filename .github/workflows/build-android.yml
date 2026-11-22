@@ -287,6 +287,7 @@ jobs:
           cp web/skytrain.js mrt-tracker-app/app/src/main/assets/skytrain.js
           cp web/smart.js mrt-tracker-app/app/src/main/assets/smart.js
           cp web/bus.js mrt-tracker-app/app/src/main/assets/bus.js
+          cp web/taxi-availability.js mrt-tracker-app/app/src/main/assets/taxi-availability.js
           mkdir -p 'mrt-tracker-app/app/src/main/assets/fonts'
           cp web/fonts/*.woff2 'mrt-tracker-app/app/src/main/assets/fonts/'
           mkdir -p 'mrt-tracker-app/app/src/main/assets'
@@ -710,7 +711,7 @@ jobs:
               private static final Set<String> ALLOWED_HOSTS = new HashSet<>(Arrays.asList(
                       "datamall2.mytransport.sg",
                       "news.google.com",
-                      "api-open.data.gov.sg"));      // NEA live weather (data.gov.sg)
+                      "api-open.data.gov.sg", "api.data.gov.sg"));      // NEA live weather (data.gov.sg)
 
               /** The app's own page, bundled inside the app. */
               private static final String PAGE_URL = "https://sg.mrttracker.app/assets/index.html";
