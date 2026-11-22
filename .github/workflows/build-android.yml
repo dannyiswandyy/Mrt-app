@@ -28,6 +28,8 @@ env:
   CHANNEL: beta
 jobs:
   build:
+    # Never publish a public APK from a feature branch or pull request.
+    if: github.ref == 'refs/heads/main'
     needs: safety
     runs-on: ubuntu-latest
     steps:
