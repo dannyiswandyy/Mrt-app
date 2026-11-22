@@ -29,6 +29,8 @@ test("main map can select future stations and display information in the normal 
   assert.match(page,/mrtFutureRail\.hitTest\(x,y/);
   assert.match(page,/mrtFutureRail\.stationHTML\(mSel\)/);
   assert.match(page,/mrtFutureRail\.connectionsHTML\(e\.name\)/);
+  assert.match(page,/window\.hxOpen\(\{type:"future-station",line:hit\.line,code:hit\.code,name:hit\.name\}, false\)/,
+    "future stations must use the native phone/tablet station drawer");
 });
 
 test("Dev-only routes join the native RTS-style line registry without entering operational ORDER",()=>{
