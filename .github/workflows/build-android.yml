@@ -11,6 +11,7 @@ name: Build MRT Tracker app
 
 on:
   push:
+    branches: [main]
     paths:
       - .github/workflows/build-android.yml
       - tools/**
