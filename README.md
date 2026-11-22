@@ -18,6 +18,14 @@ MRT Spotter is an independent, fan-made rail companion for **train enthusiasts**
 
 </div>
 
+## 📚 Explore the project
+
+| **[🚆 Feature guide](docs/features.md)** | **[📷 Screenshot showcase](docs/screenshots.md)** | **[❓ FAQ & data accuracy](docs/faq.md)** |
+|:---|:---|:---|
+| Maps, Line Board, train runs and spotting tools | Guide to authentic public-app captures | Timetable vs estimated positions, run numbers and duty terms |
+
+**[Documentation hub](docs/README.md)** · **[Contributing](CONTRIBUTING.md)** · **[Report a correction](https://github.com/dannyiswandyy/Mrt-app/issues/new/choose)** · **[Data sources](docs/data-sources.md)**
+
 ---
 
 ## 🚆 Why MRT Spotter?
