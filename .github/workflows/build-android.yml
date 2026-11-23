@@ -16,6 +16,7 @@ on:
       - .github/workflows/build-android.yml
       - tools/**
       - web/**
+      - tests/**
   workflow_dispatch:
 
 permissions:
