@@ -2953,10 +2953,12 @@ function rtLivePosition(line, r, sec){
     const now = Date.now() / 1000;
     const events = mapped.map(x => Object.assign({}, x, epoch(x.q))).filter(x => x.arr != null || x.dep != null);
     if (events.length < 2) return null;
+    // Find the live stop interval containing now. Past event times are useful measurements;
+    // future event times are the prediction of when the train will reach the next stop.
     for (let i = 0; i < events.length; i++){
       const a = events[i], at = a.arr != null ? a.arr : a.dep, dt = a.dep != null ? a.dep : a.arr;
-      if (dt != null && now >= at - 2 && now <= dt + 2){
-        return {idx:a.idx, k:Math.max(0, a.idx - p.f), at:true, live:true, rtAnchored:true};
+      if (dt != null && now >= at - 2 && now <= dt + DOOR_CLOSE){     // still there while the doors close (DOOR_CLOSE)
+        return {idx:a.idx, k:Math.max(0, a.idx - p.f), at:true, doors: now > dt, live:true, rtAnchored:true};
       }
       const b = events[i + 1];
       if (!b) continue;
@@ -2964,22 +2966,28 @@ function rtLivePosition(line, r, sec){
       const arrive = b.arr != null ? b.arr : b.dep;
       if (depart == null || arrive == null || arrive <= depart) continue;
       if (now >= depart && now < arrive){
-        const f = Math.max(0, Math.min(1, (now - depart) / (arrive - depart)));
-        return {idx:a.idx + (b.idx - a.idx) * f, k:Math.max(0, a.idx - p.f), at:false, live:true, rtAnchored:true};
+        const dc = Math.min(DOOR_CLOSE, (arrive - depart) / 4);
+        const f = Math.max(0, Math.min(1, (now - depart - dc) / Math.max(1, arrive - depart - dc)));
+        const x = a.idx + (b.idx - a.idx) * f;
+        return {idx:x, k:Math.max(0, a.idx - p.f), at:f <= 0, doors:f <= 0, live:true, rtAnchored:true};
       }
     }
+    // If LTA has already measured a departure from a later stop, do not let the
+    // static timetable drag the icon backwards to an earlier station.
     let latest = null;
     for (const e of events){
       const t = e.dep != null ? e.dep : e.arr;
       if (t != null && t <= now + 2 && (!latest || t > latest.t)) latest = {t, e};
     }
     if (latest){
-      const ni = events.findIndex(x => x === latest.e), b = events[ni + 1];
+      const ni = events.findIndex(x => x === latest.e);
+      const b = events[ni + 1];
       if (b){
         const arrive = b.arr != null ? b.arr : b.dep;
         if (arrive != null && arrive > latest.t){
-          const f = Math.max(0, Math.min(1, (now - latest.t) / (arrive - latest.t)));
-          return {idx:latest.e.idx + (b.idx - latest.e.idx) * f, k:Math.max(0, latest.e.idx - p.f), at:false, live:true, rtAnchored:true};
+          const dc = Math.min(DOOR_CLOSE, (arrive - latest.t) / 4);
+          const f = Math.max(0, Math.min(1, (now - latest.t - dc) / Math.max(1, arrive - latest.t - dc)));
+          return {idx:latest.e.idx + (b.idx - latest.e.idx) * f, k:Math.max(0, latest.e.idx - p.f), at:f <= 0, doors:f <= 0, live:true, rtAnchored:true};
         }
       }
       return {idx:latest.e.idx, k:Math.max(0, latest.e.idx - p.f), at:true, live:true, rtAnchored:true};
@@ -2988,6 +2996,9 @@ function rtLivePosition(line, r, sec){
   }catch(e){ return null; }
 }
 /* Where a scheduled run is at a given time (seconds since the service day began). */
+/* Estimated departure: keep the icon at the platform during a short door-closing cycle.
+   GTFS train positions are schedule-based estimates, not confirmed GPS locations. */
+const DOOR_CLOSE = 13.5;
 /* `sec` is the run's own timetable time (ttSched: already moved by LTA's live delay); `clock`, if given, is the
    time on the clock (seconds since the service day began), which LTA's live stop times are compared with. Without
    it the two were mixed up and a train LTA gives stop-by-stop times for was drawn its delay late twice over. */
@@ -2999,7 +3010,11 @@ function ttState(r, sec, clock){
   let k = 0;
   while (k < p.arr.length - 1 && p.arr[k + 1] <= e) k++;
   if (k === p.arr.length - 1 || e < p.dep[k]) return {idx: p.f + p.d * k, k, at: true};
-  const frac = (e - p.dep[k]) / Math.max(1, p.arr[k + 1] - p.dep[k]);
+  // LTA's departure time is when the doors start to close: the train moves off a few seconds later (chime, doors
+  // closing, then it starts) and makes the time up on the way, so it still gets to the next station on time
+  const dc = Math.min(DOOR_CLOSE, (p.arr[k + 1] - p.dep[k]) / 4);
+  if (e < p.dep[k] + dc) return {idx: p.f + p.d * k, k, at: true, doors: true};
+  const frac = (e - p.dep[k] - dc) / Math.max(1, p.arr[k + 1] - p.dep[k] - dc);
   return {idx: p.f + p.d * (k + frac), k, at: false};
 }
 /* Which run each train does next. A train that reaches the end of its run waits there and then runs back
@@ -3168,7 +3183,7 @@ function ttTrainsOn(code, now, list){
     { const nx = links.next.get(r); if (nx && secOf(nx) >= nx.s) continue; }
     const p = r.p, nk = st.at ? st.k : st.k + 1;
     out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
-      next: p.f + p.d * nk, eta: Math.max(0, (((typeof rtTimesFor === "function" && rtTimesFor(code,r)?.arr[nk] != null) ? rtTimesFor(code,r).arr[nk] : r.s + p.arr[nk] + (!r.tl && !(mv && mv.get(runId(r))) && wetRun(code, r) ? wetRun(code, r).W[nk] : 0)) - now.mins*60) / 60), atStation: st.at});
+      next: p.f + p.d * nk, eta: Math.max(0, (((typeof rtTimesFor === "function" && rtTimesFor(code,r)?.arr[nk] != null) ? rtTimesFor(code,r).arr[nk] : r.s + p.arr[nk] + (!r.tl && !(mv && mv.get(runId(r))) && wetRun(code, r) ? wetRun(code, r).W[nk] : 0)) - now.mins*60) / 60), atStation: st.at, doors:st.doors});
   }
   return out;
 }
