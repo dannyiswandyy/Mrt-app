@@ -238,7 +238,7 @@
     const counts = LEVELS.map(l => `${l} ${all.filter(e => e.level === l).length}`).join(" · ");
     const sessions = [...new Set(all.map(e => e.sid))];
     const h = [
-      "MRT Dev diagnostics log",
+      "MRT Spotter diagnostics log",
       "=======================",
       `Log ID:      ${logId}`,
       `Session ID:  ${SESSION} (started ${sgTime(STARTED)})`,
@@ -301,7 +301,8 @@
 .diag-f button{border:1px solid var(--rule,#ccc);background:var(--panel,#fff);color:inherit;border-radius:14px;padding:4px 10px;font:600 12px var(--body,inherit);cursor:pointer}
 .diag-f button[aria-pressed=true]{background:var(--fg,#111);color:var(--panel,#fff)}
 .diag-f input{flex:1;min-width:120px;border:1px solid var(--rule,#ccc);background:var(--bg,#fff);color:inherit;border-radius:8px;padding:6px 8px;font:13px var(--body,inherit)}
-.diag-list{flex:1;overflow:auto;overscroll-behavior:contain;background:#101419;color:#d9e1e8;border-radius:10px;padding:8px;font:500 11px/1.45 var(--mono,monospace)}
+.diag-list{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;background:#101419;color:#d9e1e8;border-radius:10px;padding:8px;font:500 11px/1.45 var(--mono,monospace)}
+@media (min-width:768px){.diag{inset:20px auto;left:50%;transform:translateX(-50%);width:min(860px,calc(100vw - 40px));border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.45)}}
 .diag-row{padding:3px 0;border-bottom:1px solid #1f2730;white-space:pre-wrap;word-break:break-word}.diag-row i{font-style:normal;color:#7d8a96}
 .diag-row b{font-weight:700}.diag-row.l-error b,.diag-row.l-crash b{color:#ff8a80}.diag-row.l-warn b{color:#ffd180}.diag-row.l-info b{color:#80d8ff}.diag-row.l-debug b{color:#9e9e9e}
 .diag-row.l-crash{background:#3b1515}.diag-row small{display:block;color:#93a1ad;padding-left:10px}.diag-note{font-size:12px;color:var(--muted,#666)}`;
@@ -330,11 +331,12 @@
       listeners.add(() => { if (view && !view.el.hidden && !paint) paint = setTimeout(() => { paint = 0; render(); }, 400); });   // live
     }
     view.bg.hidden = view.el.hidden = false;
-    document.body.classList.add("sheet-open");
+    if (typeof window.mrtSyncSheetLock === "function") window.mrtSyncSheetLock();
+    else document.body.classList.add("sheet-open");
     note(""); render(); view.el.focus();
     push("debug", "diagnostics", "Diagnostics opened");
   }
-  function close(){ if (!view || view.el.hidden) return false; view.bg.hidden = view.el.hidden = true; document.body.classList.remove("sheet-open"); return true; }
+  function close(){ if (!view || view.el.hidden) return false; view.bg.hidden = view.el.hidden = true; if (typeof window.mrtSyncSheetLock === "function") window.mrtSyncSheetLock(); else document.body.classList.remove("sheet-open"); return true; }
   function note(s){ const n = view && view.el.querySelector("#diagNote"); if (n) n.textContent = s; }
   function render(){
     if (!view || view.el.hidden) return;

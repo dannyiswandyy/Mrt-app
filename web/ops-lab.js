@@ -42,9 +42,14 @@ const style=document.createElement("style");
 style.textContent=`
 #opsLabBtn{position:fixed;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:75;border:0;border-radius:999px;background:#c2410c;color:#fff;font:700 12px var(--body);letter-spacing:.04em;padding:10px 14px;box-shadow:0 5px 18px rgba(0,0,0,.28);cursor:pointer}
 #opsLabBtn b{font:800 9px var(--mono);opacity:.8;margin-left:5px}
+/* not over any open sheet; and room at the bottom so the last tiles and cards scroll clear of it */
+body:has(#hxSheet:not([hidden]),#sheet:not([hidden]),#simSheet:not([hidden]),#repSheet:not([hidden])) #opsLabBtn{display:none}
+@media (max-width:1023px){body:has(#opsLabBtn) .wrap{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
+@media (min-width:1024px){#opsLabBtn{right:18px;bottom:16px}}
 #opsLab{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.5);display:none}
 #opsLab.open{display:block}
-#opsSheet{position:absolute;inset:auto 0 0;max-height:92vh;overflow:auto;background:var(--panel);color:var(--fg);border-radius:18px 18px 0 0;border-top:5px solid #c2410c;padding:14px 14px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 34px rgba(0,0,0,.3)}
+#opsSheet{position:absolute;inset:auto 0 0;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;background:var(--panel);color:var(--fg);border-radius:18px 18px 0 0;border-top:5px solid #c2410c;padding:14px 14px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 34px rgba(0,0,0,.3)}
+@media (min-width:768px){#opsSheet{inset:0 0 0 auto;width:min(520px,58vw);max-height:none;border-radius:16px 0 0 16px;border-top:0;border-left:5px solid #c2410c;padding:18px 18px 24px}}
 .opsHead{display:flex;align-items:center;justify-content:space-between;gap:8px}.opsHead h2{margin:0;font:800 21px var(--display);text-transform:uppercase}.opsClose{border:0;background:var(--soft);color:var(--fg);border-radius:50%;width:38px;height:38px;font-size:20px}
 .opsTabs{display:flex;gap:5px;overflow:auto;margin:10px 0}.opsTabs button{border:1px solid var(--rule);background:var(--panel);color:var(--muted);border-radius:8px;padding:7px 10px;font:600 12px var(--body);white-space:nowrap}.opsTabs button.on{background:var(--fg);color:var(--bg)}
 .opsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.opsCard{border:1px solid var(--rule);border-radius:10px;padding:9px;background:var(--panel)}.opsCard b{font:800 20px var(--mono)}.opsCard small{display:block;color:var(--muted);margin-top:2px}
@@ -114,7 +119,8 @@ root.addEventListener("click",e=>{
  if(e.target.closest("[data-back]")){selected=null;render();return}
  const sc=e.target.closest("[data-scenario]");if(sc){const m=root.querySelector("#opsScenarioMsg");window.mrtDevScenario={type:sc.dataset.scenario,armedAt:typeof simNow==="function"?simNow():Date.now(),passengerService:false};if(m)m.textContent="Armed in DEV memory only. The live timetable is unchanged; use the map/sandbox to exercise the movement.";return}
 });
-btn.onclick=()=>{root.classList.add("open");render()};root.querySelector(".opsClose").onclick=()=>root.classList.remove("open");root.addEventListener("click",e=>{if(e.target===root)root.classList.remove("open")});
+const syncLock=()=>window.mrtSyncSheetLock&&window.mrtSyncSheetLock();
+btn.onclick=()=>{root.classList.add("open");syncLock();render()};root.querySelector(".opsClose").onclick=()=>{root.classList.remove("open");syncLock()};root.addEventListener("click",e=>{if(e.target===root){root.classList.remove("open");syncLock()}});
 setInterval(()=>{if(root.classList.contains("open"))render()},5000);
-window.mrtOpsLab={open:()=>{root.classList.add("open");render()},liveTrains,history,stateFor};
+window.mrtOpsLab={open:()=>{root.classList.add("open");syncLock();render()},liveTrains,history,stateFor};
 })();

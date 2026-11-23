@@ -63,14 +63,14 @@
   const style = document.createElement("style");
   style.textContent = `
 #engBtn{position:relative}
-#engMask{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.42);display:none;padding:clamp(8px,3vw,24px);box-sizing:border-box;overflow:auto;
+#engMask{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.42);display:none;padding:clamp(8px,3vw,24px);box-sizing:border-box;overflow:hidden;
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
-#eng{max-width:720px;margin:2vh auto;background:var(--panel);color:var(--fg);border:1px solid var(--rule);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.42);overflow:hidden}
-#eng .engHead{position:sticky;top:0;z-index:2;padding:14px 16px;background:var(--panel);border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:12px}
+#eng{max-width:760px;max-height:calc(100dvh - clamp(16px,6vw,48px));margin:0 auto;display:flex;flex-direction:column;background:var(--panel);color:var(--fg);border:1px solid var(--rule);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.42);overflow:hidden}
+#eng .engHead{flex:0 0 auto;z-index:2;padding:14px 16px;background:var(--panel);border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:12px}
 #eng h2{margin:0;font:700 20px/1.1 var(--display)}
 #eng .engSub{margin:3px 0 0;color:var(--muted);font:500 12px var(--body)}
 #eng .engX{background:var(--soft);color:var(--fg);border:1px solid var(--rule);width:40px;height:40px;border-radius:12px;font-size:22px;line-height:1;cursor:pointer;flex:0 0 auto}
-#eng .engBody{padding:12px 16px 20px}
+#eng .engBody{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:12px 16px 20px}
 #eng .engLead{margin:0 0 10px;color:var(--muted);font:500 13px/1.4 var(--body)}
 #eng .engFilters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 #eng .engFilters input{grid-column:1/-1}
@@ -585,7 +585,8 @@
   function open() {
     opener = document.activeElement;
     mask.style.display = "block";
-    document.body.style.overflow = "hidden";
+    if (typeof window.mrtSyncSheetLock === "function") window.mrtSyncSheetLock();
+    else document.body.style.overflow = "hidden";
     fillLineSelects();
     render();
     const x = mask.querySelector(".engX");
@@ -594,7 +595,8 @@
   function close() {
     closeForm();
     mask.style.display = "none";
-    document.body.style.overflow = "";
+    if (typeof window.mrtSyncSheetLock === "function") window.mrtSyncSheetLock();
+    else document.body.style.overflow = "";
     if (opener && opener.focus) opener.focus();
   }
 

@@ -2,6 +2,7 @@
  * Live station cards are enabled only by MRT_DEV_FEATURES.
  * Source: LTA / data.gov.sg GeoJSON, refreshed roughly every 30 seconds.
  * Coordinates represent AVAILABLE taxis at a snapshot, not bookings, pickups, or vehicle tracking.
+ * Uses anonymous public HTTPS data, never an LTA DataMall AccountKey; no taxi requests in production.
  */
 (function(root){
   "use strict";
@@ -88,6 +89,15 @@
         pending = null;
         if (root.mapInfo && typeof root.mapInfo === "function") {
           try { root.mapInfo(); } catch (_) {}
+        }
+        // The full station sheet is a separate view from the small map panel.
+        // Update it too when an asynchronous taxi snapshot finishes loading.
+        if (root.hRender && typeof root.hRender === "function") {
+          try { root.hRender(); } catch (_) {}
+        }
+        // The normal mobile station drawer is #hxSheet, not the history sheet.
+        if (root.mrtStationSheetRefresh && typeof root.mrtStationSheetRefresh === "function") {
+          try { root.mrtStationSheetRefresh(); } catch (_) {}
         }
       }
     })();

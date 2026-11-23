@@ -37,7 +37,8 @@
 .rg-lab-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.rg-lab-h h2{margin:0;font:700 20px/1.1 var(--display,inherit)}.rg-lab-h button{width:40px;height:40px;border-radius:20px;border:0;background:var(--soft,#eee);color:inherit;font-size:20px}
 .rg-ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rg-ctl select,.rg-ctl input{border:1px solid var(--rule,#ccc);background:var(--bg,#fff);color:inherit;border-radius:8px;padding:5px 7px;font:13px var(--body,inherit)}
 .rg-tabs{display:flex;gap:4px;flex-wrap:wrap}.rg-tabs button{border:1px solid var(--rule,#ccc);background:var(--panel,#fff);color:inherit;border-radius:14px;padding:4px 10px;font:600 12px var(--body,inherit)}.rg-tabs button[aria-pressed=true]{background:var(--fg,#111);color:var(--panel,#fff)}
-.rg-body{flex:1;overflow:auto;overscroll-behavior:contain;font-size:13px}.rg-run{border-bottom:1px solid var(--rule,#e5e5e5);padding:6px 2px}.rg-run>summary{cursor:pointer;display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:baseline}
+.rg-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;font-size:13px}.rg-run{border-bottom:1px solid var(--rule,#e5e5e5);padding:6px 2px}.rg-run>summary{cursor:pointer;display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:baseline}
+@media (min-width:768px){.rg-lab{inset:20px auto;left:50%;transform:translateX(-50%);width:min(900px,calc(100vw - 40px));border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.45)}}
 .rg-run>summary b{font:700 13px var(--mono,monospace)}.rg-kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;margin:6px 0}.rg-kv dt{color:var(--muted,#666)}.rg-kv dd{margin:0}
 .rg-tbl{border-collapse:collapse;font-size:12px;width:100%}.rg-tbl td,.rg-tbl th{border-bottom:1px solid var(--rule,#e5e5e5);padding:3px 5px;text-align:left;vertical-align:top}.rg-tbl th{color:var(--muted,#666);font-weight:600}
 .rg-muted{color:var(--muted,#666);font-size:12px}`;
@@ -63,14 +64,20 @@
   const dayCss = () => { if (dayCssDone) return; dayCssDone = true; const s = document.createElement("style"); s.textContent = DAY_CSS; document.head.appendChild(s); };
   const mins = sec => { const m = Math.round(sec / 60); return m < 1 ? "under a minute" : m + " min"; };
 
+  // Scheduled passenger trips are the only input; no fixed enthusiast roster.
+  function journeyDuty(r) {
+    const estimate = RG.classifyDuty(r);
+    return {code: estimate.code, label: estimate.code === "Unclassified" ? L.NONE : L.POSSIBLE,
+      inference: "LTA timetable duty estimate: " + estimate.code, evidence: estimate.evidence};
+  }
+
   function runDayHTML(code, tid, nowSec) {
     try {
       css(); dayCss();
       const g = lineGraph(code); if (!g) return "";
       const t = g.trips.find(x => x.tid === tid); if (!t || !t.run) return "";
-      const r = t.run, i = t.index, rows = [], duty = RG.classifyDuty(r);
-      const proof = [{label: duty.code === "Unclassified" ? L.NONE : L.POSSIBLE,
-        inference: "LTA timetable duty estimate: " + duty.code, evidence: duty.evidence}, r.clsItem];
+      const r = t.run, i = t.index, rows = [];
+      const duty = journeyDuty(r), proof = [duty];
       const finalScheduledTrip = i === r.trips.length - 1;
       r.trips.forEach((x, k) => {
         if (k) {
@@ -97,20 +104,23 @@
   }
 
   /* ---------- feed changes: compare with the last timetable this phone saw ---------- */
+  let lastChecked = null;
   function checkFeed() {
     const T = tt(); if (!T || !T.lines) return;
-    const sig = `${T.feed && T.feed.built}|${(T.services || []).length}|${Object.values(T.lines).reduce((n, l) => n + (l.trips || []).length, 0)}|${JSON.stringify(T.except || {}).length}`;
-    const last = store.get("mrt.gtfs.feedSig", null);
-    if (last === sig) return;
+    if (lastChecked === T) return;
     const t0 = Date.now(), G = graph(), sum = RG.feedSummary(T, G), prev = store.get("mrt.gtfs.summary", null);
+    if (prev && prev.built === sum.built && JSON.stringify(prev) === JSON.stringify(sum)) {
+      lastChecked = T;
+      return;
+    }
     if (prev) {
-      const changes = RG.diffFeeds(prev, sum);
+      const changes = RG.diffFeeds(prev, sum, stationsOf);
       const rec = {at: Date.now(), from: prev.built, to: sum.built, changes};
       store.set("mrt.gtfs.diffs", [rec].concat(store.get("mrt.gtfs.diffs", [])).slice(0, 10));
       diag(changes.length ? "info" : "debug", `LTA timetable changed (${prev.built} → ${sum.built}): ${changes.length} change(s)`, changes.slice(0, 40));
     } else diag("info", `LTA timetable ${sum.built}: saved as the baseline for future comparisons`);
     for (const s of RG.specialServices(T, G)) diag("info", `Dated service: ${s.item.inference}`, {dates: s.dates, lines: s.lines, diff: s.diff});
-    store.set("mrt.gtfs.summary", sum); store.set("mrt.gtfs.feedSig", sig);
+    store.set("mrt.gtfs.summary", sum); lastChecked = T;
     diag("debug", `GTFS analysis built in ${Date.now() - t0} ms`);
   }
 
@@ -200,7 +210,7 @@
   }
   function changes() {
     const d = store.get("mrt.gtfs.diffs", []);
-    return d.length ? d.map(x => `<div class="rg-run"><b>${esc(x.from)} → ${esc(x.to)}</b> <span class="rg-muted">${esc(new Date(x.at).toISOString().slice(0, 16))}</span><ul>${x.changes.slice(0, 60).map(c => `<li>${esc(c.text)}${c.detail ? ` <span class="rg-muted">${esc(c.detail)}</span>` : ""}</li>`).join("") || "<li>No differences</li>"}</ul></div>`).join("")
+    return d.length ? d.map(x => `<div class="rg-run"><b>${esc(x.from)} → ${esc(x.to)}</b> <span class="rg-muted">${esc(new Date(x.at).toISOString().slice(0, 16))}</span><ul>${x.changes.map(c => `<li>${esc(c.text)}${c.detail ? ` <span class="rg-muted">${esc(c.detail)}</span>` : ""}</li>`).join("") || "<li>No differences</li>"}</ul></div>`).join("")
       : "<p>No timetable change seen yet on this phone. The first timetable is kept as the baseline; the next one LTA publishes is compared with it.</p>";
   }
   function rt() {
