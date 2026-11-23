@@ -183,9 +183,10 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
           + (train[0].run ? " (slot " + train[0].run + ")" : "")
         : "Special services announced; individual trips not verified in the loaded LTA feed") + "</li>";
     }).join("");
-    return '<div style="font-size:12px;line-height:1.45;color:var(--fg,#1f2937)">' +
-      '<b>Special MRT operations · Sun 6 Dec 2026</b>' +
-      '<div>BYD Singapore International Marathon: selected NSL, EWL and CCL services from 02:30 to 04:30. ' +
+    // One line until it's tapped: it shows above every screen for two weeks, so it mustn't take a quarter of a phone
+    return '<details style="font-size:12px;line-height:1.45;color:var(--fg,#1f2937)"><summary style="cursor:pointer">' +
+      '<b>Special MRT operations · Sun 6 Dec 2026</b> · Marathon: early NSL, EWL and CCL trains from 02:30</summary>' +
+      '<div style="margin-top:4px">BYD Singapore International Marathon: selected NSL, EWL and CCL services from 02:30 to 04:30. ' +
       'SMRT announced 15-minute intervals and complimentary rides for the public; the final early departures ' +
       'from Bukit Batok, Jurong East, Tanah Merah and Serangoon are at 04:30.</div>' +
       '<details style="margin-top:4px"><summary style="cursor:pointer">Routes and GTFS verification</summary>' +
@@ -194,7 +195,7 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
       '<small>GTFS detection does not prove an individual train is part of the marathon service. ' +
       'No train position or departure is generated from the announcement. Feed date: ' +
       (report.timetableBuilt || "unavailable") +
-      '. <a href="' + ev.url + '" rel="noopener noreferrer" target="_blank">Official event FAQ</a></small></details></div>';
+      '. <a href="' + ev.url + '" rel="noopener noreferrer" target="_blank">Official event FAQ</a></small></details></details>';
   }
   function render() {
     if (typeof document === "undefined") return;
@@ -212,7 +213,7 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
     box.id = "mrt-special-event-2026";
     box.dataset.signature = signature;
     box.setAttribute("role", "status");
-    box.style.cssText = "margin:8px 0;padding:10px 12px;background:var(--panel,#fff);border:1px solid var(--rule,#d6dce3);border-left:4px solid #f59e0b;border-radius:9px;";
+    box.style.cssText = "margin:6px 0;padding:7px 12px;background:var(--panel,#fff);border:1px solid var(--rule,#d6dce3);border-left:4px solid #f59e0b;border-radius:9px;";
     box.innerHTML = htmlNotice(report);
     if (!el) header.parentNode.insertBefore(box, header.nextSibling);
   }

@@ -4673,10 +4673,11 @@ function mapDraw(){
     ctx.strokeStyle = MC[c]; ctx.setLineDash([]); ctx.beginPath();
     for (let i = 0; i < act - 1; i++) path(c, i);
     ctx.stroke();
-    if (act < L.stations.length){   // opening later: dashed
+    if (act < L.stations.length){   // opening later: dashed (a line that's all future, fainter: it's a plan, not a service)
       ctx.setLineDash([lw * 1.2, lw * 1.4]); ctx.beginPath();
       for (let i = Math.max(0, act - 1); i < L.stations.length - 1; i++) path(c, i);
-      ctx.stroke(); ctx.setLineDash([]);
+      if (L.future) ctx.globalAlpha = 0.5;
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
   }
   try { drawExits(ctx, zoom); } catch(e){}
@@ -4738,7 +4739,9 @@ function mapDraw(){
       // code pills: the selected station, and interchanges once zoomed in enough to have room
       const x = sx(e.x), y = sy(e.y), off = r * 1.6 + 3;
       if (x < -50 || x > mW + 50 || y < -20 || y > mH + 20) continue;
-      const all = e.name === selName || (e.ix && zoom >= 5) ? e.codes.map(c => [c.line, c.code]) : null, pfs = fs - 1.5;
+      // code pills: the platforms that are open (a station that isn't open at all shows its own codes)
+      const openCodes = e.codes.filter(c => c.idx < activeStations(LINES[c.line], now.iso).length), shown = openCodes.length ? openCodes : e.codes;
+      const all = e.name === selName || (e.ix && zoom >= 5) ? shown.map(c => [c.line, c.code]) : null, pfs = fs - 1.5;
       ctx.font = `600 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`;
       const tw = ctx.measureText(e.name).width;
       label: for (const codes of all ? [all, null] : [null]){           // no room for the pills: just the name, as before
