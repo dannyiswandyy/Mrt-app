@@ -234,3 +234,6 @@ main();
 // Opening-day station, geometry and passenger/test distinction are build-critical.
 const opening = spawnSync(process.execPath, ["--test", path.join(__dirname, "extension-opening.test.mjs")], {stdio:"inherit"});
 if (opening.status !== 0) process.exit(1);
+// Keep scheduled station dwell and GTFS-Realtime door-close timings in sync with MRT Dev.
+const dwellSync = spawnSync(process.execPath, ["--test", path.join(__dirname, "dwell-sync.test.mjs")], {stdio:"inherit"});
+if (dwellSync.status !== 0) process.exit(1);
