@@ -6,7 +6,7 @@ name: Deploy MRT Tracker website
 on:
   push:
     branches: [main]
-    paths: ['web/**', 'tools/**']
+    paths: ['web/**', 'tools/**', 'tests/**', '.github/workflows/deploy-web.yml']
   workflow_dispatch:
   # Rebuild the published LTA GTFS timetable every hour (at minute 17 UTC).
   # GitHub scheduled jobs may start late; keep the last good schedule if LTA is unavailable.
@@ -167,6 +167,7 @@ jobs:
         run: |
           node tests/timetable-check.js
           node --test tests/future-lines.test.mjs
+          node --test tests/dwell-sync.test.mjs
       - name: Page starts and doesn't freeze (headless Chrome)
         run: |
           npm install --no-save --no-package-lock --silent playwright@1.49.1
