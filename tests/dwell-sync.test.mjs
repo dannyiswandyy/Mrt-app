@@ -5,9 +5,9 @@ import {test} from "node:test";
 import {readFileSync} from "node:fs";
 
 const page = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
-const planned = page.match(/function ttState\\(r, sec, clock\\)\\{[\\s\\S]*?\\n\\}/)?.[0];
-const realtime = page.match(/function rtLivePosition\\(line, r, sec\\)\\{[\\s\\S]*?\\n\\}/)?.[0];
-const doorClose = Number(page.match(/const DOOR_CLOSE\\s*=\\s*(\\d+(?:\\.\\d+)?)/)?.[1]);
+const planned = page.match(/function ttState\(r, sec, clock\)\{[\s\S]*?\n\}/)?.[0];
+const realtime = page.match(/function rtLivePosition\(line, r, sec\)\{[\s\S]*?\n\}/)?.[0];
+const doorClose = Number(page.match(/const DOOR_CLOSE\s*=\s*(\d+(?:\.\d+)?)/)?.[1]);
 
 test("train movement functions and shared door-close timing are present", () => {
   assert.ok(planned, "scheduled train-position function missing");
