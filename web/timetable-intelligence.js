@@ -1,4 +1,5 @@
-/* All-line LTA timetable intelligence. Scheduled trips are not GPS positions or physical trainset IDs.
+/* All-line LTA timetable intelligence. Direction-aware MRT trip timelines and LRT route/time breakdowns.
+ * Scheduled trips are not GPS positions or physical trainset IDs.
  * MRT: group trip_id by (service_id, run number). LRT: trip_id is a trip sequence, NOT a run.
  * Keeps a small local per-device baseline so feed updates can be compared without uploading data.
  */
@@ -243,7 +244,8 @@
     if (!mask) setup();
     selectedDate=today();
     mask.hidden=false;
-    document.body.style.overflow="hidden";
+    if (typeof window.mrtSyncSheetLock === "function") window.mrtSyncSheetLock();
+    else document.body.style.overflow="hidden";
     checkFeed(true);
     var picker=mask.querySelector("#ttiDate"), line=mask.querySelector("#ttiChooseLine");
     picker.value=selectedDate;
@@ -253,11 +255,11 @@
     line.value=selected;
     render();
   }
-  function close() { if (!mask || mask.hidden) return false; mask.hidden=true; document.body.style.overflow=""; return true; }
+  function close() { if (!mask || mask.hidden) return false; mask.hidden=true; if (typeof window.mrtSyncSheetLock === "function") window.mrtSyncSheetLock(); else document.body.style.overflow=""; return true; }
   function setup() {
     if (mask || !document.body) return;
     var style=document.createElement("style");
-    style.textContent="#ttiMask{position:fixed;inset:0;background:#0009;z-index:10500;display:grid;place-items:center;padding:12px}#ttiMask[hidden]{display:none}#ttiPanel{max-width:810px;width:100%;max-height:92dvh;overflow:auto;background:var(--panel,#171b23);color:var(--fg,#fff);border:1px solid var(--rule,#556);border-radius:16px;padding:18px;font:14px var(--body,system-ui)}#ttiPanel h2{font-size:20px;margin:0}#ttiPanel h3{margin:18px 0 6px;font-size:17px}#ttiPanel h4{margin:16px 0 6px;font-size:14px}#ttiPanel p{line-height:1.5}#ttiPanel .tti-note,#ttiPanel small{color:var(--muted,#aaa);font-size:12px;display:block}#ttiPanel .tti-head{display:flex;justify-content:space-between;align-items:center;gap:10px}#ttiPanel button,#ttiPanel select,#ttiPanel input{font:inherit;border:1px solid var(--rule,#667);border-radius:9px;padding:8px;background:var(--bg,#222);color:inherit}#ttiPanel .tti-controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}#ttiPanel .tti-lines{display:flex;gap:5px;flex-wrap:wrap}#ttiPanel .tti-line{display:flex;flex-direction:column;font-size:11px;gap:2px;cursor:pointer}#ttiPanel .tti-line[aria-pressed=true]{outline:2px solid var(--DTL,#168abd)}#ttiPanel .tti-items{padding-left:20px;max-height:260px;overflow:auto}#ttiPanel li{margin:6px 0;line-height:1.45}#ttiPanel details{margin:12px 0}#ttiHome{font-size:13px;text-align:left;display:flex;flex-direction:column;gap:5px;cursor:pointer}";
+    style.textContent="#ttiMask{position:fixed;inset:0;background:#0009;z-index:10500;display:grid;place-items:center;padding:12px}#ttiMask[hidden]{display:none}#ttiPanel{max-width:810px;width:100%;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;background:var(--panel,#171b23);color:var(--fg,#fff);border:1px solid var(--rule,#556);border-radius:16px;padding:18px;font:14px var(--body,system-ui)}#ttiPanel h2{font-size:20px;margin:0}#ttiPanel h3{margin:18px 0 6px;font-size:17px}#ttiPanel h4{margin:16px 0 6px;font-size:14px}#ttiPanel p{line-height:1.5}#ttiPanel .tti-note,#ttiPanel small{color:var(--muted,#aaa);font-size:12px;display:block}#ttiPanel .tti-head{display:flex;justify-content:space-between;align-items:center;gap:10px}#ttiPanel button,#ttiPanel select,#ttiPanel input{font:inherit;border:1px solid var(--rule,#667);border-radius:9px;padding:8px;background:var(--bg,#222);color:inherit}#ttiPanel .tti-controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}#ttiPanel .tti-lines{display:flex;gap:5px;flex-wrap:wrap}#ttiPanel .tti-line{display:flex;flex-direction:column;font-size:11px;gap:2px;cursor:pointer}#ttiPanel .tti-line[aria-pressed=true]{outline:2px solid var(--DTL,#168abd)}#ttiPanel .tti-items{padding-left:20px;max-height:260px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}#ttiPanel li{margin:6px 0;line-height:1.45}#ttiPanel details{margin:12px 0}#ttiHome{font-size:13px;text-align:left;display:flex;flex-direction:column;gap:5px;cursor:pointer}";
     document.head.appendChild(style);
     mask=document.createElement("div"); mask.id="ttiMask"; mask.hidden=true;
     mask.innerHTML='<section id="ttiPanel" role="dialog" aria-modal="true" aria-label="All-line timetable intelligence"><div class="tti-head"><h2>Timetable intelligence</h2><button type="button" data-close="1" aria-label="Close">×</button></div><div class="tti-controls"><select id="ttiChooseLine" aria-label="Line"></select><input id="ttiDate" type="date" aria-label="Service date"><button type="button" data-refresh="1">Check timetable</button></div><div id="ttiBody"></div></section>';
@@ -275,25 +277,49 @@
     });
     document.addEventListener("keydown",function(e){if(e.key==="Escape")close();});
   }
-  // The production website and public APK share the intelligence engine but do not
-  // expose the experimental analysis drawer or its Home shortcut.
+  // The timetable is an intelligence layer for the existing tracker, not a separate Home tab.
+  // Only the detailed comparison/roster diagnostics remain available under Settings → Dev tools.
+  // Public retains the shared timetable engine, while the Dev diagnostics drawer stays hidden.
   function mount() {
     if (window.MRT_PRODUCTION === true || window.MRT_DEV_FEATURES !== true) {
       var old=document.querySelector("#ttiHome");
-      if (old) old.remove();
+      if(old)old.remove();
       checkFeed(false);
       return;
     }
     setup();
-    var home=document.querySelector("#viewHome .tiles"), old=document.querySelector("#ttiHome");
-    if(home&&!old){
-      var btn=document.createElement("button");btn.type="button";btn.id="ttiHome";btn.className="planner-quick";
-      btn.innerHTML='<b>Timetable intelligence</b><span>All MRT &amp; LRT routes, duty changes and schedule checks</span>';
-      btn.addEventListener("click",open);home.appendChild(btn);
-    } else if(old)old.onclick=open;
+    var old=document.querySelector("#ttiHome");
+    if(old)old.remove();
     checkFeed(false);
   }
-  window.mrtTimetableIntelligence={open:open,close:close,inspectDay:function(code,date){return inspectDay(timetable(),code,date||today());},
+  function trainSummary(code, train, now) {
+    try {
+      var r=train && train.ref, p=r && r.p;
+      if (!r || !p || !p.arr || !p.dep || !p.arr.length) return "";
+      var st=lineDefs()[code] && lineDefs()[code].stations;
+      if (!st || !st.length) return "";
+      var clock=Number(now && now.mins)*60;
+      if (!Number.isFinite(clock)) return "";
+      var slot=slotOf(code,r.tid), end=p.f+p.d*(p.arr.length-1);
+      var next=[];
+      for(var k=0;k<p.arr.length;k++){
+        var idx=p.f+p.d*k, station=st[idx];
+        if (!station) continue;
+        var a=r.s+Number(p.arr[k]), d=r.s+Number(p.dep[k]);
+        if (!Number.isFinite(a)||!Number.isFinite(d)||d<clock-15) continue;
+        var label=clock<a ? "ARRIVING" : clock<d ? "ARRIVED" : "DEPARTING";
+        next.push('<span>'+esc(station[1])+' '+esc(hhmm(a))+
+          (d>a ? '–'+esc(hhmm(d)) : '')+(next.length===0 ? ' · '+label : '')+'</span>');
+        if(next.length===3) break;
+      }
+      if(!next.length)return "";
+      var route=esc(nameOf(code,p.f))+' → '+esc(nameOf(code,end));
+      var duty=slot ? ' · scheduled duty '+esc(slot) : "";
+      return '<small class="posnote"><b>GTFS scheduled journey</b> · '+route+duty+
+        '<br>'+next.join(' · ')+'<br><span class="muted">LTA timetable prediction, not GPS or a confirmed physical trainset.</span></small>';
+    } catch(_){return "";}
+  }
+  window.mrtTimetableIntelligence={open:open,close:close,trainSummary:trainSummary,inspectDay:function(code,date){return inspectDay(timetable(),code,date||today());},
     fingerprint:fingerprint,compare:compare,check:checkFeed,setRoster:setRoster,
     compareRoster:function(code,date){return compareRoster(timetable(),code,date||today());},
     coverage:["NSL","EWL","CG","NEL","CCL","DTL","TEL","BP","SE","SW","PE","PW"]};

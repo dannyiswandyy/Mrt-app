@@ -556,28 +556,51 @@
 
   /* ---------- feed summaries and what changed between two ---------- */
   function feedSummary(TT, G) {
-    const s = {built: TT.feed && TT.feed.built || "", services: {}, except: TT.except || {}, lines: {}};
+    const dateExceptions = {};
+    for (const [day, entries] of Object.entries(TT.except || {})) {
+      dateExceptions[day] = entries.map(([index, type]) => [TT.services?.[index]?.[0] || String(index), type]);
+    }
+    const s = {dateExceptions, built: TT.feed && TT.feed.built || "", services: {}, except: TT.except || {}, lines: {}};
     for (const x of TT.services || []) s.services[x[0]] = `${x[1]} ${x[2]}-${x[3]}`;
     for (const [code, g] of Object.entries((G || build(TT)).lines)) {
       const per = {};
       for (const t of g.trips) {
         const p = per[t.service] || (per[t.service] = {trips: 0, runs: new Set(), first: Infinity, last: 0, routes: new Set()});
+        if (!p.departures) p.departures = Object.create(null);
+        for (const leg of t.legs) {
+          const pattern = TT.lines[code].pats[leg.pi];
+          for (let i = 0; i + 1 < pattern[3].length; i++) {
+            const station = pattern[0] + i * pattern[1];
+            const key = station + "/" + pattern[1], sec = leg.s + pattern[3][i];
+            const last = p.departures[key];
+            if (!last || sec > last[0]) p.departures[key] = [sec, t.id.run];
+          }
+        }
         p.trips++; if (t.id.run != null) p.runs.add(t.id.run);
         p.first = Math.min(p.first, t.dep); p.last = Math.max(p.last, t.arr);
         p.routes.add(t.route || `${t.origin}>${t.dest}`);
       }
       s.lines[code] = {};
-      for (const [k, p] of Object.entries(per)) s.lines[code][k] = {trips: p.trips, runs: [...p.runs].sort(), first: hms(p.first), last: hms(p.last), routes: [...p.routes].sort()};
+      for (const [k, p] of Object.entries(per)) s.lines[code][k] = {trips: p.trips, runs: [...p.runs].sort(), first: hms(p.first), last: hms(p.last), routes: [...p.routes].sort(), departures: p.departures};
     }
     return s;
   }
-  function diffFeeds(a, b) {
+  function diffFeeds(a, b, stationsOf) {
     const ch = [];
     const add = (kind, text, detail) => ch.push({kind, text, detail});
     for (const k of Object.keys(b.services)) if (!(k in a.services)) add("service-new", `New service ${k}`, b.services[k]);
     for (const k of Object.keys(a.services)) if (!(k in b.services)) add("service-removed", `Service ${k} removed`, a.services[k]);
     for (const k of Object.keys(b.services)) if (k in a.services && a.services[k] !== b.services[k]) add("service-changed", `Service ${k} calendar changed`, `${a.services[k]} → ${b.services[k]}`);
     if (JSON.stringify(a.except) !== JSON.stringify(b.except)) add("calendar-dates", "calendar_dates changed", `${Object.keys(a.except).length} → ${Object.keys(b.except).length} dates with exceptions`);
+    if (a.dateExceptions && b.dateExceptions) {
+      for (const day of new Set([...Object.keys(a.dateExceptions), ...Object.keys(b.dateExceptions)])) {
+        const old = new Map(a.dateExceptions[day] || []), next = new Map(b.dateExceptions[day] || []);
+        const rule = v => v === 1 ? "added" : v === 2 ? "removed" : "regular calendar";
+        for (const id of new Set([...old.keys(), ...next.keys()])) {
+          if (old.get(id) !== next.get(id)) add("dated-service", `${day} · ${id}`, rule(old.get(id)) + " → " + rule(next.get(id)));
+        }
+      }
+    }
     for (const code of new Set(Object.keys(a.lines).concat(Object.keys(b.lines)))) {
       const A = a.lines[code] || {}, B = b.lines[code] || {};
       for (const svc of new Set(Object.keys(A).concat(Object.keys(B)))) {
@@ -589,6 +612,19 @@
         if (newRuns.length || goneRuns.length) add("runs", `${w}: runs ${x.runs.length} → ${y.runs.length}`, `new ${newRuns.join(" ") || "none"}; removed ${goneRuns.join(" ") || "none"}`);
         if (x.first !== y.first) add("first-train", `${w}: first train ${x.first} → ${y.first}`);
         if (x.last !== y.last) add("last-train", `${w}: last arrival ${x.last} → ${y.last}`);
+        if (x.departures && y.departures) {
+          const stations = stationsOf && stationsOf(code);
+          for (const key of new Set([...Object.keys(x.departures), ...Object.keys(y.departures)])) {
+            const before = x.departures[key], after = y.departures[key];
+            if (before && after && before[0] === after[0] && before[1] === after[1]) continue;
+            const [station, step] = key.split("/").map(Number);
+            const name = stations?.[station]?.[1] || `station #${station}`;
+            const next = stations?.[station + step]?.[1];
+            const describe = entry => entry ? hms(entry[0]) + (entry[1] ? " · slot " + entry[1] : "") : "no departure";
+            add("station-last", `${w}: last departure at ${name}${next ? " toward " + next : ""}`,
+              `${describe(before)} → ${describe(after)}`);
+          }
+        }
         const pa = new Set(x.routes), pb = new Set(y.routes), np = y.routes.filter(r => !pa.has(r)), gp = x.routes.filter(r => !pb.has(r));
         if (np.length || gp.length) add("routes", `${w}: route patterns changed`, `new ${np.join(", ") || "none"}; removed ${gp.join(", ") || "none"}`);
       }
