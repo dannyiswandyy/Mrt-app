@@ -2215,17 +2215,25 @@ function headway(L, t, weekend, code, dir = 0, day){
   if (isPeak(t, weekend)) return L.peak;
   return L.off;
 }
+// DTL3e/TEL5 begins passenger service at noon Singapore time on 26 Dec 2026.
+// Keep the route geometry visible before opening, but do not advertise passenger trains there.
+function stationServiceOpen(st, iso){
+  if (!st[2]) return true;
+  if (st[2] === "TBA" || iso < st[2]) return false;
+  if (st[2] === OPEN_TEL5 && iso === OPEN_TEL5) return sgNow().mins >= 720;
+  return true;
+}
 function activeStations(L, iso){
   if (window.MRT_DEV_FEATURES && window.mrtDevScenario && window.mrtDevScenario.type === "testing" &&
       (L === LINES.DTL || L === LINES.TEL)) return L.stations.filter(s => s[2] !== "TBA");
-  return L.stations.filter(s => !s[2] || iso >= s[2]);
+  return L.stations.filter(s => stationServiceOpen(s, iso));
 }
 /* When a station that isn't open yet opens: a date ("2026-12-26"), or "TBA" with the line's expected month. */
 /* The line board's notice for a line's stations that aren't open yet, grouped by when they open, and the new
    stations planned on it (future-lines.js "infill"). "" if there are none. */
 function futureNotice(L, iso){
   const groups = [];
-  for (const st of L.stations.filter(x => x[2] && iso < x[2])){
+  for (const st of L.stations.filter(x => x[2] && !stationServiceOpen(x, iso))){
     const t = opensText(L, st), g = groups.find(x => x.t === t);
     g ? g.n.push(st[1]) : groups.push({t, n: [st[1]]});
   }
@@ -2246,6 +2254,7 @@ function opensText(L, st, short){
     if (/^(by|with) /.test(ex)) return short ? "Expected " + ex : `${ex} (expected)`;
     return short ? "Expected " + ex.replace(/^the /, "") : `in ${ex} (expected)`;
   }
+  if (st[2] === OPEN_TEL5) return short ? "Opens 26 Dec · 12 noon" : "on 26 December 2026 at 12 noon (SGT)";
   const [y, m, d] = st[2].split("-").map(Number);
   return short ? `Opens ${d} ${LONG_MONTHS[m - 1].slice(0, 3)}` : `on ${d} ${LONG_MONTHS[m - 1]} ${y}`;
 }
@@ -3489,7 +3498,7 @@ function tick(){
     <b>${L.name}</b>${L.future ? "" : `<button type="button" class="hb" data-hline="${current}">History</button>`}${""}
     ${notOpen ? `<span>Not open yet · ${L.future && L.when ? "expected " + esc(L.when) : "passenger service expected " + opensText(L, L.stations[0]).replace(" (expected)", "")}</span>` : `<span>${inService ? `${running.length} train${running.length === 1 ? "" : "s"} running${hwText != null ? ` · every ${hwText} min` : ""}${peak ? " (peak)" : ""}${!official && L.shuttle ? ` · ${shuttleTrains(L, t, now.weekend)}-train shuttle` : ""}` : closed}
       · <span class="src">${official ? "LTA timetable" : "estimated"} for ${dayText(now)}</span>${current === "NSL" && window.spotNote && spotNote() ? ` · <span class="src">${spotNote()}</span>` : ""}</span>`}`);
-  const fut = L.stations.filter(s => s[2] && now.iso < s[2]);
+  const fut = L.stations.filter(s => s[2] && !stationServiceOpen(s, now.iso));
   setHTML($("notice"), notOpen && L.future ? `<div class="notice">The ${esc(L.name)} isn't open yet. ${esc(L.about || "")} No trains are shown until it opens.</div>`
     : notOpen ? `<div class="notice">The ${L.name} isn't open yet. Trains between ${L.stations[0][1]} and ${L.stations[L.stations.length-1][1]} are expected to start ${opensText(L, L.stations[0]).replace(" (expected)", "")}.</div>`
     : fut.length || L.planned ? `<div class="notice">${esc(futureNotice(L, now.iso))}</div>` : "");
@@ -6103,7 +6112,7 @@ function hStations(k){
   for (const c of hCodes(k)) for (const s of LINES[c].stations) if (!seen.has(s[0])) seen.set(s[0], s);
   return [...seen.values()];
 }
-const hSoon = d => d > sgNow().iso;
+const hSoon = d => d === OPEN_TEL5 ? !stationServiceOpen(["", "", OPEN_TEL5], sgNow().iso) : d > sgNow().iso;
 /* Every station name, with its codes (deduplicated), A–Z. */
 const H_NAMES = Object.keys(byName).sort((a, b) => a.localeCompare(b));
 function hCodesOf(name){
@@ -6611,7 +6620,7 @@ function aOpened(e){
   for (const x of e.codes){
     if (seen.has(x.code)) continue; seen.add(x.code);
     const st = LINES[x.line].stations[x.idx];
-    if (st[2] && sgNow().iso < st[2]) out.push({code: x.code, line: x.line, opens: opensText(LINES[x.line], st)});
+    if (st[2] && !stationServiceOpen(st, sgNow().iso)) out.push({code: x.code, line: x.line, opens: opensText(LINES[x.line], st)});
     else if (H_OPEN[x.code]) out.push({code: x.code, line: x.line, opened: hDate(H_OPEN[x.code].date), how: H_OPEN[x.code].how});
   }
   return out;
@@ -6629,7 +6638,7 @@ function aLineFacts(k, now){
     return {code: c, name: L.name, open: true, inService, running, every: inService && hw != null ? (hw < 10 ? Math.round(hw * 2) / 2 : Math.round(hw)) : null,
       src: official ? "LTA timetable" : "estimated", stations: new Set(act.map(s => s[0])).size, from: act[0][1], to: L.loop ? act[0][1] : act[act.length - 1][1], loop: !!L.loop,
       firstA: a && a.first, lastA: a && a.last, firstB: b && b.first, lastB: b && b.last,
-      soon: L.stations.filter(s => s[2] && now.iso < s[2]).map(s => ({name: s[1], code: s[0], opens: opensText(L, s)}))};
+      soon: L.stations.filter(s => s[2] && !stationServiceOpen(s, now.iso)).map(s => ({name: s[1], code: s[0], opens: opensText(L, s)}))};
   });
   const fleet = [...new Map(aCodesOf(k).flatMap(c => FLEET[c] || []).map(f => [f[0], f])).values()];
   return {k, name: aLineName(k), op: H && H.op, opened: H && H.opened, driverless: H && H.auto, parts, fleet, H};

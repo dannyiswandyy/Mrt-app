@@ -64,3 +64,25 @@ test("ChatGPT's separate future-rail layer is gone", () => {
 if (dev) test("the app's timetable station list stays as tools/lines.json (no future stations)", () => {
   assert.match(page, /stations: LINES\[c\]\.stations\.filter\(x => x\[2\] !== "TBA"\)\.map\(x => \[x\[0\], x\[1\]\]\)/);
 });
+
+
+test("DTL3e and TEL5 passenger service opens at noon Singapore time, not midnight", () => {
+  assert.match(page, /const OPEN_TEL5 = "2026-12-26"/);
+  const src = page.match(/function stationServiceOpen\\(st, iso\\)\\s*\\{[\\s\\S]*?\\n\\}/);
+  assert.ok(src, "opening-time gate exists");
+  const clock = {mins: 0};
+  const stationOpen = new Function("OPEN_TEL5", "sgNow", src[0] + "; return stationServiceOpen;")("2026-12-26", () => clock);
+  for (const code of ["TE30", "TE31", "DT36", "DT37"]){
+    const st = [code, code, "2026-12-26"];
+    assert.equal(stationOpen(st, "2026-12-25"), false, code + " preopening day");
+    clock.mins = 719.99;
+    assert.equal(stationOpen(st, "2026-12-26"), false, code + " at 11:59 SGT");
+    clock.mins = 720;
+    assert.equal(stationOpen(st, "2026-12-26"), true, code + " at noon SGT");
+    clock.mins = 0;
+    assert.equal(stationOpen(st, "2026-12-27"), true, code + " after opening");
+  }
+  assert.equal(stationOpen(["DT35", "Expo"], "2026-12-25"), true);
+  assert.equal(stationOpen(["TE32", "Future", "TBA"], "2035-01-01"), false);
+  assert.match(page, /Opens 26 Dec · 12 noon/);
+});
