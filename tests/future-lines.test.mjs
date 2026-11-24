@@ -68,7 +68,7 @@ if (dev) test("the app's timetable station list stays as tools/lines.json (no fu
 
 test("DTL3e and TEL5 passenger service opens at noon Singapore time, not midnight", () => {
   assert.match(page, /const OPEN_TEL5 = "2026-12-26"/);
-  const src = page.match(/function stationServiceOpen\\(st, iso\\)\\s*\\{[\\s\\S]*?\\n\\}/);
+  const src = page.match(/function stationServiceOpen\(st, iso\)\s*\{[\s\S]*?\n\}/);
   assert.ok(src, "opening-time gate exists");
   const clock = {mins: 0};
   const stationOpen = new Function("OPEN_TEL5", "sgNow", src[0] + "; return stationServiceOpen;")("2026-12-26", () => clock);
