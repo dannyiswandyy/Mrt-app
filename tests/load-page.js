@@ -50,8 +50,14 @@ function extractScript(html) {
   throw new Error("page has no timetable script");
 }
 
-function loadPage(html) {
+/* nowMs: the time the page takes as "now" (its clock), so a check of fixed days doesn't depend on the day it runs:
+   the page reads today's date for things like which stations are open (TEL5 and DTL3e open on 26 Dec 2026). */
+function loadPage(html, nowMs) {
   const src = extractScript(html);
+  const PageDate = nowMs == null ? Date : class extends Date {
+    constructor(...a) { super(...(a.length ? a : [nowMs])); }
+    static now() { return nowMs; }
+  };
   const document = {
     getElementById: element,
     querySelector: element,
@@ -74,7 +80,7 @@ function loadPage(html) {
     requestAnimationFrame() { return 0; },
     MutationObserver: class { observe() {} disconnect() {} },
     ResizeObserver: class { observe() {} disconnect() {} },
-    Map, Set, WeakMap, Promise, Date, Math, JSON, Object, Array, Number, String,
+    Map, Set, WeakMap, Promise, Date: PageDate, Math, JSON, Object, Array, Number, String,
     Boolean, RegExp, Error, Symbol, parseInt, parseFloat, isNaN, isFinite,
     encodeURIComponent, decodeURIComponent, URL, URLSearchParams, atob, btoa, Intl,
     fetch: async () => { throw new Error("network is not used by the timetable checks"); },

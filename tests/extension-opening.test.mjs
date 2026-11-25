@@ -15,6 +15,11 @@ if (ui < 0) throw new Error("Model/UI boundary missing");
 const sandbox = {window: {}, console};
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
+// The page reads the clock (TEL5 and DTL3e open at 12 noon SGT on 26 Dec), so the checks set the time themselves
+// instead of using whenever the test happens to run: before, the opening-day check failed every morning from 3am to
+// noon SGT (and with it the website deploy and app build safety checks) and passed in the afternoon.
+vm.runInContext("const __realNow = Date.now.bind(Date); Date.now = () => globalThis.__now ?? __realNow();", sandbox);
+const at = when => { sandbox.__now = Date.parse(when); };
 vm.runInContext(main.slice(0, ui) +
   "\n;globalThis.__opening = { LINES, OPEN_TEL5, activeStations };", sandbox);
 const {LINES, OPEN_TEL5, activeStations} = sandbox.__opening;
@@ -28,11 +33,16 @@ test("TEL5 and DTL3e use the confirmed 26 December opening date", () => {
 });
 
 test("stations stay closed on 25 Dec and open on 26 Dec, with transfer on both lines", () => {
+  at("2026-12-25T23:00:00+08:00");
   const beforeTel = activeStations(LINES.TEL,"2026-12-25");
   const beforeDtl = activeStations(LINES.DTL,"2026-12-25");
   assert.equal(beforeTel.at(-1)[0],"TE29");
   assert.equal(beforeDtl.at(-1)[0],"DT35");
-  for (const date of ["2026-12-26", "2026-12-27"]) {
+  at("2026-12-26T11:59:00+08:00");                           // opening day, before noon: still closed
+  assert.equal(activeStations(LINES.TEL,"2026-12-26").at(-1)[0],"TE29");
+  assert.equal(activeStations(LINES.DTL,"2026-12-26").at(-1)[0],"DT35");
+  for (const [date, when] of [["2026-12-26", "2026-12-26T12:00:00+08:00"], ["2026-12-27", "2026-12-27T08:00:00+08:00"]]) {
+    at(when);
     assert.equal(activeStations(LINES.TEL,date).at(-1)[0],"TE31");
     assert.equal(activeStations(LINES.DTL,date).at(-1)[0],"DT37");
     assert.equal(activeStations(LINES.TEL,date).at(-1)[1],

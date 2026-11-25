@@ -53,6 +53,10 @@ const ROSTERS = {
 };
 const CG_TRAINS = [[0, 2], [1020, 3], [1200, 2]];
 
+/* The page's clock during the checks: in the same weeks as the days checked below. Left to the real date, the
+   checks broke when the Downtown Line's DTL3e stretch opened (26 Dec 2026, 12 noon): the page counts the stations
+   open today, so the Downtown Line had its new stations on the November days checked here. */
+const TODAY = Date.parse("2026-11-12T12:00:00+08:00");
 const LINES = ["NSL", "EWL", "CG", "NEL", "CCL", "DTL", "TEL"];
 const DAYS = [
   ["weekday", "2026-11-12", 4],
@@ -210,13 +214,13 @@ function main() {
   checkDutyThreshold();
   const html = pageHtml();
   checkFingerprints(html, "web/index.html");
-  const web = loadPage(html);
+  const web = loadPage(html, TODAY);
   checkRosters(web, "website");
   checkCases(web, "website");
 
   const packed = embeddedHtml();
   if (!packed.includes("function headway") || !packed.includes("NSL_TRAINS")) fail("Android page has no timetable script");
-  const app = loadPage(packed);
+  const app = loadPage(packed, TODAY);
   checkRosters(app, "packed page");
   checkCases(app, "packed page");
   checkMatch(web, app);

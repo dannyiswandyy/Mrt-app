@@ -3683,7 +3683,12 @@ window.addEventListener("resize", () => { layoutSpine(); tick(); });
 document.fonts && document.fonts.ready.then(() => { layoutSpine(); tick(); });
 
 buildTabs(); buildBoard();
-setInterval(tick, 1000);
+/* The clock ticks just after each second turns over on the phone's clock, so it shows the same second as the phone
+   (a plain 1-second timer, started whenever the page happened to load, showed up to a second behind it), and again
+   as soon as the app comes back on screen, instead of up to a second later. The next tick is set before this one
+   runs, so an error in tick() can't stop the clock. */
+(function tickEverySecond(){ setTimeout(() => { tickEverySecond(); tick(); }, 1000 - Date.now() % 1000 + 20); })();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
 
 /* Smooth motion: reposition every train on every frame from the timetable. */
 function trainIdx(code, n, dep, dir, mins, a = 0, b = n - 1){
