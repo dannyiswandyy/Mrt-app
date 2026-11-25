@@ -4,11 +4,12 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 const source = fs.readFileSync(new URL("../web/taxi-availability.js", import.meta.url), "utf8");
-const make = (dev = true) => {
+const make = (dev = true, taxi) => {
   let requests = 0;
   const window = {
     MRT_PRODUCTION: !dev,
     MRT_DEV_FEATURES: dev,
+    MRT_TAXI: taxi,
     document: {hidden:false},
     nativeGet: async (url, withKey) => {
       requests++;
@@ -44,15 +45,16 @@ test("taxi GeoJSON points have [longitude, latitude] and use accurate radial cou
   assert.throws(()=>api.parseGeoJSON({features:[]}),/timestamp/);
 });
 
-test("public releases never expose or poll the Dev-only taxi feature", async () => {
-  const {api,requests}=make(false);
+test("taxis show in every app (released 25 Nov 2026); MRT_TAXI = false switches the UI and requests off", async () => {
+  assert.equal(make(false).api.enabled(),true,"a production page shows taxis too");
+  const {api,requests}=make(false,false);
   assert.equal(api.enabled(),false);
   assert.equal(api.stationHTML({x:0,y:0,name:"City"}),"");
   assert.equal(await api.refresh(true),false);
   assert.equal(requests(),0);
   const html=fs.readFileSync(new URL("../web/index.html",import.meta.url),"utf8");
   assert.match(html,/MRT_DEV_FEATURES=false/);
-  assert.doesNotMatch(html,/mrtTaxiAvailability\.stationHTML\(e\)/);
+  assert.match(html,/mrtTaxiAvailability\.stationHTML\(e\)/,"the public station cards have the taxi box");
 });
 
 test("Dev station card shows 500m and 1km counts, caches for one minute",async()=>{

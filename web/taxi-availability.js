@@ -1,8 +1,9 @@
 /* MRT Spotter taxi availability: shared public/Dev data layer.
- * Live station cards are enabled only by MRT_DEV_FEATURES.
+ * Live station cards are in every app (tried in MRT Dev first; released 25 Nov 2026). window.MRT_TAXI = false
+ * switches them off.
  * Source: LTA / data.gov.sg GeoJSON, refreshed roughly every 30 seconds.
  * Coordinates represent AVAILABLE taxis at a snapshot, not bookings, pickups, or vehicle tracking.
- * Uses anonymous public HTTPS data, never an LTA DataMall AccountKey; no taxi requests in production.
+ * Uses anonymous public HTTPS data, never an LTA DataMall AccountKey.
  */
 (function(root){
   "use strict";
@@ -15,7 +16,7 @@
   const KM_Y = 111320;
   let snapshot = null, status = "idle", error = "", attempted = 0, pending = null;
   const summaryCache = new Map();
-  const enabled = () => root.MRT_DEV_FEATURES === true && root.MRT_PRODUCTION !== true;
+  const enabled = () => root.MRT_TAXI !== false;
   const valid = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon) &&
     lat > 1.1 && lat < 1.5 && lon > 103.55 && lon < 104.15;
 
