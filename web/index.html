@@ -812,6 +812,14 @@ select,input[type="time"],input[type="text"],textarea{
 
 
 .mapctl button.m3dn{position:relative;font-size:0}
+/* What's new (Settings, and once after each update): every version's changes */
+.wn-v{padding:12px 0;border-top:1px solid var(--rule)}
+.wn-v:first-of-type{border-top:0;padding-top:4px}
+.wn-v h3{margin:0 0 6px;font-size:15px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
+.wn-v h3 .muted{font-weight:500;font-size:13px}
+.wn-v ul{margin:0;padding-left:20px}
+.wn-v li{margin:3px 0;font-size:14px;line-height:1.4}
+.wn-tag{font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:999px;padding:2px 8px}
 .mapctl button.m3dn::before{content:"";position:absolute;left:50%;top:50%;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:13px solid #e5484d;transform:translate(-50%,-85%) rotate(var(--yaw,0rad));transform-origin:50% 85%}
 .mapctl button.m3dn::after{content:"N";position:absolute;left:0;right:0;bottom:3px;font:700 9px/1 var(--body);color:var(--muted)}
 /* Trip planner */
@@ -4470,8 +4478,12 @@ function renderSettings(){
     <p class="muted">${TT ? `<b style="color:var(--good)">✓ LTA official timetable</b>, downloaded ${esc(TT.feed.built)}. ${TT.feed.lines.length < ORDER.length ? `Estimated on: ${ORDER.filter(c => !TT.lines[c]).map(c => c === "CG" ? "CGL" : c).join(", ")}.` : "Covers every line."}` : "Estimated from typical frequencies. This version of the app doesn't include LTA's timetable."}</p>
     ${APP.getVersion ? `<label>App version</label>
     <p class="muted"><b>${esc(APP.getVersion())}</b> · ${"MRT Spotter (beta)"}</p>` : ""}
-    ${APP.checkUpdateNow ? `<div><button class="btn ghost" type="button" id="updCheck">Check for updates</button></div><p class="muted" id="updMsg"></p>` : ""}</div>`;
+    ${APP.checkUpdateNow ? `<div><button class="btn ghost" type="button" id="updCheck">Check for updates</button></div><p class="muted" id="updMsg"></p>` : ""}
+    <label>What's new</label>
+    <div><button class="btn ghost" type="button" id="wnOpen">What's new in every version</button></div></div>`;
 
+  const wo = $("wnOpen");
+  if (wo) wo.onclick = () => histOpen("wn", "all");
   const uc = $("updCheck");
   if (uc) uc.onclick = () => {
     uc.disabled = true; $("updMsg").textContent = "Checking…";
@@ -6484,6 +6496,54 @@ function stationCard(name){
     <p><button type="button" class="btn ghost" data-h="map:${esc(name)}">Show on map</button></p>`};
 }
 
+/* ---- What's new: every version's changes ----
+   changelog.js (window.MRT_CHANGELOG, newest first: {v, date, items}) is made from the repo's history by
+   build_changelog.py when the app or the website is built; it's loaded the first time it's needed. */
+let wnState = 0;                                   // 0 not asked for yet, 1 loading, 2 loaded, 3 not in this copy of the app
+function wnLoad(){
+  if (Array.isArray(window.MRT_CHANGELOG)) wnState = 2;
+  if (wnState >= 2) return Promise.resolve(wnState === 2);
+  if (!wnLoad.p) wnLoad.p = new Promise(done => {
+    wnState = 1;
+    const s = document.createElement("script");
+    s.src = "changelog.js";
+    s.onload = () => { wnState = Array.isArray(window.MRT_CHANGELOG) ? 2 : 3; done(wnState === 2); };
+    s.onerror = () => { wnState = 3; done(false); };
+    document.head.appendChild(s);
+  });
+  return wnLoad.p;
+}
+/* This app's version; "" on the website, which has no version of its own. */
+function wnVersion(){ try { return APP && APP.getVersion && !window.MRT_WEB ? String(APP.getVersion() || "") : ""; } catch(e){ return ""; } }
+const WN_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function wnDate(d){ const [y, m, dd] = String(d || "").split("-"); return y && m && dd ? `${+dd} ${WN_MON[m - 1]} ${y}` : ""; }
+function wnBlock(e, cur, bare){
+  const here = !!cur && e.v === cur;
+  if (bare) return `<section class="wn-v"><p class="muted">${esc(wnDate(e.date))}</p><ul>${(e.items || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>`;
+  return `<section class="wn-v${here ? " cur" : ""}"><h3>${e.v ? esc(e.v) : "Latest"}<span class="muted">· ${esc(wnDate(e.date))}</span>${here ? `<span class="wn-tag">This version</span>` : ""}</h3>
+    <ul>${(e.items || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>`;
+}
+function wnCard(id){
+  const r = {color: "accent", kicker: "What's new", title: id === "now" ? "In this version" : "Every version", body: ""};
+  if (wnState < 2 && !Array.isArray(window.MRT_CHANGELOG)){
+    if (wnState === 3) r.body = `<p class="muted">The list of changes comes with each new version of the app.</p>`;
+    else {
+      r.body = `<p class="muted">Loading…</p>`;
+      wnLoad().then(() => { const t = hStack[hStack.length - 1]; if (t && t[0] === "wn") hRender(); });
+    }
+    return r;
+  }
+  const list = window.MRT_CHANGELOG, cur = wnVersion();
+  if (id === "now"){
+    const e = list.find(x => x.v === cur) || list[0];
+    if (e) r.title = e.v ? `Version ${e.v}` : "Latest";
+    r.body = (e ? wnBlock(e, cur, true) : "") + `<p><button type="button" class="btn ghost" data-h="wn:all">All versions (${list.length}) ›</button></p>`;
+    return r;
+  }
+  r.body = `<p class="muted">${list.length} version${list.length === 1 ? "" : "s"}, newest first.</p>${list.map(e => wnBlock(e, cur)).join("")}`;
+  return r;
+}
+
 /* ---- the sheet ---- */
 const hStack = [];
 function hRender(){
@@ -6496,7 +6556,7 @@ function hRender(){
   const cardKey = kind + ":" + id;
   const sameCard = $("sheet").dataset.card === cardKey;
   $("sheet").dataset.card = cardKey;
-  const r = kind === "line" ? lineCard(id) : kind === "model" ? modelCard(id) : stationCard(id);
+  const r = kind === "wn" ? wnCard(id) : kind === "line" ? lineCard(id) : kind === "model" ? modelCard(id) : stationCard(id);
   $("sheet").style.setProperty("--c", `var(--${r.color})`);
   $("sheetKicker").innerHTML = r.kicker;
   $("sheetTitle").textContent = r.title;
@@ -6506,7 +6566,7 @@ function hRender(){
   $("sheetBody").scrollTop = previousScroll;
 }
 function hOk(kind, id){
-  return kind === "line" ? !!H_LINE[id] : kind === "model" ? !!H_MODEL[id] : kind === "station" ? !!byName[id] : false;
+  return kind === "wn" ? (id === "now" || id === "all") : kind === "line" ? !!H_LINE[id] : kind === "model" ? !!H_MODEL[id] : kind === "station" ? !!byName[id] : false;
 }
 /* Opens a history card from anywhere in the app. */
 function histOpen(kind, id){
@@ -6542,6 +6602,19 @@ window.appBack = () => {
   if (curView !== root){ showView(root); return true; }
   return false;
 };
+
+/* What's new: the first time the app opens after an update, show what changed in it (not on a first install). */
+setTimeout(() => {
+  try {
+    const v = wnVersion(); if (!v) return;
+    const was = store.get("mrt.seenVersion", "");
+    store.set("mrt.seenVersion", v);
+    if (!was || was === v) return;
+    wnLoad().then(ok => {
+      if (ok && !hStack.length && window.MRT_CHANGELOG.some(e => e.v === v)) histOpen("wn", "now");
+    });
+  } catch(e){}
+}, 2500);
 
 /* ---- the History tab ---- */
 function onThisDay(){

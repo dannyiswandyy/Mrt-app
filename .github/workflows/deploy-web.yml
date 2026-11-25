@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read     # What's new: past app builds' versions, if the app build hasn't saved them yet
   pages: write
   id-token: write
 
@@ -30,13 +31,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0    # What's new is made from the whole history
 
       - name: Prepare the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           mkdir -p _site
           cp -R web/. _site/
           rm -rf _site/tools
           mkdir -p _site/data
+          # What's new: every app version's changes, and the website's own since the newest app build ("Latest").
+          # Read only: the app build saves each version (refs/notes/versions); this only reads them.
+          git fetch -q origin "+refs/notes/versions:refs/notes/versions" || true
+          BACKFILL=""; git notes --ref=versions list | grep -q . || BACKFILL="--backfill build-android.yml"
+          python3 tools/build_changelog.py --paths web tools .github/workflows/build-android.yml --public \
+            --overrides tools/changelog-overrides.json $BACKFILL --out _site/changelog.js \
+            || echo "::warning::What's new couldn't be made; the site says the list comes with the next version"
 
       # The timetable, buildings and RTS Link / Sentosa Express tracks are made the same way the normal app
       # build makes them, from the tools in build-android.yml (read only; that workflow isn't changed or run).

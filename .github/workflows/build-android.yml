@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  actions: read     # What's new: past builds' versions, read once from this repo's Actions history
 
 concurrency:
   group: build-mrt-tracker
@@ -36,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # What's new is made from the whole history
 
       - name: Write the app project
         run: |
@@ -2671,6 +2674,15 @@ jobs:
           if [ "$CHANNEL" = "dev" ]; then VN="$VN-dev"; APK=mrt-tracker.apk; fi
           echo "VN=$VN" >> "$GITHUB_ENV"
           echo "APK=$APK" >> "$GITHUB_ENV"
+          # What's new (Settings, and once after each update) and the release notes: every version's changes, from
+          # the repo's history (tools/build_changelog.py). Each build records its version on the commit it built
+          # (git notes, refs/notes/versions) after publishing; the first time, past builds are read from Actions.
+          git fetch -q origin "+refs/notes/versions:refs/notes/versions" || true
+          BACKFILL=""; git notes --ref=versions list | grep -q . || BACKFILL="--backfill build-android.yml"
+          GH_TOKEN="${{ github.token }}" GH_REPO="${{ github.repository }}" python3 tools/build_changelog.py \
+            --paths web tools .github/workflows/build-android.yml --public --overrides tools/changelog-overrides.json \
+            $BACKFILL --version "$VN" --out mrt-tracker-app/app/src/main/assets/changelog.js --notes changes.md \
+            || echo "::warning::What's new couldn't be made; the app says the list comes with the next version"
           # The app checks this repo's own "latest" release for updates (version.json next to the app),
           # and downloads and installs a newer one itself. This repo is public, so no token is needed.
           UPDATE_REPO="${{ github.repository }}"
@@ -2695,13 +2707,17 @@ jobs:
             gh release create dev "$APK" --title "MRT Tracker $VN" --prerelease --latest=false \
               --notes "MRT Tracker, the developer app for trying new features. Download mrt-tracker.apk on your Android phone and open it to install. It installs next to MRT Tracker and doesn't change it."
           else
+            { echo "Download mrt-tracker.apk on your Android phone and open it to install. Once installed, the app updates itself: it tells you when there's a new version and installs it in one tap."
+              echo; cat changes.md 2>/dev/null || true; } > notes.md
             gh release delete latest --yes --cleanup-tag || true
-            gh release create latest "$APK" version.json --title "MRT Spotter $VN" \
-              --notes "Download mrt-tracker.apk on your Android phone and open it to install. Once installed, the app updates itself: it tells you when there's a new version and installs it in one tap."
+            gh release create latest "$APK" version.json --title "MRT Spotter $VN" --notes-file notes.md
             # GitHub may retain the release as a draft after upload; explicitly publish
             # it so /releases/latest/download/... and in-app updates become reachable.
             gh release edit latest --draft=false --latest
             gh release view latest --json isDraft --jq '.isDraft' | grep -qx false
+            # What's new: this commit shipped as $VN (and the past builds, the first time)
+            python3 tools/build_changelog.py --paths web --version "$VN" --record
+            git push -q origin refs/notes/versions || echo "::warning::couldn't save this version for What's new"
           fi
 
   # Runs before anything is published. If the page has a script error, doesn't start or freezes,

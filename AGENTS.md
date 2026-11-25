@@ -29,6 +29,7 @@ The user wants **public Android + public website + private Dev Android** to shar
 | Future lines and stations (not open yet) | `web/future-lines.js` (data only; the page adds them to `LINES` / `ORDER` / `MAP` like the RTS Link when `window.MRT_SHOW_FUTURE` is true, set just before the main script; it's **false** here until Danny approves showing them). Tested by `tests/future-lines.test.mjs` |
 | Data relay for the website | `worker/` (Cloudflare Worker; the LTA key is a Cloudflare secret, not in this repo) |
 | Tests | `tests/timetable-check.js`, run by `timetable-check.yml` |
+| What's new (the changelog in the app's Settings, shown once after each update, and on the release page) | `tools/build_changelog.py`, run by `build-android.yml` and `deploy-web.yml`; better wording for changes from before it existed in `tools/changelog-overrides.json`. Each build saves its version on the commit it built, as a git note in `refs/notes/versions`: never delete that ref, or every version since is forgotten. Same script as `android/tools/build_changelog.py` in MRT Dev. Tested by `tests/changelog.test.mjs` |
 | App signing key | `signing/mrt-tracker.jks` (made by the first build; keep it, or updates won't install over the old app) |
 
 ## Changing the app page
@@ -60,3 +61,11 @@ Both the app build and the website deploy run these as a **Safety check** job fi
 ## Commit messages
 
 Say what changed for Danny, in plain words. Say which AI you are in the commit or its trailer, so it's clear who did what.
+
+**The first line is the app's changelog.** Every update's changes are listed in the app and on the website (Settings → What's new, shown once after each update) and on the release page, made from the first line of each commit that changes `web/`, `tools/` or `build-android.yml`. So write that line for people using the app: "Map: special-bound trains drawn dotted", not "fix sheet regression". The AI's name in brackets, `fix:` and parts about tests, checks or builds are left out by themselves. This is the public app, so the line must not mention MRT Dev or anything still being tried there. If it would, or the change is behind the scenes, add a line to the commit message:
+
+```
+Changelog: Trains at unusual hours show on every line
+```
+
+to word it for the changelog, or `Changelog: skip` to leave it out.

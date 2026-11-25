@@ -75,6 +75,8 @@ Search for stations, open station information cards and follow the map's directi
 | Open the APK on your Android phone to install. Future public releases can be checked from inside the app. | No install is needed. You can also add the website to your home screen on supported browsers. |
 | Includes phone-specific functions such as widgets, notifications and trip reminders. | Shares the core public map, timetable, spotting and planning experience; phone-only features are omitted. |
 
+**What's new:** every version's changes are on the [latest release](https://github.com/dannyiswandyy/Mrt-app/releases/tag/latest), and in the app and website under Settings → What's new. The app also shows them once after each update.
+
 > [!NOTE]
 > MRT Spotter is distributed as a **public beta / enthusiast project**, not as an official public-transport application. The website and Android app aim to share the same public features, but browser permissions, data access and device capabilities can affect what is shown.
 
