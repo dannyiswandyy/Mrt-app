@@ -68,22 +68,30 @@ test("only announced rail lines are inspected", () => {
 });
 
 
+// The early-trains bridge is now the page's own ttTrips, for every day and line (tests/overnight-trains.test.mjs
+// checks it in full); these two checks run against the page's code.
+const pageHtml = fs.readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
+const dayCode = pageHtml.slice(pageHtml.indexOf("/* One service day's own runs on a line"), pageHtml.indexOf("/* Extended-service nights:"));
+function pageTrips(byDay, now) {
+  const days = Object.keys(byDay), lines = {};
+  for (const code of ["NSL", "NEL"]) lines[code] = {P: [{f: 0, d: 1, arr: [0, 120], dep: [0, 120], end: 120, to: 1}],
+    trips: days.flatMap((iso, i) => (byDay[iso][code] || []).map(([s, tid]) => [s, 0, i, tid]))};
+  const ctx = {SIM: {est: false}, EXT_LAST: {}, ttDayCache: {}, TT: {lines}, ttServices: iso => new Set([days.indexOf(iso)]), sgNow: () => now};
+  vm.runInNewContext(dayCode + "; this.ttTrips = ttTrips;", ctx);
+  return ctx.ttTrips;
+}
+
 test("line-board/map bridge shows LTA Sunday 02:30 runs during Saturday 26:30", () => {
-  const sat = [{ s: 95400, tid: "SAT", pi: 1 }];
-  const sun = [{ s: 9000, tid: "SUN", pi: 2 }];
-  const w = { sgNow: () => ({ iso: "2026-12-05", mins: 1590 }),
-    ttTrips: (_code, iso) => iso === "2026-12-05" ? sat : sun };
-  vm.runInNewContext(src.slice(src.indexOf(tag)), { window: w, Date });
-  const shown = w.ttTrips("NSL", "2026-12-05");
+  const tt = pageTrips({"2026-12-05": {NSL: [[95400, "SAT"]], NEL: [[80000, "NEL_SAT"]]}, "2026-12-06": {NSL: [[9000, "SUN"]]}},
+    {iso: "2026-12-05", mins: 1590});
+  const shown = tt("NSL", "2026-12-05");
   assert.deepEqual(Array.from(shown.map(t => t.tid)), ["SAT", "SUN"]);
   assert.deepEqual(Array.from(shown.map(t => t.s)), [95400, 95400]);
-  assert.equal(w.ttTrips("NEL", "2026-12-05"), sat, "other lines remain unchanged");
-  assert.equal(w.ttTrips("NSL", "2026-12-06"), sun, "daytime Sunday timetable is unchanged");
+  assert.deepEqual(Array.from(tt("NEL", "2026-12-05").map(t => t.tid)), ["NEL_SAT"], "a line without early trains is unchanged");
+  assert.deepEqual(Array.from(tt("NSL", "2026-12-06").map(t => [t.tid, t.s])).flat(), ["SUN", 9000], "Sunday's own timetable is unchanged");
 });
 
 test("no early Sunday trains means no fabricated map trains", () => {
-  const w = { sgNow: () => ({ iso: "2026-12-05", mins: 1590 }),
-    ttTrips: (_code, iso) => iso === "2026-12-06" ? null : null };
-  vm.runInNewContext(src.slice(src.indexOf(tag)), { window: w, Date });
-  assert.equal(w.ttTrips("NSL", "2026-12-05"), null);
+  const tt = pageTrips({"2026-12-05": {}, "2026-12-06": {}}, {iso: "2026-12-05", mins: 1590});
+  assert.equal(tt("NSL", "2026-12-05"), null);
 });

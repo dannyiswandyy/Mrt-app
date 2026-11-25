@@ -226,48 +226,9 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
   }
 })(typeof window !== "undefined" ? window : globalThis);
 
-/* Early-morning bridge for the marathon (Sun 6 Dec 2026): LTA may publish its 02:30-04:30 trains on Sunday's
-   service day (GTFS 02:30:00) or on Saturday's (26:30:00). The page counts 00:00-02:59 as the previous day's
-   service and 03:00 onwards as the new day's, so trains on the other day would be missed for part of the window:
-   - before 03:00 (the page on Saturday's service): Sunday's trains before 03:00 are added, moved on by a day;
-   - from 03:00 to 07:00 (the page on Sunday's): Saturday's trains still running after 27:00 are added, moved back.
-   Only LTA's own trips are used; no train, route or headway is made up. Each combined list is worked out once and
-   kept, as the page asks for the day's trains many times a second. */
-(function (root) {
-  "use strict";
-  const original = root.ttTrips;
-  if (typeof original !== "function" || original.__mrtMarathonBridge) return;
-  const SAT = "2026-12-05", SUN = "2026-12-06", ON = ["NSL", "EWL", "CCL"], kept = new Map();
-  function combined(code, iso, base, other, pick, shift) {
-    const k = code + "|" + iso, hit = kept.get(k);
-    if (hit && hit.base === base && hit.other === other) return hit.out;
-    const existing = base || [], seen = new Set(existing.map(r => String(r.tid) + "|" + r.s + "|" + r.pi)), additional = [];
-    for (const r of other || []) {
-      if (!pick(r)) continue;
-      const moved = Object.assign({}, r, {s: r.s + shift});
-      const key = String(moved.tid) + "|" + moved.s + "|" + moved.pi;
-      if (!seen.has(key)) { additional.push(moved); seen.add(key); }
-    }
-    let out = base;
-    if (additional.length) { out = existing.concat(additional).sort((a, b) => a.s - b.s); out.code = code; }
-    kept.set(k, {base, other, out});
-    return out;
-  }
-  function withEarlyMarathonTrips(code, iso) {
-    const base = original.apply(this, arguments);
-    if ((iso !== SAT && iso !== SUN) || !ON.includes(code)) return base;
-    let now;
-    try { now = typeof root.sgNow === "function" ? root.sgNow() : null; } catch (_) { return base; }
-    if (!now || now.iso !== iso) return base;
-    if (iso === SAT && now.mins >= 1440 && now.mins < 1620)
-      return combined(code, iso, base, original(code, SUN), r => r.s < 3 * 3600, 86400);
-    if (iso === SUN && now.mins >= 180 && now.mins < 420)
-      return combined(code, iso, base, original(code, SAT), r => r.s + ((r.p && r.p.end) || 0) > 27 * 3600, -86400);
-    return base;
-  }
-  withEarlyMarathonTrips.__mrtMarathonBridge = true;
-  root.ttTrips = withEarlyMarathonTrips;
-})(typeof window !== "undefined" ? window : globalThis);
+/* Trains at unusual hours (the marathon's from 2.30am on 6 Dec, dated either day by LTA) are now brought over
+   between days by the page's own ttTrips, for every day and line: see "Today's runs on a line, with trains at
+   unusual hours" in index.html. */
 
 
 /* TEL5 / DTL3e passenger-opening safeguard (shared with website and Android).

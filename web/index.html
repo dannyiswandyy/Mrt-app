@@ -2890,16 +2890,47 @@ function platOf(code, i, dir){
   for (let j = 0; j < st.length; j++) if (j !== i && st[j][0] === c && P[j] && P[j][dir]) return P[j][dir];
   return "";
 }
-/* Today's runs on a line: [{s: start in seconds, p: pattern}], sorted by start. */
-function ttTrips(code, iso){
+/* One service day's own runs on a line, as LTA's timetable has them: [{s: start in seconds, p: pattern}], sorted by start. */
+function ttTripsDay(code, iso){
   if (SIM.est || !TT || !TT.lines[code]) return null;      // test mode can switch to estimates
   const k = code + iso;
-  if (ttDayCache[k]) return ttDayCache[k];
+  if (k in ttDayCache) return ttDayCache[k];               // a day without trains is kept too (null), not worked out again
   const on = ttServices(iso), Ln = TT.lines[code];
   let list = Ln.trips.filter(t => on.has(t[2])).map(t => ({s: t[0], p: Ln.P[t[1]], pi: t[1], tid: t[3], _line: code}));
   if (list.length && EXT_LAST[iso] && EXT_LAST[iso][code]) list = ttExtend(code, iso, list, EXT_LAST[iso][code]);
   list.code = code;                                          // which line, for the Live cam's corrections
   return ttDayCache[k] = list.length ? list : null;
+}
+/* Today's runs on a line, with trains at unusual hours. The app counts midnight to 3am as the day before (the
+   trains still out after midnight are that day's), but LTA's timetable can put trains in those hours on the other
+   day: an event's early trains dated the next day (the 6 Dec 2026 marathon's from "02:30:00"), or an all-night
+   service dated the day before and still running after 3am ("26:30:00"). So, for the day it is now:
+   - from midnight to 3am it also has the next day's trains that start before 3am, moved on by a day;
+   - from 3am to noon it also has the day before's trains still running after 3am, moved back by a day.
+   Only LTA's own trips are used, each once; nothing is made up. Other days, and other times, are the day's own runs.
+   The combined list is kept (the page asks for it many times a second) until either day's runs change. */
+const ttEdgeKept = new Map(), ttDayPlus = (iso, n) => new Date(Date.parse(iso + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+function ttTrips(code, iso){
+  const own = ttTripsDay(code, iso);
+  if (SIM.est || !TT || !TT.lines[code]) return own;
+  let now = null; try { now = sgNow(); } catch(e){}
+  if (!now || now.iso !== iso) return own;
+  const early = now.mins >= 1440, late = now.mins < 720;
+  if (!early && !late) return own;
+  const other = ttTripsDay(code, ttDayPlus(iso, early ? 1 : -1));
+  if (!other) return own;
+  const k = code + iso + (early ? "+" : "-"), hit = ttEdgeKept.get(k);
+  if (hit && hit.own === own && hit.other === other) return hit.out;
+  const shift = early ? 86400 : -86400, have = new Set((own || []).map(r => r.tid + "|" + r.s)), add = [];
+  for (const r of other){
+    if (early ? r.s >= 3 * 3600 : r.s + r.p.end <= 27 * 3600) continue;
+    if (!have.has(r.tid + "|" + (r.s + shift))) add.push(Object.assign({}, r, {s: r.s + shift}));
+  }
+  let out = own;
+  if (add.length){ out = (own || []).concat(add).sort((a, b) => a.s - b.s); out.code = code; }
+  if (ttEdgeKept.size >= 64) ttEdgeKept.clear();
+  ttEdgeKept.set(k, {own, other, out});
+  return out;
 }
 /* Extended-service nights: if LTA's timetable stops before the announced last train, add runs after
    its last one (a full-length run, at the gap between its last two) up to that last train. */
@@ -3272,11 +3303,25 @@ function ttHeadway(code, now){
   times.sort((a, b) => a - b);
   const i = times.findIndex(t => t >= sec);
   if (i < 0) return null;
-  const gap = i > 0 ? times[i] - times[i - 1] : times[i + 1] - times[i];
+  // the gap before the next train, unless that spans a break (more than 45 minutes: the first train after the night,
+  // or early trains at an unusual hour after the last ones): then the gap after it
+  const back = i > 0 ? times[i] - times[i - 1] : NaN, fwd = i + 1 < times.length ? times[i + 1] - times[i] : NaN;
+  const gap = isFinite(back) && (back <= 45 * 60 || !isFinite(fwd)) ? back : fwd;
   return isFinite(gap) ? gap / 60 : null;
 }
 function ttFirstTrain(code, now){
   const list = ttTrips(code, now.iso); return list && list.length ? list[0].s / 60 : null;
+}
+/* When the next train on a line leaves (minutes of the service day, past 1440 for tomorrow's), from LTA's timetable:
+   tonight's or tomorrow's, so early trains at unusual hours (an event's, from 2.30am) are found as well. */
+function ttNextTrainStart(code, now){
+  const sec = now.mins * 60;
+  for (const [list, shift] of [[ttTrips(code, now.iso), 0], [ttTripsDay(code, ttDayPlus(now.iso, 1)), 86400]]){
+    let best = null;
+    for (const r of list || []){ const t = r.s + shift; if (t > sec && (best == null || t < best)) best = t; }
+    if (best != null) return best / 60;
+  }
+  return null;
 }
 
 // Platform phases come from the trip's arrival and departure offsets, where GTFS is available.
@@ -3501,7 +3546,10 @@ function tick(){
   // after midnight the next first trains are the next day's, which may be a weekend or holiday
   const nextDay = t >= 1440 ? aNextDay(now) : now;
   const firstEst = L.hours ? L.firstText : clockText(serviceSpan(current, dayOf(nextDay))[0]).replace(":", ".");
-  const closed = official && first != null && t < first ? `No trains yet · first train at ${clockText(first)}` : `Closed for the night · first trains from ${firstEst}`;
+  const next = official && !inService ? ttNextTrainStart(current, now) : null;    // LTA's next train, even at an unusual hour
+  const closed = official && first != null && t < first ? `No trains yet · first train at ${clockText(first)}`
+    : next != null && next - t <= 180 ? `No trains right now · next train at ${clockText(next)}`
+    : `Closed for the night · first trains from ${next != null ? clockText(next) : firstEst}`;
   const notOpen = !act.length;
   setHTML($("status"), `<div class="bar" style="background:var(--${current})"></div>
     <b>${L.name}</b>${L.future ? "" : `<button type="button" class="hb" data-hline="${current}">History</button>`}${""}
