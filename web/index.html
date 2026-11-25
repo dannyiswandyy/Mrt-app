@@ -2633,7 +2633,9 @@ function nextArrivalsBase(code, s, dir, now, count, reach){
       if (other) {
         const sec = (now.mins - adjacent * 1440) * 60;
         const combined = primary ? primary.map((m, i) => ({m, to: primary.to[i]})) : [];
+        const have = ttl && ttRunKeys(ttl);
         for (const r of ttBoardRuns(other, s, dir)) {
+          if (have && have.has(r.tid + "|" + (r.s + adjacent * 86400))) continue;   // already in today's runs (moved over a day: the marathon bridge)
           const p = r.p, k = (s - p.f) * p.d;
           if (reach != null && (reach - p.f) * p.d > p.arr.length - 1) continue;
           const minutes = (r.s + p.arr[k] - sec) / 60;
@@ -2666,6 +2668,13 @@ function nextArrivalsBase(code, s, dir, now, count, reach){
   return res;
 }
 
+/* The day's runs as "trip id|start" keys, worked out once per list, so a run listed on both days is counted once. */
+const ttRunKeysOf = new WeakMap();
+function ttRunKeys(list){
+  let k = ttRunKeysOf.get(list);
+  if (!k){ k = new Set(list.map(r => r.tid + "|" + r.s)); ttRunKeysOf.set(list, k); }
+  return k;
+}
 /* ---------- Disruptions: trains turn back instead of running through ----------
    When LTA says there's no service on a stretch (a track fault, say), trains stop running between its two end stations.
    Each train heading into the stretch turns around at the end station on its side and goes back the way it came,

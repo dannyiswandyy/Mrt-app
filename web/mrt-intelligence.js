@@ -226,39 +226,47 @@ window.mrtIntelligenceSnapshot=()=>({version:K,anchors:Object.keys(S.anchors),ob
   }
 })(typeof window !== "undefined" ? window : globalThis);
 
-/* Pre-03:00 map bridge: use the real Sunday GTFS trips published with a Sunday service_id.
-   The page considers 00:00-02:59 part of the previous operating day; 02:30 Sunday
-   can be Saturday 26:30 OR Sunday 02:30 in GTFS. This wrapper only combines those
-   representations when actually viewing the event's early-morning operating window.
-   No synthetic headway, route, or train is created. */
+/* Early-morning bridge for the marathon (Sun 6 Dec 2026): LTA may publish its 02:30-04:30 trains on Sunday's
+   service day (GTFS 02:30:00) or on Saturday's (26:30:00). The page counts 00:00-02:59 as the previous day's
+   service and 03:00 onwards as the new day's, so trains on the other day would be missed for part of the window:
+   - before 03:00 (the page on Saturday's service): Sunday's trains before 03:00 are added, moved on by a day;
+   - from 03:00 to 07:00 (the page on Sunday's): Saturday's trains still running after 27:00 are added, moved back.
+   Only LTA's own trips are used; no train, route or headway is made up. Each combined list is worked out once and
+   kept, as the page asks for the day's trains many times a second. */
 (function (root) {
   "use strict";
   const original = root.ttTrips;
   if (typeof original !== "function" || original.__mrtMarathonBridge) return;
-  function withSundayEarlyTrips(code, iso) {
-    const base = original.apply(this, arguments);
-    if (iso !== "2026-12-05" || !["NSL", "EWL", "CCL"].includes(code)) return base;
-    let now;
-    try { now = typeof root.sgNow === "function" ? root.sgNow() : null; } catch (_) { return base; }
-    if (!now || now.iso !== iso || now.mins < 1440 || now.mins >= 1620) return base;
-    const sunday = original(code, "2026-12-06");
-    if (!sunday) return base;
-    const existing = base || [];
-    const seen = new Set(existing.map(r => String(r.tid) + "|" + r.s + "|" + r.pi));
-    const additional = [];
-    for (const r of sunday) {
-      if (r.s >= 3 * 3600) continue;
-      const shifted = Object.assign({}, r, {s: r.s + 86400});
-      const key = String(shifted.tid) + "|" + shifted.s + "|" + shifted.pi;
-      if (!seen.has(key)) { additional.push(shifted); seen.add(key); }
+  const SAT = "2026-12-05", SUN = "2026-12-06", ON = ["NSL", "EWL", "CCL"], kept = new Map();
+  function combined(code, iso, base, other, pick, shift) {
+    const k = code + "|" + iso, hit = kept.get(k);
+    if (hit && hit.base === base && hit.other === other) return hit.out;
+    const existing = base || [], seen = new Set(existing.map(r => String(r.tid) + "|" + r.s + "|" + r.pi)), additional = [];
+    for (const r of other || []) {
+      if (!pick(r)) continue;
+      const moved = Object.assign({}, r, {s: r.s + shift});
+      const key = String(moved.tid) + "|" + moved.s + "|" + moved.pi;
+      if (!seen.has(key)) { additional.push(moved); seen.add(key); }
     }
-    if (!additional.length) return base;
-    const out = existing.concat(additional).sort((a, b) => a.s - b.s);
-    out.code = code;
+    let out = base;
+    if (additional.length) { out = existing.concat(additional).sort((a, b) => a.s - b.s); out.code = code; }
+    kept.set(k, {base, other, out});
     return out;
   }
-  withSundayEarlyTrips.__mrtMarathonBridge = true;
-  root.ttTrips = withSundayEarlyTrips;
+  function withEarlyMarathonTrips(code, iso) {
+    const base = original.apply(this, arguments);
+    if ((iso !== SAT && iso !== SUN) || !ON.includes(code)) return base;
+    let now;
+    try { now = typeof root.sgNow === "function" ? root.sgNow() : null; } catch (_) { return base; }
+    if (!now || now.iso !== iso) return base;
+    if (iso === SAT && now.mins >= 1440 && now.mins < 1620)
+      return combined(code, iso, base, original(code, SUN), r => r.s < 3 * 3600, 86400);
+    if (iso === SUN && now.mins >= 180 && now.mins < 420)
+      return combined(code, iso, base, original(code, SAT), r => r.s + ((r.p && r.p.end) || 0) > 27 * 3600, -86400);
+    return base;
+  }
+  withEarlyMarathonTrips.__mrtMarathonBridge = true;
+  root.ttTrips = withEarlyMarathonTrips;
 })(typeof window !== "undefined" ? window : globalThis);
 
 

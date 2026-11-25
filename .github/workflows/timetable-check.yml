@@ -21,4 +21,4 @@ jobs:
       - name: Check trains in service and headways
         run: |
           node tests/timetable-check.js
-          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs
+          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/marathon-bridge.test.mjs tests/extension-opening.test.mjs
