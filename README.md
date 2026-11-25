@@ -34,7 +34,7 @@ Most journey apps tell you *when* your train should arrive. **MRT Spotter explor
 
 | 🗺️ **Explore the network** | 🔢 **Follow train runs** | 📷 **Make every sighting count** |
 |:---|:---|:---|
-| Navigate Singapore's MRT/LRT network in interactive **2D and 3D**, with directional train arrows, stations, interchange codes and nearby buildings where data is available. | Open train journeys, view scheduled slot/run numbers, inspect trip sequences and check short workings, turnbacks and late-night duties. | Log **Spotted** or **Rode** from a train sheet, keep a record of sightings and see your own sighting markers on the maps for the service day. |
+| Navigate Singapore's MRT/LRT network on an interactive map, with each line's trains, stations, interchange codes and nearby building outlines where data is available. | Open train journeys, view scheduled slot/run numbers, inspect trip sequences and check short workings, turnbacks and late-night duties. | Log **Spotted** or **Rode** from a train sheet, keep a record of sightings and see your own sighting markers on the maps for the service day. |
 
 ## 🔎 Built for Singapore rail enthusiasts
 
@@ -51,7 +51,7 @@ Explore how scheduled trips are linked together into train duties and get contex
 Record sightings, revisit your log and explore rolling-stock information and photographs where available. Trainset-related information derived from logged sightings is evidence-based and may be incomplete.
 
 ### 🌍 Your railway, on a map
-Switch between **2D and 3D views**, search for stations, open station information cards and follow the map's direction-of-travel arrows. Some 3D buildings and track geometry are packed from OpenStreetMap during the build and may vary with data availability.
+Search for stations, open station information cards and follow the map's direction-of-travel arrows. Building outlines and track geometry are packed from OpenStreetMap during the build and may vary with data availability.
 
 ## ✨ More than spotting
 
