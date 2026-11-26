@@ -2605,7 +2605,7 @@ function wetDelay(code, t){
     if (t.ref && t.ref.p){
       const r = t.ref, p = r.p, w = wetRun(code, r);
       const m = mv && mv.get(t.id);
-      if (!w || r.tl || m || rtProfileFor(code, r, m) || ttLateStart(code, r, mv)) return 0;
+      if (!w || r.tl || m || rtProfileFor(code, r, m) || alertSlowFor(code, r) || ttLateStart(code, r, mv)) return 0;
       return w.W[Math.max(0, Math.min(w.W.length - 1, Math.round((t.next - p.f) * p.d)))];
     }
     if (mv && mv.get(t.id)) return 0;
@@ -3274,7 +3274,7 @@ function ttLinks(list){
 function ttLateStart(code, r, mv){
   const tl = r.tl || 0, a = r.pv; if (!a) return tl;
   const ma = mv && mv.get(`${code}t${a.s}p${a.pi}`);
-  if (!ma && !rtProfileFor(code, a, ma)) return tl;             // nothing live about it: the timetable figure
+  if (!ma && !rtProfileFor(code, a, ma) && !alertSlowFor(code, a)) return tl;   // nothing live about it: the timetable figure
   const gets = ttAt(code, a, a.p.arr.length - 1, mv);           // when it really gets in
   return Math.max(0, Math.min(r.p.end / 2, Math.max(tl, gets + TT_TURN_MIN - r.s)));
 }
@@ -3301,11 +3301,97 @@ function testHoldOf(code, r){
   }
   return h;
 }
+/* ---------- LTA's "additional travel time" ----------
+   During a delay, LTA's alerts say how much longer journeys take on a stretch, like "additional travelling time of
+   15 mins between Yishun and Woodlands stations towards Jurong East". The trains there run that much slower over the
+   stretch (from when LTA said so), so they get up to that much late, and the next-train times with them. It's the
+   app's own reading of LTA's words (POSSIBLE): LTA's live train feed, a sighting or the Live cam win where they place a
+   train. With no stations named, the whole line; with no "towards", both ways. Not on the LRT loops. */
+const SLOW_LINE_FAMILY = {EWL: ["EWL", "CG"], CG: ["CG", "EWL"]};
+const slowNorm = x => String(x || "").toLowerCase().replace(/\b(?:mrt|lrt|interchange|stations?)\b/g, "").replace(/[^a-z0-9]+/g, "");
+function slowStation(code, name){
+  const L = LINES[code]; if (!L || !name) return -1;
+  const q = slowNorm(name); if (!q) return -1;
+  let i = L.stations.findIndex(x => slowNorm(x[0]) === q || slowNorm(x[1]) === q);
+  if (i < 0 && q.length >= 4) i = L.stations.findIndex(x => { const n = slowNorm(x[1]); return n.startsWith(q) || q.startsWith(n); });
+  return i;
+}
+/* What LTA's messages say about extra travel time: [{line, lo, hi, dirs, add (s), since (ms), text}]. */
+function slowFromMessages(msgs){
+  const out = [];
+  for (const m of msgs || []){
+    const text = String(m && m.text || ""), at = m && m.at ? Date.parse(String(m.at).replace(" ", "T") + "+08:00") : NaN;
+    const lines = linesMentionedInText(text);
+    for (const sen of text.split(/(?<=[.;!])\s+/)){
+      if (!/\b(?:travel(?:l)?(?:ing)?|journey)\s+times?\b/i.test(sen) || !/\b(?:additional|extra|add|longer|more)\b/i.test(sen)) continue;
+      // an advisory for planned works on some days ("on Sundays from 6 Dec, please add 15 mins") isn't about now
+      if (/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b(?:mon|tues|wednes|thurs|fri|satur|sun)days?\b|\bweekends?\b|\bplanned\b|\bfrom\s+\d/i.test(sen)) continue;
+      const mins = [...sen.matchAll(/(\d{1,3})\s*(?:-|to)?\s*(\d{1,3})?\s*min(?:ute)?s?\b/gi)].map(x => Math.max(+x[1], +(x[2] || 0))).filter(x => x > 0 && x <= 120);
+      if (!mins.length) continue;
+      const add = Math.max(...mins) * 60;
+      const bw = sen.match(/\bbetween\s+(.+?)\s+and\s+(.+?)(?:\s+stations?)?(?=\s+(?:towards|in the direction|bound|due|as|because|for|on|in both)\b|[.,;]|$)/i);
+      const tw = sen.match(/\btowards\s+(.+?)(?:\s+stations?)?(?=\s+(?:due|as|because|for|on)\b|[.,;]|$)/i);
+      const fam = [...new Set(lines.flatMap(c => SLOW_LINE_FAMILY[c] || [c]))];
+      for (const code of (lines.length ? fam : [])){
+        const L = LINES[code]; if (!L || L.loop) continue;
+        let lo = 0, hi = L.stations.length - 1;
+        if (bw){ const a = slowStation(code, bw[1]), b = slowStation(code, bw[2]); if (a < 0 || b < 0) continue; lo = Math.min(a, b); hi = Math.max(a, b); }
+        let dirs = [0, 1];
+        if (tw && !/both/i.test(tw[1])){ const t = slowStation(code, tw[1]); if (t >= 0) dirs = t >= hi ? [0] : t <= lo ? [1] : [0, 1]; }
+        if (out.some(x => x.line === code && x.lo === lo && x.hi === hi && x.add >= add)) continue;
+        out.push({line: code, lo, hi, dirs, add, since: Number.isFinite(at) ? at : 0, text: sen.trim()});
+        if (bw) break;                                     // the stretch was on this line: not the other one too
+      }
+    }
+  }
+  return out;
+}
+let atSlowCache = {state: null, list: []};
+function slowNow(){
+  let st = null; try { st = alertState; } catch(e){ return []; }   // declared further down the page
+  if (!st || !Array.isArray(st.messages) || !st.messages.length || (st.at && Date.now() - st.at > 30 * 60e3)) return [];
+  if (atSlowCache.state !== st) atSlowCache = {state: st, list: slowFromMessages(st.messages), runs: new WeakMap()};
+  return atSlowCache.list;
+}
+/* A run's arrive / leave times (R) against the timetable's (S) with LTA's extra travel time on its stretch. */
+function alertSlowFor(code, r){
+  const list = slowNow(); if (!list.length || !r || !r.p) return null;
+  const c = atSlowCache.runs.get(r); if (c !== undefined) return c;
+  const p = r.p, n = p.arr.length, dir = p.d > 0 ? 0 : 1, D = new Array(n).fill(0), Dd = new Array(n).fill(0);
+  let any = null;
+  for (const x of list){
+    if (x.line !== code || !x.dirs.includes(dir)) continue;
+    const span = Math.max(1, x.hi - x.lo), fr = st => dir ? (x.hi - st) / span : (st - x.lo) / span;
+    const f = k => Math.max(0, Math.min(1, fr(p.f + p.d * k)));
+    const ks = []; for (let k = 0; k < n; k++){ const st = p.f + p.d * k; if (st >= x.lo && st <= x.hi) ks.push(k); }
+    if (!ks.length) continue;
+    const tIn = r.s + p.arr[ks[0]], tOut = r.s + p.arr[ks[ks.length - 1]];
+    const day0 = Date.parse(sgNow().iso + "T00:00:00+08:00");
+    const since = x.since ? (x.since - day0) / 1000 : -Infinity;           // seconds of the service day
+    const g = tOut <= since ? 0 : tIn >= since || tOut === tIn ? 1 : (tOut - since) / (tOut - tIn);   // the part after LTA said so
+    if (g <= 0) continue;
+    for (let k = 0; k < n; k++){
+      const one = x.hi === x.lo, st = p.f + p.d * k;
+      const a = one ? (dir ? st < x.lo : st > x.lo) ? 1 : 0 : f(k), b = one ? (dir ? st <= x.lo : st >= x.lo) ? 1 : 0 : f(k);
+      D[k] = Math.max(D[k], x.add * g * a); Dd[k] = Math.max(Dd[k], x.add * g * b);
+    }
+    any = x;
+  }
+  let prof = null;
+  if (any){
+    const R = [], S = [];
+    for (let k = 0; k < n; k++){ const ra = Math.max(R.length ? R[R.length - 1] : -Infinity, p.arr[k] + D[k]); R.push(ra, Math.max(ra, p.dep[k] + Dd[k])); S.push(p.arr[k], p.dep[k]); }
+    prof = {R, S, add: any.add, text: any.text, late: k => D[Math.max(0, Math.min(n - 1, k))]};
+  }
+  atSlowCache.runs.set(r, prof);
+  return prof;
+}
 function ttSched(code, r, sec, mv){
   const th = testHoldOf(code, r); if (th) return ttProfSched(r, th.R, th.S, sec);
   const m = mv && mv.get(`${code}t${r.s}p${r.pi}`), pr = rtProfileFor(code, r, m);
   if (pr) return ttProfSched(r, pr.R, pr.S, sec);  // LTA's delay at each stop
   if (m) return {sec: sec - m * 60, rate: 1};
+  const ap = alertSlowFor(code, r); if (ap) return ttProfSched(r, ap.R, ap.S, sec);   // LTA's "additional travel time"
   sec -= ttLearned(code, r);                                    // what your sightings say this line runs like at this hour
   const tl = ttLateStart(code, r, mv);
   if (!tl){ const w = wetRun(code, r); return w ? ttProfSched(r, w.R, w.S, sec) : {sec, rate: 1}; }   // slower on wet rails (wetRun)
@@ -3406,6 +3492,7 @@ function ttAtOwn(code, r, k, mv){
   if (live && live.arr[k] != null) return live.arr[k];
   const m = mv && mv.get(code + "t" + r.s + "p" + r.pi);
   if (m) return r.s + r.p.arr[k] + m * 60;
+  const ap = alertSlowFor(code, r); if (ap) return r.s + ap.R[2 * k];
   const tl = r.tl || 0;
   if (!tl){ const w = wetRun(code, r); if (w && !rtProfileFor(code, r, m) && !ttLateStart(code, r, mv)) return r.s + r.p.arr[k] + w.W[k]; }   // as ttSched has it
   return tl ? r.s + tl + r.p.arr[k] * (r.p.end - tl) / r.p.end : r.s + r.p.arr[k];
@@ -4809,7 +4896,7 @@ async function rtRefresh(){
   const now = Date.now();
   st.alerts = st.alerts.filter(a => !a.per.length || a.per.some(([s, e]) => (!s || s <= now) && (!e || e >= now)));
   const changed = !rtState || JSON.stringify([rtState.trips, rtState.alerts]) !== JSON.stringify([st.trips, st.alerts]);
-  rtState = st; store.set("mrt.rt", st); try { if (window.mrtDisruptionObserve) window.mrtDisruptionObserve("GTFS-Realtime refresh"); } catch(e){}
+  rtState = st; store.set("mrt.rt", st); if (okKinds.trips) rtCarryUpdate(st); try { if (window.mrtDisruptionObserve) window.mrtDisruptionObserve("GTFS-Realtime refresh"); } catch(e){}
   // a record of extra trains LTA has added (so it's known whether LTA's feed ever does), the last 50
   try {
     const log = store.get("mrt.rtAdded", []) || [], have = new Set(log.map(x => x.id + "|" + x.day)), day = sgNow().iso;
@@ -4928,13 +5015,43 @@ function rtStateAt(code,r,sec){
   return null;
 }
 window.rtLivePosition=(code,r,sec)=>rtStateAt(code,r,sec);
+/* ---------- LTA's delays after its feed goes quiet ----------
+   LTA's live feed only lists trains during a disruption, and drops them when it's over, but a train that was 4
+   minutes late is still about that late: it doesn't jump back onto the timetable. So the last delay LTA gave each
+   train is kept (rtCarry) and used once the feed stops listing it, getting RT_CARRY_RECOVER seconds smaller each
+   minute as the train makes up time, until it's under RT_CARRY_MIN or RT_CARRY_MAX has passed. POSSIBLE: LTA doesn't
+   say how late trains are once it stops listing them. Cancelled trains stay cancelled for the rest of that time. */
+const RT_CARRY_RECOVER = 6, RT_CARRY_MIN = 20, RT_CARRY_MAX = 90 * 60e3;
+const rtCarry = (() => { try { const c = store.get("mrt.rtCarry", null); return c && typeof c === "object" ? c : {}; } catch(e){ return {}; } })();
+function rtCarryUpdate(st){
+  const now = Date.now(), day = sgNow().iso;
+  if (!st.held) for (const [id, u] of Object.entries(st.trips || {})) if (!u.add) rtCarry[id] = {d: u.d || 0, x: u.x ? 1 : 0, at: now, day};
+  for (const id in rtCarry) if (now - rtCarry[id].at > RT_CARRY_MAX) delete rtCarry[id];
+  try { store.set("mrt.rtCarry", rtCarry); } catch(e){}
+}
+/* The delay still assumed for a trip LTA no longer lists: {d: seconds now, d0: what LTA said, at} or null. */
+function rtCarried(tid, iso, ms){
+  const c = tid && rtCarry[tid]; if (!c || c.day !== iso) return null;
+  const age = ms - c.at; if (age < 0 || age > RT_CARRY_MAX) return null;
+  if (c.x) return {x: 1, d: 0, d0: 0, at: c.at};
+  const d = c.d > 0 ? c.d - RT_CARRY_RECOVER * age / 60e3 : c.d + RT_CARRY_RECOVER * age / 60e3;
+  return Math.abs(d) < RT_CARRY_MIN ? null : {d, d0: c.d, at: c.at};
+}
+let rtMapTick = 0;
 window.rtShifts = (code, iso) => {
-  if (!rtState || !rtState.trips || Date.now() - rtState.at > 10 * 60e3) return null;     // older than 10 minutes: ignore
+  const ms = Date.now(), fresh = !!(rtState && rtState.trips && ms - rtState.at <= 10 * 60e3);   // older than 10 minutes: ignore
+  const carry = Object.keys(rtCarry).length > 0;
+  if (!fresh && !carry) return null;
+  if (carry){ const tk = Math.floor(ms / 15e3); if (tk !== rtMapTick){ rtMapTick = tk; for (const k in rtMapCache) delete rtMapCache[k]; for (const k in movedMix) delete movedMix[k]; } }   // carried delays shrink
   const k = code + iso; if (rtMapCache[k] !== undefined) return rtMapCache[k];
   const list = ttTrips(code, iso), m = new Map();
   if (list) for (const r of list){
-    const u = r.tid && rtState.trips[r.tid];
-    if (u && (u.x || u.d) && !m.has(`${code}t${r.s}p${r.pi}`)) m.set(`${code}t${r.s}p${r.pi}`, u.x ? 1e6 : u.d / 60);
+    if (!r.tid) continue;
+    const id = `${code}t${r.s}p${r.pi}`; if (m.has(id)) continue;
+    const u = fresh ? rtState.trips[r.tid] : null;
+    if (u){ if (u.x || u.d) m.set(id, u.x ? 1e6 : u.d / 60); continue; }
+    const c = carry ? rtCarried(r.tid, iso, ms) : null;           // LTA said it was late, then stopped listing it
+    if (c) m.set(id, c.x ? 1e6 : c.d / 60);
   }
   return rtMapCache[k] = m.size ? m : null;
 };
@@ -4976,6 +5093,17 @@ window.rtTrainNote = (code, t) => {
     if (v0 != null && Math.abs(v0) >= 0.5) return `<p class="hint" style="margin:0"><b>Running about ${Math.round(Math.abs(v0))} min ${v0 > 0 ? "late" : "early"}</b>${trend}, by LTA's live train feed. Its place on the map and its arrival times allow for this.</p>`;
   }
   const m = window.rtShifts(code, sgNow().iso), v = m && t && m.get(t.id);
+  const live = (() => { try { return !!(t && t.ref && t.ref.tid && rtState && rtState.trips && rtState.trips[t.ref.tid] && Date.now() - rtState.at <= 10 * 60e3); } catch(e){ return false; } })();
+  const c = !live && t && t.ref && t.ref.tid ? rtCarried(t.ref.tid, sgNow().iso, Date.now()) : null;
+  if (c && v != null && !c.x){
+    const hh = new Date(c.at + 8 * 3600e3).toISOString().slice(11, 16);
+    return `<p class="hint" style="margin:0"><b>Probably still about ${Math.max(1, Math.round(Math.abs(v)))} min ${v > 0 ? "late" : "early"}</b>: LTA's live feed said ${Math.max(1, Math.round(Math.abs(c.d0) / 60))} min ${c.d0 > 0 ? "late" : "early"} at ${hh}, then stopped listing it. The app assumes it makes up about ${RT_CARRY_RECOVER} s a minute · <b>POSSIBLE</b></p>`;
+  }
+  const ap = (v == null || Math.abs(v) < 0.5) && t && t.ref ? alertSlowFor(code, t.ref) : null;
+  if (ap){
+    const p = t.ref.p, k = Math.max(0, Math.min(p.arr.length - 1, Math.round((t.next - p.f) * p.d))), l = ap.late(k);
+    return `<p class="hint" style="margin:0"><b>${l >= 30 ? `Running about ${Math.max(1, Math.round(l / 60))} min late` : "May run late ahead"}</b>: LTA says journeys take up to ${Math.round(ap.add / 60)} min longer (“${esc(ap.text.slice(0, 140))}”). The app spreads that over the stretch · <b>POSSIBLE</b></p>`;
+  }
   if (v == null || Math.abs(v) < 0.5) return "";
   return `<p class="hint" style="margin:0"><b>${v > 0 ? `Running about ${Math.round(v)} min late` : `Running about ${Math.round(-v)} min early`}</b>, by LTA's live train feed. Its place on the map and its arrival times allow for this.</p>`;
 };
@@ -6232,6 +6360,7 @@ function mapInfoHTML(){
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
       <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? (t.doors ? "Doors closing" : "Boarding") : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
       ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
+      ${window.rtTrainNote ? `<div class="mi-row">${rtTrainNote(mSel.line, t)}</div>`.replace(/^<div class="mi-row"><\/div>$/, "") : ""}
       ${t.held ? `<div class="mi-row"><small>⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(t.held / 60))} min late because of it · <b>POSSIBLE</b>: the app keeps trains at least ${BUNCH_GAP} s apart when one runs late</small></div>` : ""}
       ${window.MRT_DEV_FEATURES === true && t.ref && t.ref.p && !t.layover ? testHoldHTML(mSel.line, t, stop) : ""}
       ${window.smartTrainNote && smartTrainNote(mSel.line, t) ? `<div class="mi-row">${smartTrainNote(mSel.line, t)}</div>` : ""}
@@ -9930,7 +10059,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const k=Math.round((train.atStation ? train.idx : train.next)-p.f)*p.d;
     if(k<0 || k>=p.arr.length) return null;
     if(train.held) return {phase: train.atStation ? "HELD AT PLATFORM" : "HELD", source: "behind a late train", held: true};   // bunchUp
-    const th=testHoldOf(code,r);                                   // Dev test hold: its own times
+    const th=testHoldOf(code,r) || alertSlowFor(code,r);           // Dev test hold, or LTA's extra travel time: their own times
     const rt=th ? {arr: th.R.filter((_, i) => !(i % 2)).map(x => r.s + x), dep: th.R.filter((_, i) => i % 2).map(x => r.s + x)} : typeof rtTimesFor==="function" ? rtTimesFor(code,r) : null;
     const arr=rt && Number.isFinite(rt.arr[k]) ? rt.arr[k] : r.s+p.arr[k];
     const dep=rt && Number.isFinite(rt.dep[k]) ? rt.dep[k] : r.s+p.dep[k];
