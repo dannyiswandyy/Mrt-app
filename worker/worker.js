@@ -3,9 +3,11 @@
    The website is public, so it can't hold the LTA DataMall key, and a browser can't read LTA, Google News or
    YouTube directly (they don't allow other sites to). This relay does, for the MRT Tracker website only:
 
-     GET  /health                         what the relay can do: {ok, lta, ai, yt}
+     GET  /health                         what the relay can do: {ok, lta, gtfsrt, ai, yt}
      GET  /lta/TrainServiceAlerts         LTA train service alerts           (adds the key)
      GET  /lta/PCDRealTime?TrainLine=NSL  LTA platform crowd levels, one line (adds the key)
+     GET  /lta/PCDForecast?TrainLine=NSL  LTA platform crowd forecast, one line (adds the key)
+     GET  /lta/GTFSRealtime?kind=trips    LTA GTFS-Realtime (trips|alerts) as base64 protobuf (adds the key)
      GET  /lta/BusArrival?BusStopCode=83139  LTA bus arrivals at one stop (adds the key)
      GET  /lta/BusStops?$skip=0         LTA's bus stops, 500 at a time (adds the key; cached a day)
      GET  /lta/BusRoutes?$skip=0        LTA's bus routes, 500 at a time (adds the key; cached a day)
@@ -25,6 +27,8 @@
 
 const LTA = "https://datamall2.mytransport.sg/ltaodataservice/";
 const LTA_LINES = new Set(["CCL", "CEL", "CGL", "DTL", "EWL", "NEL", "NSL", "BPL", "SLRT", "PLRT", "TEL"]);
+const GTFS_RT_EPS = {trips: "GTFSRealtimeTrainTripUpdates", alerts: "GTFSRealTimeTrainServiceAlerts"};
+const GTFS_LINK_HOSTS = [".amazonaws.com", ".mytransport.sg", ".lta.gov.sg", ".cloudfront.net", ".blob.core.windows.net", ".azureedge.net"];
 const YT_HANDLES = new Set(["@railcamsg"]);
 const WX = "https://api-open.data.gov.sg/v2/real-time/api/";
 const WX_PATHS = new Set(["two-hr-forecast", "rainfall", "air-temperature", "wind-direction", "wind-speed", "weather?api=lightning"]);
@@ -54,7 +58,7 @@ export default {
 async function route(request, env, ctx) {
   const url = new URL(request.url), path = url.pathname;
   if (request.method === "GET" && path === "/health") {
-    return json({ok: true, lta: !!env.LTA_KEY, ai: !!env.ANTHROPIC_API_KEY, yt: true});
+    return json({ok: true, lta: !!env.LTA_KEY, gtfsrt: !!env.LTA_KEY, ai: !!env.ANTHROPIC_API_KEY, yt: true});
   }
   if (request.method === "GET" && path === "/lta/TrainServiceAlerts") {
     if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
@@ -65,6 +69,19 @@ async function route(request, env, ctx) {
     const line = url.searchParams.get("TrainLine") || "";
     if (!LTA_LINES.has(line)) return text(400, "Unknown train line.");
     return upstream(LTA + "PCDRealTime?TrainLine=" + line, {AccountKey: env.LTA_KEY, accept: "application/json"}, 120);
+  }
+  if (request.method === "GET" && path === "/lta/PCDForecast") {
+    if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
+    const line = url.searchParams.get("TrainLine") || "";
+    if (!LTA_LINES.has(line)) return text(400, "Unknown train line.");
+    return upstream(LTA + "PCDForecast?TrainLine=" + line, {AccountKey: env.LTA_KEY, accept: "application/json"}, 1800);
+  }
+  if (request.method === "GET" && path === "/lta/GTFSRealtime") {
+    if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
+    const kind = url.searchParams.get("kind") || "";
+    const ep = Object.prototype.hasOwnProperty.call(GTFS_RT_EPS, kind) ? GTFS_RT_EPS[kind] : "";
+    if (!ep) return text(400, "Unknown GTFS-Realtime feed kind.");
+    return upstreamGtfsRt(ep, env.LTA_KEY, 45);
   }
   if (request.method === "GET" && path === "/lta/BusArrival") {           // bus times at one stop ("Buses here" on a station card)
     if (!env.LTA_KEY) return text(503, "No LTA key is set on the relay.");
@@ -151,6 +168,50 @@ async function upstream(u, headers, ttl) {
     if (status === 200) { if (memo.size > 200) memo.clear(); memo.set(u, {status, body, type, until: now + ttl * 1000}); }
   }
   return new Response(body, {status, headers: {"content-type": type, "cache-control": `public, max-age=${Math.min(ttl, 60)}`}});
+}
+function isSafeGtfsLink(raw) {
+  let u; try { u = new URL(raw); } catch (_) { return false; }
+  if (u.protocol !== "https:") return false;
+  const host = u.hostname.toLowerCase();
+  if (!host || host === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(":")) return false;
+  return GTFS_LINK_HOSTS.some(sfx => host === sfx.slice(1) || host.endsWith(sfx));
+}
+function bytesToBase64(bytes) {
+  let bin = "";
+  const step = 0x8000;
+  for (let i = 0; i < bytes.length; i += step) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + step));
+  }
+  return btoa(bin);
+}
+async function upstreamGtfsRt(ep, key, ttl) {
+  const cacheKey = "gtfsrt:" + ep, now = Date.now(), hit = memo.get(cacheKey);
+  if (hit && hit.until > now) {
+    return new Response(hit.body, {status: hit.status, headers: {"content-type": "text/plain; charset=utf-8", "cache-control": `public, max-age=${Math.min(ttl, 45)}`}});
+  }
+  const r = await fetch(LTA + ep, {headers: {"User-Agent": UA, AccountKey: key, accept: "application/json, application/x-protobuf, application/octet-stream"}});
+  if (r.status !== 200) return new Response("", {status: r.status, headers: {"content-type": "text/plain; charset=utf-8", "cache-control": "no-store"}});
+  const ctype = (r.headers.get("content-type") || "").toLowerCase();
+  let bytes;
+  if (ctype.includes("json")) {
+    const data = await r.json();
+    const link = data && Array.isArray(data.value) && data.value[0] && typeof data.value[0].Link === "string" ? data.value[0].Link.trim() : "";
+    if (!link) return text(502, "GTFS-Realtime link missing.");
+    if (!isSafeGtfsLink(link)) return text(502, "Unexpected GTFS-Realtime host.");
+    const pbRes = await fetch(link, {headers: {"User-Agent": UA}});
+    if (pbRes.status !== 200) return new Response("", {status: pbRes.status, headers: {"content-type": "text/plain; charset=utf-8", "cache-control": "no-store"}});
+    const buf = await pbRes.arrayBuffer();
+    if (buf.byteLength > 5 * 1024 * 1024) return text(502, "GTFS-Realtime feed too large.");
+    bytes = new Uint8Array(buf);
+  } else {
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength > 5 * 1024 * 1024) return text(502, "GTFS-Realtime feed too large.");
+    bytes = new Uint8Array(buf);
+  }
+  const b64 = bytesToBase64(bytes);
+  if (memo.size > 200) memo.clear();
+  memo.set(cacheKey, {status: 200, body: b64, type: "text/plain; charset=utf-8", until: now + ttl * 1000});
+  return new Response(b64, {status: 200, headers: {"content-type": "text/plain; charset=utf-8", "cache-control": `public, max-age=${Math.min(ttl, 45)}`}});
 }
 async function pageText(u, limit) {
   const r = await fetch(u, {headers: {"User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",

@@ -1,0 +1,5 @@
+{
+  "name": "MRT Spotter",
+  "description": "Live map of Singapore's MRT and LRT trains, next trains, disruptions and crowds.",
+  "requestFramePermissions": []
+}

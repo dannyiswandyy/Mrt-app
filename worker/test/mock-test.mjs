@@ -8,6 +8,8 @@ const calls = [];
 globalThis.fetch = async (u, opt = {}) => {
   const url = String(u), h = new Headers(opt.headers || {});
   calls.push({url, headers: h, body: opt.body, method: opt.method || "GET"});
+  if (url.startsWith("https://datamall2.mytransport.sg/ltaodataservice/GTFSReal")) return new Response(JSON.stringify({value: [{Link: "https://lta-gtfs-rt.s3.ap-southeast-1.amazonaws.com/feed.pb"}]}), {status: 200, headers: {"content-type": "application/json"}});
+  if (url === "https://lta-gtfs-rt.s3.ap-southeast-1.amazonaws.com/feed.pb") return new Response(new Uint8Array([10, 4, 10, 2, 50, 46]), {status: 200, headers: {"content-type": "application/x-protobuf"}});
   if (url.startsWith("https://datamall2.mytransport.sg/")) return new Response(JSON.stringify({value: {Status: 1, AffectedSegments: [], Message: []}, key: h.get("AccountKey")}), {status: 200, headers: {"content-type": "application/json"}});
   if (url.startsWith("https://api-open.data.gov.sg/")) return new Response('{"code":0,"data":{}}', {status: 200});
   if (url.startsWith("https://news.google.com/")) return new Response("<rss><channel><item><title>MRT news</title></item></channel></rss>", {status: 200, headers: {"content-type": "application/rss+xml"}});
@@ -24,9 +26,9 @@ let n = 0; const ok = (name) => { n++; console.log("✓", name); };
 let r = await req("/health", {}, null); assert.equal(r.status, 403); ok("no Origin → 403");
 r = await req("/health", {}, "https://evil.example"); assert.equal(r.status, 403); assert.equal(r.headers.get("Access-Control-Allow-Origin"), null); ok("other site → 403, no CORS");
 r = await req("/health", {method: "OPTIONS"}); assert.equal(r.status, 204); assert.equal(r.headers.get("Access-Control-Allow-Origin"), ORIGIN); ok("preflight from the site → 204 + CORS");
-r = await req("/health"); assert.deepEqual(await r.json(), {ok: true, lta: true, ai: true, yt: true}); assert.equal(r.headers.get("Access-Control-Allow-Origin"), ORIGIN); ok("/health");
+r = await req("/health"); assert.deepEqual(await r.json(), {ok: true, lta: true, gtfsrt: true, ai: true, yt: true}); assert.equal(r.headers.get("Access-Control-Allow-Origin"), ORIGIN); ok("/health");
 r = await req("/health", {}, "http://localhost:8080"); assert.equal(r.status, 200); ok("second allowed origin");
-r = await worker.fetch(new Request("https://x/health", {headers: {Origin: ORIGIN}}), {ALLOWED_ORIGINS: ORIGIN}, {}); assert.deepEqual(await r.json(), {ok: true, lta: false, ai: false, yt: true}); ok("/health without secrets");
+r = await worker.fetch(new Request("https://x/health", {headers: {Origin: ORIGIN}}), {ALLOWED_ORIGINS: ORIGIN}, {}); assert.deepEqual(await r.json(), {ok: true, lta: false, gtfsrt: false, ai: false, yt: true}); ok("/health without secrets");
 
 calls.length = 0;
 r = await req("/lta/TrainServiceAlerts"); assert.equal(r.status, 200);
@@ -35,6 +37,14 @@ assert.equal(r.headers.get("Access-Control-Allow-Origin"), ORIGIN); ok("alerts: 
 r = await req("/lta/TrainServiceAlerts"); assert.equal(r.status, 200); assert.equal(calls.length, 1); ok("alerts: a second visitor within 30 s is answered from memory");
 r = await req("/lta/PCDRealTime?TrainLine=NSL"); assert.equal(r.status, 200); assert.ok(calls[1].url.endsWith("PCDRealTime?TrainLine=NSL")); ok("crowd for a line");
 r = await req("/lta/PCDRealTime?TrainLine=NSL%26x=1"); assert.equal(r.status, 400); ok("crowd: unknown line refused");
+r = await req("/lta/PCDForecast?TrainLine=DTL"); assert.equal(r.status, 200); assert.ok(calls[2].url.endsWith("PCDForecast?TrainLine=DTL")); ok("crowd forecast for a line");
+r = await req("/lta/PCDForecast?TrainLine=BAD"); assert.equal(r.status, 400); ok("crowd forecast: unknown line refused");
+r = await req("/lta/GTFSRealtime?kind=trips"); assert.equal(r.status, 200); assert.equal(await r.text(), btoa("\n\x04\n\x022.")); ok("gtfs-rt trips fetched via signed link and base64-encoded");
+const beforeCached = calls.length;
+r = await req("/lta/GTFSRealtime?kind=trips"); assert.equal(r.status, 200); assert.equal(calls.length, beforeCached); ok("gtfs-rt trips cached in worker memory");
+r = await req("/lta/GTFSRealtime?kind=alerts"); assert.equal(r.status, 200); ok("gtfs-rt alerts fetched");
+r = await req("/lta/GTFSRealtime?kind=evil"); assert.equal(r.status, 400); ok("gtfs-rt: unknown kind refused");
+r = await worker.fetch(new Request("https://x/lta/GTFSRealtime?kind=trips", {headers: {Origin: ORIGIN}}), {ALLOWED_ORIGINS: ORIGIN}, {}); assert.equal(r.status, 503); ok("gtfs-rt without LTA_KEY → 503");
 r = await req("/lta/BusArrivalv2?BusStopCode=1"); assert.equal(r.status, 404); ok("other LTA datasets refused");
 r = await worker.fetch(new Request("https://x/lta/TrainServiceAlerts", {headers: {Origin: ORIGIN}}), {ALLOWED_ORIGINS: ORIGIN}, {}); assert.equal(r.status, 503); ok("alerts without LTA_KEY → 503");
 

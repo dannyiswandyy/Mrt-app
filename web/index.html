@@ -282,6 +282,17 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .sb{font:600 11px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:0 4px;margin-left:4px;white-space:nowrap;vertical-align:1px}
 .next .sbc,.mi-t .sbc{font:700 10px var(--display);font-style:normal;color:var(--fg);margin-left:3px;letter-spacing:.02em}
 .detail .sbnote{margin:0;font-size:11.5px;line-height:1.35}
+.ftimes,.detail .ftimes{display:grid;gap:4px;margin-top:4px}
+.plat.ftimes{gap:0;margin-top:0}
+.detail .ftimes .ftrow{flex-direction:column;align-items:stretch;gap:0;margin-top:2px}
+.detail .ftimes .ftrow .t{text-align:right}
+.plat.ftimes > .ftsb{padding:5px 12px 5px 24px;border-top:0}
+.ftimes .fthead{margin:4px 0 0;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ftimes .ftrow,.ftimes .ftsb{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13px}
+.ftimes .ftrow .t,.ftimes .ftsb .t{font-family:var(--mono);font-size:12px;text-align:right;white-space:nowrap}
+.ftimes .ftrow>span:first-child{display:flex;align-items:center;gap:6px;min-width:0}
+.ftimes .ftsb{padding-left:12px;color:var(--muted);font-size:12px}
+.ftimes .ftsb b{color:var(--fg);font-weight:600}
 .train.short .tic .body{stroke:var(--fg);stroke-width:1.6;stroke-dasharray:3 2}
 .tic{overflow:visible}
 .tic .lastbar{display:none}
@@ -309,8 +320,32 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .alert.warn{background:var(--warnbg);border-left:6px solid var(--warn)}
 .alert.warn b{color:var(--warn)}
 .alert .sub{color:var(--muted);font-size:13px}
-.seg{display:grid;gap:3px}
+.seg{display:grid;gap:3px;padding:9px 11px;border-radius:10px;border:1px solid var(--rule);background:var(--bg)}
+.seg.is-outage{border-left:4px solid var(--bad);background:color-mix(in srgb,var(--badbg) 55%,var(--bg))}
+.seg.is-planned{border-left:4px solid var(--warn);background:color-mix(in srgb,var(--warnbg) 65%,var(--bg));border-style:solid solid solid dashed}
+.seg.is-resumed{border-left:4px solid var(--good);background:color-mix(in srgb,var(--goodbg) 55%,var(--bg))}
 .seg .h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:600}
+.al-status-box{display:grid;gap:8px;padding:11px 12px;border-radius:12px;border:1px solid var(--rule);background:var(--soft)}
+.al-status-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}
+.al-status-head b{font-size:12.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+.al-legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.al-legend span{display:inline-flex;align-items:center;gap:5px}
+.al-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.al-dot.is-outage{background:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 22%,transparent)}
+.al-dot.is-planned{background:var(--warn);border-radius:2px;box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 22%,transparent)}
+.al-dot.is-resumed{background:var(--good)}
+.al-lines{display:grid;gap:6px}
+.al-line{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--rule);background:var(--panel)}
+.al-line.is-outage{border-left:4px solid var(--bad);background:color-mix(in srgb,var(--badbg) 50%,var(--panel))}
+.al-line.is-planned{border-left:4px dashed var(--warn);background:color-mix(in srgb,var(--warnbg) 60%,var(--panel))}
+.al-line.is-resumed{border-left:4px solid var(--good);background:color-mix(in srgb,var(--goodbg) 45%,var(--panel))}
+.al-line-main{min-width:0;display:grid;gap:1px}
+.al-line-main b{font-size:13px;line-height:1.25}
+.al-line-main small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.al-kind{display:inline-flex;align-items:center;gap:4px;font:700 10.5px var(--body);letter-spacing:.03em;text-transform:uppercase;padding:3px 7px;border-radius:6px;white-space:nowrap}
+.al-kind.is-outage{background:var(--bad);color:#fff}
+.al-kind.is-planned{background:var(--warnbg);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 55%,transparent)}
+.al-kind.is-resumed{background:var(--goodbg);color:var(--good);border:1px solid color-mix(in srgb,var(--good) 45%,transparent)}
 .chip{font:600 11px var(--body);letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:1px 6px;background:var(--bad);color:#fff}
 .chip.sample{background:var(--muted)}
 .row.dis .name::after{content:"Disrupted";font:600 10px var(--body);letter-spacing:.05em;text-transform:uppercase;color:#fff;background:var(--bad);border-radius:3px;padding:1px 5px}
@@ -321,6 +356,7 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .card .muted,.muted{color:var(--muted);font-size:13px}
 .msgs,.news{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .msgs li{border-left:3px solid var(--bad);padding-left:10px;display:grid;gap:2px;max-width:65ch}
+.msgs li.is-planned{border-left:3px dashed var(--warn)}
 .news a{color:var(--fg);text-decoration:none;font-weight:600;display:block}
 .news a:hover{text-decoration:underline}
 .news li{display:grid;gap:2px;padding-bottom:10px;border-bottom:1px solid var(--soft)}
@@ -888,6 +924,15 @@ select,input[type="time"],input[type="text"],textarea{
 .dirrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--soft);font-size:14px}
 .dirrow .ln{width:6px;height:22px;border-radius:3px;background:var(--c)}
 .dirrow .to{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dirrow .fl{font-size:11px;opacity:.6;font-weight:500}
+.sp-sets{display:grid;gap:6px}
+.lrns{display:grid;gap:4px;margin-top:6px;font-size:13px}
+.sp-watch{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.lrn{display:grid;grid-template-columns:1fr auto;gap:0 8px;padding:6px 8px;border-left:4px solid var(--c);border-bottom:1px solid var(--soft)}
+.lrn small{grid-column:1/-1;opacity:.6}
+.sp-sets button{display:flex;justify-content:space-between;gap:8px;align-items:center;text-align:left;padding:8px 10px;border:1px solid var(--soft);border-left:4px solid var(--c);border-radius:10px;background:none;color:inherit;font:inherit}
+.sp-sets button.on{outline:2px solid var(--c)}
+.sp-sets span{font-size:12px;opacity:.7}
 .dirrow .t{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted);font-size:13px;text-align:right}
 .dirrow .t em{font-style:normal;color:var(--fg);font-weight:600;font-size:15px}
 .dirrow .t .sbc{font:700 10px var(--display);font-style:normal;color:var(--fg);margin-left:3px;letter-spacing:.02em}
@@ -929,6 +974,10 @@ body.on-map .hx-sheet{max-height:58vh}
 .plat{display:grid;border:1px solid var(--rule);border-radius:14px;overflow:hidden}
 .plat > div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid var(--soft);font-size:14px;border-left:5px solid var(--c)}
 .plat > div:first-child{border-top:0}
+.rtstops{display:grid;gap:2px;font-size:13px;margin-top:4px}
+.rtstops div{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-top:1px solid var(--soft)}
+.rtstops div:first-child{border-top:0}
+.rtstops b{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .plat .pf{font:600 11px var(--body);opacity:.65;margin-left:6px;white-space:nowrap}
 .plat .t{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .plat .t em{font-style:normal;font-weight:600}
@@ -942,6 +991,10 @@ body.on-map .hx-sheet{max-height:58vh}
 .tx-list .code{margin-top:2px}
 .ex-src{font-size:11.5px;color:var(--muted);margin:0;line-height:1.4}
 .hx-crowd{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px}
+.fc{display:grid;gap:6px;font-size:12px}
+.fc-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.fc-iv{display:inline-flex;flex-wrap:wrap;gap:4px}
+.fc-row small{opacity:.7}
 .hx-crowd > span{display:inline-flex;align-items:center;gap:4px}
 .hx-cam{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--rule);border-radius:16px;padding:12px 14px;background:linear-gradient(160deg,#2b3542,#10151c);color:#fff;font:inherit;cursor:pointer}
 .hx-cam .ic{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center}
@@ -1395,6 +1448,17 @@ footer{border-top:1px solid var(--rule);font-size:12px;line-height:1.55}
 .maplegend-ring.dash{border-style:dashed;border-color:var(--fg)}
 .maplegend-bar{width:20px;height:3px;background:var(--fg);border-radius:2px}
 .maplegend-wet{width:20px;height:7px;border-radius:4px;background:repeating-linear-gradient(90deg,#3d9bff 0 5px,#dff0ff 5px 7px);box-shadow:0 0 6px #3d9bff}
+/* Screens 600px+ (tablets and wide screens): tapping a train opens its full details in a drawer on the right,
+   so the map stays visible and another train can be tapped straight away. Phones keep the bottom sheet. */
+@media (min-width:600px){
+  .hx-sheet.hx-train,body.on-map .hx-sheet.hx-train{left:auto;right:0;top:0;bottom:calc(88px + env(safe-area-inset-bottom,0px));width:min(400px,48vw);max-height:none;border-radius:22px 0 0 22px;border-top:0;border-left:6px solid var(--c)}
+  .hx-sheet.hx-train .sheet-grab{display:none}
+  .hx-bg.hx-train{display:none}
+}
+@media (min-width:1024px){
+  .hx-sheet.hx-train,body.on-map .hx-sheet.hx-train{top:12px;bottom:12px;width:min(460px,40vw)}
+  body.hx-train-open #mapInfo{display:none!important}   /* the drawer has everything the small map card had */
+}
 /* ===== Map legend: matches the other map controls (Claude) ===== */
 .maplegend{right:14px;bottom:112px;z-index:12;font-family:var(--body)}
 .maplegend-btn{height:38px;min-height:38px;padding:0 13px 0 11px;gap:7px;border-radius:11px;border:1px solid var(--rule);background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--fg);font:600 13.5px/1 var(--body);letter-spacing:.01em;box-shadow:var(--shadow-soft,0 2px 8px rgba(0,0,0,.12));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
@@ -1790,8 +1854,9 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
     tt = t && t.trim().startsWith("{") && t.includes('"lines"') ? t : "";
     trk = tr && tr.trim().startsWith("{") && tr.includes('"paths"') ? tr : "";
     ex = x && x.trim().startsWith("{") ? x : "";
-    if (h && h.ok){ W.relay = true; W.live = !!h.lta; W.ai = !!h.ai; W.yt = !!h.yt; }
+    if (h && h.ok){ W.relay = true; W.live = !!h.lta; W.gtfsrt = !!(h.gtfsrt || h.lta); W.ai = !!h.ai; W.yt = !!h.yt; }
     if (W.yt) bridge.liveLookup = (id, handle) => send(id, PROXY + "/yt?handle=" + encodeURIComponent(handle));
+    if (W.gtfsrt) bridge.gtfsRealtime = (id, kind) => send(id, PROXY + "/lta/GTFSRealtime?kind=" + encodeURIComponent(kind));
     window.MrtApp = bridge;
     runMain(later);
   });
@@ -1824,9 +1889,11 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
       if (document.hidden) return;
       const h = await within(fetch(PROXY + "/health", {cache: "no-store"}).then(r => r.ok ? r.json() : null).catch(() => null), 4000);
       const was = W.live, ok = !!(h && h.ok);
-      W.relay = ok; W.live = ok && !!h.lta; W.ai = ok && !!h.ai; W.yt = ok && !!h.yt;
+      W.relay = ok; W.live = ok && !!h.lta; W.gtfsrt = ok && !!(h.gtfsrt || h.lta); W.ai = ok && !!h.ai; W.yt = ok && !!h.yt;
       if (W.yt) bridge.liveLookup = (id, handle) => send(id, PROXY + "/yt?handle=" + encodeURIComponent(handle));
       else delete bridge.liveLookup;
+      if (W.gtfsrt) bridge.gtfsRealtime = (id, kind) => send(id, PROXY + "/lta/GTFSRealtime?kind=" + encodeURIComponent(kind));
+      else delete bridge.gtfsRealtime;
       if (W.live === was) return;
       try { renderBanner(); } catch(e){}
       try { if (W.live) refreshAll(); } catch(e){}
@@ -2532,7 +2599,8 @@ function wetDelay(code, t){
     const mv = moved(code, sgNow().iso);
     if (t.ref && t.ref.p){
       const r = t.ref, p = r.p, w = wetRun(code, r);
-      if (!w || r.tl || (mv && mv.get(t.id))) return 0;
+      const m = mv && mv.get(t.id);
+      if (!w || r.tl || m || rtProfileFor(code, r, m) || ttLateStart(code, r, mv)) return 0;
       return w.W[Math.max(0, Math.min(w.W.length - 1, Math.round((t.next - p.f) * p.d)))];
     }
     if (mv && mv.get(t.id)) return 0;
@@ -3114,7 +3182,11 @@ function ttLinks(list){
         if (A && B) link(A[A.length - 1], B[0]);
       }
     }
-    if (nextG.size || prevG.size) return list.links = {next: nextG, prev: prevG, source: "LTA GTFS run graph"};
+    if (nextG.size || prevG.size){
+      for (const [b, a] of prevG) b.pv = a;
+      for (const r of list) r.tl = 0;
+      return list.links = {next: nextG, prev: prevG, source: "LTA GTFS run graph"};
+    }
   }
   const next = new Map(), prev = new Map(), st = list.code && LINES[list.code] ? LINES[list.code].stations : null;
   // the same station: on the Circle Line a run carried on round to Promenade ends at the second Promenade in the list
@@ -3138,19 +3210,24 @@ function ttLinks(list){
       if (b){ next.set(a, b); prev.set(b, a); }
     }
   }
-  // A train can't start its next run before it gets in. With SLOW, North-South Line trains reach the end a few
-  // minutes after LTA's time, so their next run leaves that much late (r.tl, seconds) and makes the time up along
-  // the way, getting to the other end on time (see ttSched). Without this the same train showed twice for a few
-  // minutes, arriving and already leaving. Only on lines with train slots: the LRT's links are a best guess.
-  if (slotted) for (const r of list){
-    const a = prev.get(r);
-    r.tl = a ? Math.max(0, Math.min(TT_LAYOVER_EARLY + TT_TURN_MIN, gets(a) + TT_TURN_MIN - r.s, r.p.end / 2)) : 0;
-  }
+  // Runs leave on LTA's time (r.tl = 0). LTA's live feed can still hold a run back (ttLateStart).
+  for (const [b, a] of prev) b.pv = a;                      // the same train's run before this one
+  for (const r of list) r.tl = 0;
+  void slotted;
   return list.links = {next, prev};
 }
 /* Where a run is in its own timetable (seconds since the service day began) at clock time `sec`, and how fast
    that timetable goes by (1: as LTA has it). LTA's live delay or a Live cam correction moves the whole run;
    otherwise a run that has to wait for its train (r.tl) leaves late and catches up by the end of the run. */
+/* How late a run leaves (seconds): r.tl from the timetable, or later if LTA's live feed (or a sighting) says the
+   same train is late on the run before, since it can't leave before it has got in and turned round. */
+function ttLateStart(code, r, mv){
+  const tl = r.tl || 0, a = r.pv; if (!a) return tl;
+  const ma = mv && mv.get(`${code}t${a.s}p${a.pi}`);
+  if (!ma && !rtProfileFor(code, a, ma)) return tl;             // nothing live about it: the timetable figure
+  const gets = ttAt(code, a, a.p.arr.length - 1, mv);           // when it really gets in
+  return Math.max(0, Math.min(r.p.end / 2, Math.max(tl, gets + TT_TURN_MIN - r.s)));
+}
 /* Timetable time for clock time `sec` on a run whose real (R) and timetabled (S) arrive / leave times at each stop
    are given, in seconds from its start: in between, the train makes up (or loses) time evenly. */
 function ttProfSched(r, R, S, sec){
@@ -3162,12 +3239,97 @@ function ttProfSched(r, R, S, sec){
   return {sec: r.s + (w > 0 ? S[j] + (e - R[j]) * rate : S[j + 1]), rate: rate || 1};
 }
 function ttSched(code, r, sec, mv){
-  const m = mv && mv.get(`${code}t${r.s}p${r.pi}`);
+  const m = mv && mv.get(`${code}t${r.s}p${r.pi}`), pr = rtProfileFor(code, r, m);
+  if (pr) return ttProfSched(r, pr.R, pr.S, sec);  // LTA's delay at each stop
   if (m) return {sec: sec - m * 60, rate: 1};
-  const tl = r.tl || 0;
+  sec -= ttLearned(code, r);                                    // what your sightings say this line runs like at this hour
+  const tl = ttLateStart(code, r, mv);
   if (!tl){ const w = wetRun(code, r); return w ? ttProfSched(r, w.R, w.S, sec) : {sec, rate: 1}; }   // slower on wet rails (wetRun)
   const e = sec - r.s, rate = r.p.end / (r.p.end - tl);
   return {sec: r.s + (e < tl ? e - tl : (e - tl) * rate), rate};
+}
+/* LTA's live train feed, stop by stop, for one run: {aD, dD: delay in seconds at each stop of the run (arriving,
+   leaving), skip: stops it doesn't call at, R / S: its arrive and leave times at each stop, live and timetabled,
+   in seconds from its start}. null when LTA gives one delay for the whole trip (that moves the run as a whole, in
+   moved()), or someone's sighting (moved()) says otherwise. */
+const rtProfCache = new WeakMap();
+let rtVer = 0;
+const RT_ALIAS = {CE1: "CC34", CE2: "CC33"};
+function rtProfileFor(code, r, m){
+  let st = null; try { st = rtState; } catch(e){ return null; }     // not set up yet while the page is still starting
+  if (!st || !st.trips || !r.tid || Date.now() - st.at > 10 * 60e3) return null;
+  const u = st.trips[r.tid]; if (!u || !u.s || u.x) return null;
+  if (m != null && Math.abs(m * 60 - (u.d || 0)) > 1) return null;   // a sighting moved this train: that wins
+  const c = rtProfCache.get(r); if (c && c.v === rtVer) return c.p;
+  const p = r.p, n = p.arr.length, stns = LINES[code].stations;
+  const day0 = Date.parse(sgNow().iso + "T00:00:00+08:00") / 1000;
+  const aD = new Array(n).fill(null), dD = new Array(n).fill(null), skip = new Set();
+  for (const [sid, seq, a, d, rel, at, dt] of u.s){
+    let k = -1;
+    if (sid){
+      const pre = sid.split("_")[0].toUpperCase(), cd = RT_ALIAS[pre] || pre;
+      for (let i = 0; i < stns.length && k < 0; i++) if (stns[i][0] === cd){ const q = (i - p.f) * p.d; if (q >= 0 && q < n) k = q; }
+    } else if (seq != null && seq >= 1 && seq <= n) k = seq - 1;
+    if (k < 0) continue;
+    if (rel === 1) skip.add(k);
+    const ad = a != null ? a : at ? at - (day0 + r.s + p.arr[k]) : null;     // a delay, or a time to work it out from
+    const dd = d != null ? d : dt ? dt - (day0 + r.s + p.dep[k]) : null;
+    if (ad != null) aD[k] = ad;
+    if (dd != null) dD[k] = dd;
+  }
+  // a delay carries on to the stops after it until the next one LTA gives; before the first, the first one
+  let cur = null;
+  for (let k = 0; k < n; k++){
+    if (aD[k] == null) aD[k] = cur; else cur = aD[k];
+    if (dD[k] == null) dD[k] = cur; else cur = dD[k];
+  }
+  const first = aD.find(x => x != null) ?? dD.find(x => x != null) ?? (u.d || 0);
+  for (let k = 0; k < n; k++){ if (aD[k] == null) aD[k] = first; if (dD[k] == null) dD[k] = aD[k]; }
+  // every station from some point to the end "not stopping": the train ends early, at the last station before them
+  let endK = null;
+  if (skip.has(n - 1)){
+    let K = n - 1; while (K > 0 && skip.has(K)) K--;
+    if (K >= 1){ endK = K; for (let q = K + 1; q < n; q++) skip.delete(q); }
+  }
+  let prof = null;
+  if (endK != null || skip.size || aD.some(x => x !== aD[0]) || dD.some(x => x !== aD[0])){
+    const R = [], S = [];
+    for (let k = 0; k < n; k++){
+      const ra = Math.max(R.length ? R[R.length - 1] : -Infinity, p.arr[k] + aD[k]);
+      const rd = skip.has(k) && k > 0 && k < n - 1 ? ra : Math.max(ra, p.dep[k] + dD[k]);   // not stopping: straight through
+      R.push(ra, rd); S.push(p.arr[k], p.dep[k]);
+    }
+    prof = {aD, dD, skip, R, S, endK};
+  }
+  rtProfCache.set(r, {v: rtVer, p: prof});
+  return prof;
+}
+/* Detect where LTA-reported delay is increasing between consecutive stops.
+   This is an operational indicator of possible slow running / a temporary speed restriction;
+   it is deliberately labelled as an inference, not an LTA-issued speed restriction. */
+function rtSlowSegments(code,r){
+  try{
+    const pr=rtProfileFor(code,r,null); if(!pr) return [];
+    const st=LINES[code]&&LINES[code].stations, out=[];
+    for(let k=0;k<pr.aD.length-1;k++){
+      const a=pr.aD[k], b=pr.aD[k+1];
+      if(a==null||b==null) continue;
+      const gain=b-a;
+      if(gain>=30){
+        const from=st[r.p.f+r.p.d*k], to=st[r.p.f+r.p.d*(k+1)];
+        if(from&&to) out.push({from:from[1],to:to[1],gain,kind:gain>=90?"strong":"possible"});
+      }
+    }
+    return out;
+  }catch(e){ return []; }
+}
+window.mrtSlowSegments=rtSlowSegments;
+/* Seconds a line runs late (+) or early (-) against the timetable at this hour, learned from your sightings
+   (window.learnedLate, in the Spotter's log module); 0 until there are enough of them. Used for trains LTA's live
+   feed says nothing about. */
+function ttLearned(code, r){
+  if (r.added) return 0;
+  try { return window.learnedLate ? window.learnedLate(code, r.p.d > 0 ? 0 : 1) * 60 : 0; } catch(e){ return 0; }
 }
 /* When a run gets to the stop `k` stops along it, in clock time (seconds): the other way round from ttSched. */
 function ttAt(code, r, k, mv){
@@ -3176,11 +3338,11 @@ function ttAt(code, r, k, mv){
   const m = mv && mv.get(code + "t" + r.s + "p" + r.pi);
   if (m) return r.s + r.p.arr[k] + m * 60;
   const tl = r.tl || 0;
-  if (!tl){ const w = wetRun(code, r); if (w) return r.s + r.p.arr[k] + w.W[k]; }   // as ttSched has it
+  if (!tl){ const w = wetRun(code, r); if (w && !rtProfileFor(code, r, m) && !ttLateStart(code, r, mv)) return r.s + r.p.arr[k] + w.W[k]; }   // as ttSched has it
   return tl ? r.s + tl + r.p.arr[k] * (r.p.end - tl) / r.p.end : r.s + r.p.arr[k];
 }
 /* Where a train is, for its details card: at a station, or between two and how far along (from the map's own
-   position), and whether LTA's live feed or the timetable places it. Same as MRT Dev. */
+   position), and whether LTA's live feed or the timetable places it. */
 function trainPredictionSource(t){
   try{
     const fresh = !!(rtState && rtState.at && Date.now() - rtState.at <= 10 * 60e3);
@@ -3193,6 +3355,28 @@ function trainPredictionSource(t){
     return {live:false, kind:"SCHEDULED", label:"SCHEDULED · LTA timetable", tripId};
   }catch(e){ return {live:false, kind:"SCHEDULED", label:"SCHEDULED · LTA timetable", tripId:""}; }
 }
+window.mrtRealtimeVehicle = t => {
+  try {
+    const id = t && t.ref && t.ref.tid != null ? String(t.ref.tid) : "";
+    const u = rtState && rtState.trips && rtState.trips[id];
+    const vp = rtState && rtState.vehicles && rtState.vehicles[id];
+    if (vp) return {source:"LTA VehiclePosition", ...vp};
+    if (u && u.vehicle) return {source:"LTA TripUpdate VehicleDescriptor", ...u.vehicle};
+  } catch(e){}
+  return null;
+};
+window.mrtTrainPredictionSource = trainPredictionSource;
+function rtVehicleInfo(t){
+  try{
+    const id=t&&t.ref&&t.ref.tid!=null?String(t.ref.tid):"";
+    const u=rtState&&rtState.trips&&rtState.trips[id];
+    const vp=rtState&&rtState.vehicles&&(rtState.vehicles[id]||Object.values(rtState.vehicles).find(v=>v.tripId===id));
+    const v=(vp&&vp.vehicle)||(u&&u.vehicle);
+    if(!v || !(v.id||v.label||v.plate)) return null;
+    return {id:v.id||"",label:v.label||"",plate:v.plate||"",position:vp?{lat:vp.lat,lon:vp.lon,bearing:vp.bearing,speed:vp.speed,stopId:vp.stopId,stopSeq:vp.stopSeq}:null};
+  }catch(e){ return null; }
+}
+window.mrtVehicleInfo = rtVehicleInfo;
 function trainPositionInfo(code, t){
   try{
     const L = LINES[code], act = L && L.stations;
@@ -3241,14 +3425,139 @@ function ttTrainsOn(code, now, list){
     // in a little after LTA's time), so it isn't shown twice, arriving here and leaving there
     { const nx = links.next.get(r); if (nx && secOf(nx) >= nx.s) continue; }
     const p = r.p, nk = st.at ? st.k : st.k + 1;
+    const ek = rtEndsAt(code, r, mv);
+    if (ek != null){                                       // LTA ends this train early, at stop ek of its run
+      if (sec > r.s + p.arr[ek] + 45) continue;            // it got there and is out of service now
+      const endIdx = p.f + p.d * ek, past = (st.idx - endIdx) * p.d >= -1e-6;
+      out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: past ? endIdx : st.idx, to: endIdx, cutLTA: true,
+        next: past ? endIdx : p.f + p.d * Math.min(nk, ek), eta: past ? 0 : Math.max(0, (ttAt(code, r, Math.min(nk, ek), mv) - (now.mins * 60 - late[p.d > 0 ? 0 : 1])) / 60), atStation: past || st.at, doors: !past && st.doors});
+      continue;
+    }
     out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
-      next: p.f + p.d * nk, eta: Math.max(0, (((typeof rtTimesFor === "function" && rtTimesFor(code,r)?.arr[nk] != null) ? rtTimesFor(code,r).arr[nk] : r.s + p.arr[nk] + (!r.tl && !(mv && mv.get(runId(r))) && wetRun(code, r) ? wetRun(code, r).W[nk] : 0)) - now.mins*60) / 60), atStation: st.at, doors:st.doors});
+      next: p.f + p.d * nk, eta: Math.max(0, (ttAt(code, r, nk, mv) - (now.mins * 60 - late[p.d > 0 ? 0 : 1])) / 60), atStation: st.at, doors: st.doors});
+  }
+  for (const r of rtAddedRuns(code, now.iso)){                // extra trains LTA added today
+    const sec = now.mins * 60 - late[r.p.d > 0 ? 0 : 1], st = ttState(r, sec);
+    if (!st){
+      // between two legs of the same extra train (it turned back partway): it waits at the platform, facing the new way
+      const b = r.nextLeg, bs = b ? now.mins * 60 - late[b.p.d > 0 ? 0 : 1] : 0;
+      if (b && sec > r.s + r.p.end && bs < b.s) out.push({id: `${code}x${b.tid}`, prev: `${code}x${r.tid}`, dir: b.p.d > 0 ? 0 : 1, dep: b.s / 60, ref: b,
+        idx: b.p.f, to: b.p.to, next: b.p.f, eta: Math.max(0, (b.s - bs) / 60), atStation: true, layover: true, added: b.added});
+      continue;
+    }
+    const p = r.p, nk = st.at ? st.k : st.k + 1;
+    out.push({id: `${code}x${r.tid}`, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
+      next: p.f + p.d * nk, eta: Math.max(0, (r.s + p.arr[nk] - sec) / 60), atStation: st.at, doors: st.doors, added: r.added});
   }
   return out;
+}
+/* Trains LTA's live feed adds that aren't in the timetable, as runs like the timetable's (on this line, today):
+   an added trip from the stops and clock times LTA gives, or a duplicated trip as the original run at its new
+   start time. They show on the map, the Line Board and in next-train times, marked as extra trains. */
+const rtAddCache = {};
+function rtAddedRuns(code, iso){
+  let st = null; try { st = rtState; } catch(e){ return []; }
+  if (!st || !st.trips || Date.now() - st.at > 10 * 60e3 || SIM.est) return [];
+  const k = code + "|" + iso + "|" + rtVer; if (rtAddCache[code] && rtAddCache[code].k === k) return rtAddCache[code].v;
+  const L = LINES[code], stns = L ? L.stations : [], day0 = Date.parse(iso + "T00:00:00+08:00") / 1000, out = [];
+  const hms = s => { const m = /^(\d+):(\d\d):(\d\d)$/.exec(String(s || "").trim()); return m ? +m[1] * 3600 + +m[2] * 60 + +m[3] : null; };
+  for (const [id, u] of Object.entries(st.trips)){
+    if (!u.add) continue;
+    try {
+      if (u.add === 6){                                      // the same trip again, later (or earlier)
+        const base = (ttTrips(code, iso) || []).find(r => r.tid === u.base), s0 = hms(u.start);
+        if (base && s0 != null && s0 !== base.s) out.push({s: s0, p: base.p, pi: "x" + base.pi, tid: id, added: 6});
+        continue;
+      }
+      const pts = [];
+      for (const [sid, , , , rel, at, dt] of u.s || []){
+        if (rel === 1 || !(at || dt) || !sid) continue;
+        const pre = sid.split("_")[0].toUpperCase(), cd = RT_ALIAS[pre] || pre;
+        const ix = stns.map((x, i) => x[0] === cd ? i : -1).filter(i => i >= 0); if (!ix.length) continue;
+        const prev = pts[pts.length - 1], i = prev ? ix.reduce((a, b) => Math.abs(b - prev.i) < Math.abs(a - prev.i) ? b : a) : ix[0];
+        pts.push({i, a: (at || dt) - day0, dd: (dt || at) - day0});
+      }
+      if (pts.length < 2 || pts.length < 0.8 * (u.s || []).length) continue;          // mostly not this line
+      // a trip can turn back partway (a shuttle between two stations during a disruption, say): one run per way it goes
+      const legs = []; let cur = [pts[0]];
+      for (let j = 1; j < pts.length; j++){
+        const q = pts[j], pr = cur[cur.length - 1], d0 = cur.length > 1 ? Math.sign(cur[1].i - cur[0].i) : 0, d1 = Math.sign(q.i - pr.i);
+        if (!d1){ pr.dd = Math.max(pr.dd, q.dd); continue; }                                  // the same station twice: it waits there
+        if (d0 && d1 !== d0){ legs.push(cur); cur = [pr, q]; } else cur.push(q);
+      }
+      legs.push(cur);
+      const mine = [];
+      legs.forEach((lg, li) => {
+        if (lg.length < 2) return;
+        const d = Math.sign(lg[1].i - lg[0].i), f = lg[0].i, n = Math.abs(lg[lg.length - 1].i - f) + 1, s = lg[0].dd, at = new Map(lg.map(q => [q.i, q]));
+        const arr = [], dep = [];
+        for (let q = 0; q < n; q++){
+          const i = f + d * q, x = at.get(i);
+          if (x){ arr.push(Math.max(0, x.a - s)); dep.push(Math.max(0, x.dd - s)); continue; }
+          const lo = lg.filter(y => (y.i - i) * d < 0).pop(), hi = lg.find(y => (y.i - i) * d > 0);   // not listed: in between
+          const fr = Math.abs(i - lo.i) / Math.abs(hi.i - lo.i), t = lo.dd + fr * (hi.a - lo.dd) - s;
+          arr.push(t); dep.push(t);
+        }
+        arr[0] = 0; dep[0] = 0;
+        mine.push({s, p: {f, d, arr, dep, to: f + d * (n - 1), end: arr[n - 1]}, pi: "x" + li, tid: legs.length > 1 ? id + "#" + (li + 1) : id, added: u.add});
+      });
+      mine.forEach((r, j) => { if (mine[j + 1]) r.nextLeg = mine[j + 1]; out.push(r); });   // the same train goes on to its next leg
+    } catch(e){}
+  }
+  rtAddCache[code] = {k, v: out};
+  return out;
+}
+/* Where LTA ends a train early (the stop along its run, from the live feed), or null. */
+function rtEndsAt(code, r, mv){
+  const m = mv && mv.get(`${code}t${r.s}p${r.pi}`), pr = rtProfileFor(code, r, m);
+  return pr && pr.endK != null ? pr.endK : null;
 }
 /* A train by its id, following it on to its next run when it has turned round at the end of the line. */
 function trainById(list, id){
   return list.find(t => t.id === id) || list.find(t => t.prev === id) || null;
+}
+/* ---------- Test runs past the end of the line (DTL3e and TEL5, until they open) ----------
+   Trains that end at Expo or Bayshore carry on empty to Sungei Bedok (via Xilin or Bedok South) and come back for
+   their next trip, testing the new stretch, when their turnaround is 8 minutes or more. LTA's timetable (GTFS) has them waiting at Expo or Bayshore instead, so
+   on the map they go out and back within that wait: the same train, same arrow. Only the map moves them; next
+   trains, the Line Board and trip plans still have them waiting there, as LTA's timetable does. */
+const EXT_TEST = {DTL: ["DT35", "DT37"], TEL: ["TE29", "TE31"]};
+const EXT_LEG = 120;                       // seconds between two stations out there, at most
+const EXT_MIN_WAIT = 8 * 60;               // only trains with at least this long a turnaround in LTA's timetable go out
+const EXT_DWELL = 30;                      // seconds it stops at each station on the way (Xilin, Bedok South)
+const EXT_OFF = 40, EXT_ON = 40;           // seconds at Expo or Bayshore for passengers to get off, and on for its next trip
+function mapTrains(code, now){
+  const list = trainsOn(code, now), e = EXT_TEST[code], L = LINES[code];
+  if (!e || !L || SIM.est) return list;
+  const a = L.stations.findIndex(s => s[0] === e[0]), b = L.stations.findIndex(s => s[0] === e[1]);
+  if (a < 0 || b <= a || !L.stations[b][2] || stationServiceOpen(L.stations[b], now.iso) || activeStations(L, now.iso).length !== a + 1) return list;
+  const ttl = ttTrips(code, now.iso); if (!ttl) return list;
+  const n = b - a, sec = now.mins * 60;
+  return list.map(t => {
+    if (!t.layover || Math.abs(t.idx - a) > 1e-6 || !t.ref || !t.prev) return t;
+    const m = /t(\d+)p(.+)$/.exec(t.prev); if (!m) return t;
+    const r = ttl.find(x => String(x.s) === m[1] && String(x.pi) === m[2]); if (!r) return t;
+    // after its passengers get off it goes out, stopping at each station on the way (Xilin, Bedok South), waits
+    // at Sungei Bedok, comes back the same way and is at the platform in time for its next trip on LTA's timetable
+    const arr = r.s + r.p.end, wait = t.ref.s - arr, x = sec - arr;
+    if (wait < EXT_MIN_WAIT || x < EXT_OFF) return t;     // a shorter turnaround (it stays at the platform), or still unloading
+    const stops = (n - 1) * EXT_DWELL, run = Math.min(EXT_LEG, (wait - EXT_OFF - EXT_ON - 60 - 2 * stops) / (2 * n));
+    const way = n * run + stops, back0 = wait - EXT_ON - way;   // time out (or back), and when it sets off back
+    if (run < 45) return t;
+    // where it is `y` seconds into a run of `way` seconds from station index p0, going d (+1 or -1)
+    const along = (y, p0, d) => {
+      const k = Math.min(n - 1, Math.floor(y / (run + EXT_DWELL))), z = y - k * (run + EXT_DWELL);
+      return z < run ? {idx: p0 + d * (k + z / run), at: false, next: p0 + d * (k + 1), eta: (run - z) / 60}
+                     : {idx: p0 + d * (k + 1), at: true, next: p0 + d * (k + 1), eta: 0};
+    };
+    let q, dir;
+    if (x < EXT_OFF + way){ q = along(x - EXT_OFF, a, 1); dir = 0; }
+    else if (x < back0){ q = {idx: b, at: true, next: b, eta: 0}; dir = 1; }
+    else if (x < back0 + way){ q = along(x - back0, b, -1); dir = 1; }
+    else return t;                                        // back at the platform for its next trip
+    return Object.assign({}, t, {idx: q.idx, dir, next: q.next, to: dir ? t.to : b, atStation: q.at, layover: false, extTest: true,
+      eta: q.eta, backAt: (t.ref.s - EXT_ON - sec) / 60});
+  });
 }
 /* Next trains at stop s of a timetable line. The day's runs are in start order, so instead of working out every
    run's time here (300-700 runs a line, asked dozens of times a second), runs that passed here over an hour ago are
@@ -3276,25 +3585,31 @@ function ttNext(list, s, dir, now, count, reach){
   let live = null; try { live = rtState && rtState.trips; } catch(e){}
   const tops = [];                                         // the `count` earliest times found so far, sorted
   const keep = t => { if (!(count > 0)) return; let i = tops.length; while (i > 0 && tops[i - 1] > t) i--; tops.splice(i, 0, t); if (tops.length > count) tops.pop(); };
+  const extra = rtAddedRuns(list.code, now.iso);           // LTA's extra trains (not in start order: always checked)
   const regular = ttBoardRuns(list, s, dir);
-  for (const r of regular){
+  for (let n = 0; n < regular.length + extra.length; n++){
+    const inList = n < regular.length, r = inList ? regular[n] : extra[n - regular.length];
     const p = r.p; if ((p.d > 0 ? 0 : 1) !== dir) continue;
-    if (tops.length >= count && r.s - 900 > tops[tops.length - 1]) break;          // in start order: none sooner from here on
+    if (inList && tops.length >= count && r.s - 900 > tops[tops.length - 1]){ n = regular.length - 1; continue; }   // none sooner in the timetable from here on
     const k = (s - p.f) * p.d;
     if (k < 0 || k > p.arr.length - 1 || (k === p.arr.length - 1 && !(LINES[list.code].bound && p.to === -1))) continue;   // a Circle Line loop run goes on round from its last stop here
     if (reach != null && (reach - p.f) * p.d > p.arr.length - 1) continue;
-    if (r.s + p.arr[k] + (r.tl || 0) < sec - 3600 && !(mv && mv.get(`${list.code}t${r.s}p${r.pi}`)) && !(live && r.tid && live[r.tid])) continue;   // long gone
+    const m0 = mv && mv.get(`${list.code}t${r.s}p${r.pi}`);
+    if (inList && r.s + p.arr[k] + (r.tl || 0) < sec - 3600 && !m0 && !(live && r.tid && live[r.tid])) continue;   // long gone
+    const pr = rtProfileFor(list.code, r, m0);
+    if (pr && pr.skip.has(k)) continue;                    // LTA says this train doesn't stop here
+    if (pr && pr.endK != null && (k >= pr.endK || (reach != null && (reach - p.f) * p.d > pr.endK))) continue;    // LTA ends it before here (or here)
     const t = ttAt(list.code, r, k, mv);
     // Use the stop's scheduled dwell, not an arbitrary global "Now" threshold.
     // ttAt applies the same timetable/live corrections to the arrival.
     const dwell = Math.max(0, (p.dep[k] ?? p.arr[k]) - p.arr[k]);
-    const leaving = t + dwell, terminal = k === p.arr.length - 1;
+    const leaving = t + dwell, terminal = k === p.arr.length - 1 || (pr && pr.endK != null && k === pr.endK);
     const phase = terminal ? (t - sec <= 45 && t >= sec ? "ARRIVING" : null)
       : sec >= leaving - 10 && sec <= leaving + 15 ? "DEPARTING"
       : sec >= t && sec < leaving - 10 ? "ARRIVED"
       : t - sec <= 45 && t >= sec ? "ARRIVING" : null;
     if (t >= sec - 10 || (!terminal && phase === "ARRIVED") || (!terminal && phase === "DEPARTING")){
-      res.push({m: Math.max(0, (t - sec) / 60), to: p.to, phase});
+      res.push({m: Math.max(0, (t - sec) / 60), to: pr && pr.endK != null ? p.f + p.d * pr.endK : p.to, phase});
       keep(Math.max(t, sec));
     }
   }
@@ -3513,6 +3828,15 @@ function drawTrainIcon(ctx, X, Y, ux, uy, h, body, detail, rim, rimW, line, dots
   ctx.lineJoin = "miter";
   return tip;
 }
+/* "First 5:31am · Last 11:48pm", then the special-bound trains: every time when there are a few, else the range. */
+function stopTimesHTML(code, i, dir, now, withLine){
+  const s = stopTimes(code, i, dir, now); if (!s) return "";
+  const L = LINES[code], c = withLine ? ` style="--c:var(--${code})"` : "";
+  const sb = s.sb.map(g => `<div class="ftsb"${c}><span>${g.ms.length > 4 ? `${g.ms.length} trains end at` : L.bound ? "Ends at" : "Special-bound →"} <b>${esc(g.nm)}</b></span><span class="t">${g.ms.length > 4
+    ? `${clockText(g.ms[0])} to ${clockText(g.ms[g.ms.length - 1])}` : g.ms.map(clockText).join(" · ")}</span></div>`).join("");
+  return `<div class="ftrow"${c}><span>${withLine ? codePills([[code, LINES[code].stations[i][0]]]) + esc(toW(s.toward)) : `${dir ? "↑" : "↓"} ${esc(s.toward)}`}</span>` +
+    `<span class="t">First <b>${clockText(s.first)}</b> · Last <b>${clockText(s.last)}</b></span></div>${sb}`;
+}
 /* ---------- Interchange index ---------- */
 const byName = {};
 for (const c of ORDER) for (const s of LINES[c].stations){ const a = (byName[s[1]] ||= []); if (!a.some(x => x[0]===c)) a.push([c, s[0]]); }
@@ -3659,9 +3983,19 @@ function dayCalls(code, i, dir, now){
   out.sort((a, b) => a.m - b.m);
   return dayCallsCache[k] = out;
 }
+function stopTimes(code, i, dir, now){
+  const L = LINES[code], act = activeStations(L, now.iso), all = dayCalls(code, i, dir, now);
+  if (!all.length) return null;
+  const sbOf = x => isShortTo(L, dir, act, x.to), full = all.filter(x => !sbOf(x)), sb = all.filter(sbOf);
+  const groups = [];
+  for (const x of sb){ const nm = act[x.to][1]; let g = groups.find(y => y.nm === nm); if (!g) groups.push(g = {nm, ms: []}); g.ms.push(x.m); }
+  return {first: all[0].m, last: (full.length ? full : all)[(full.length ? full : all).length - 1].m, sb: groups,
+    toward: dest(L, dir, act), official: !!ttTrips(code, now.iso)};
+}
 /* ---------- Last trains ----------
    In each direction of each line, the last train of the day going all the way (the published last train), and the
-   very last train of all if that's a later special-bound one. They're marked with a bar across the arrow's tip on the
+   special-bound ones after it: the last to leave (like the North-South Line's last train to Kranji, which leaves
+   after the last one to Jurong East) and the last to finish. They're marked with a bar across the arrow's tip on the
    map and the Line Board, "last train" on their cards, and LAST next to their time in next-train lists. */
 const lastCache = {};
 function lastTrainIds(code, now){
@@ -3669,19 +4003,21 @@ function lastTrainIds(code, now){
   if (lastCache[k]) return lastCache[k];
   const L = LINES[code], act = activeStations(L, now.iso), n = act.length, ids = new Set(), ttl = ttTrips(code, now.iso);
   for (const dir of [0, 1]){
-    let full = null, any = null;
-    const see = (id, end, to) => {
+    let full = null, any = null, lastOut = null;
+    const see = (id, end, to, start) => {
       if (!any || end > any.end) any = {id, end};
-      if (!isShortTo(L, dir, act, to) && (!full || end > full.end)) full = {id, end};
+      if (!lastOut || start > lastOut.start) lastOut = {id, start};
+      if (!isShortTo(L, dir, act, to) && (!full || end > full.end)) full = {id, end, start};
     };
     if (ttl){
-      for (const r of ttl){ const p = r.p; if ((p.d > 0 ? 0 : 1) === dir) see(`${code}t${r.s}p${r.pi}`, r.s + p.end, p.to); }
+      for (const r of ttl){ const p = r.p; if ((p.d > 0 ? 0 : 1) === dir) see(`${code}t${r.s}p${r.pi}`, r.s + p.end, p.to, r.s); }
     } else if (n){
       const T = legsOf(code, dir, n);
-      for (const r of runsFor(code, dayOf(now), dir)) see(code + dir + r.t, (r.t + T.off[r.b]) * 60, dir ? n - 1 - r.b : r.b);
+      for (const r of runsFor(code, dayOf(now), dir)) see(code + dir + r.t, (r.t + T.off[r.b]) * 60, dir ? n - 1 - r.b : r.b, r.t * 60);
     }
     if (full) ids.add(full.id);
     if (any && (!full || any.end > full.end)) ids.add(any.id);
+    if (lastOut && (!full || lastOut.start > full.start)) ids.add(lastOut.id);
   }
   return lastCache[k] = ids;
 }
@@ -3773,6 +4109,7 @@ function trainVisualKind(L, tr, now){
 
   // status card
   const running = trainsOn(current, now);
+  const testCount = running.filter(x => x.testing || x.nonRevenue).length;
   const t = now.mins, official = usesTT(current);
   const hw = official ? ttHeadway(current, now) : headway(L, t, now.weekend, current, 0, dayOf(now));
   const [h0, h1] = serviceSpan(current, dayOf(now));
@@ -3790,8 +4127,8 @@ function trainVisualKind(L, tr, now){
   const notOpen = !act.length;
   setHTML($("status"), `<div class="bar" style="background:var(--${current})"></div>
     <b>${L.name}</b>${L.future ? "" : `<button type="button" class="hb" data-hline="${current}">History</button>`}${""}
-    ${notOpen ? `<span>Not open yet · ${L.future && L.when ? "expected " + esc(L.when) : "passenger service expected " + opensText(L, L.stations[0]).replace(" (expected)", "")}</span>` : `<span>${inService ? `${running.length} train${running.length === 1 ? "" : "s"} running${hwText != null ? ` · every ${hwText} min` : ""}${peak ? " (peak)" : ""}${!official && L.shuttle ? ` · ${shuttleTrains(L, t, now.weekend)}-train shuttle` : ""}` : closed}
-      · <span class="src">${official ? "LTA timetable" : "estimated"} for ${dayText(now)}</span>${current === "NSL" && window.spotNote && spotNote() ? ` · <span class="src">${spotNote()}</span>` : ""}</span>`}`);
+    ${notOpen ? `<span>Not open yet · ${L.future && L.when ? "expected " + esc(L.when) : "passenger service expected " + opensText(L, L.stations[0]).replace(" (expected)", "")}</span>` : `<span>${inService ? `${running.length} train${running.length === 1 ? "" : "s"} running${testCount ? ` · ${testCount} test / non-revenue` : ""}${hwText != null ? ` · every ${hwText} min` : ""}${peak ? " (peak)" : ""}${!official && L.shuttle ? ` · ${shuttleTrains(L, t, now.weekend)}-train shuttle` : ""}` : closed}
+      · <span class="src">${official ? "LTA timetable + GTFS-RT corrections where matched" : "estimated"} for ${dayText(now)}</span>${current === "NSL" && window.spotNote && spotNote() ? ` · <span class="src">${spotNote()}</span>` : ""}</span>`}`);
   const fut = L.stations.filter(s => s[2] && !stationServiceOpen(s, now.iso));
   setHTML($("notice"), notOpen && L.future ? `<div class="notice">The ${esc(L.name)} isn't open yet. ${esc(L.about || "")} No trains are shown until it opens.</div>`
     : notOpen ? `<div class="notice">The ${L.name} isn't open yet. Trains between ${L.stations[0][1]} and ${L.stations[L.stations.length-1][1]} are expected to start ${opensText(L, L.stations[0]).replace(" (expected)", "")}.</div>`
@@ -3824,7 +4161,9 @@ function trainVisualKind(L, tr, now){
         return groups.map(g => `<div${g.sb ? ' class="sbrow"' : ""}><span>${esc(toW(g.name))}${g.sb && !L.bound ? `<span class="sb">special-bound</span>` : ""}</span><span class="t">${g.ms.join(" · ")}</span></div>`).join("");
       };
       const rows = (i < n-1 ? line(0, a) : "") + (i > 0 ? line(1, b) : "");
+      const ft = (i < n-1 ? stopTimesHTML(current, i, 0, now) : "") + (i > 0 ? stopTimesHTML(current, i, 1, now) : "");
       setHTML(dt, rows + (anyShort && !L.bound ? `<p class="sbnote">Special-bound trains end at that station instead of going all the way.</p>` : "") +
+        (ft ? `<div class="ftimes"><p class="fthead">First and last trains today</p>${ft}</div>` : "") +
         `<div class="dact"><button type="button" class="hlink" data-hstation="${esc(L.stations[i][1])}">Station history ›</button></div>`);
     } else dt.hidden = true;
   }
@@ -3856,6 +4195,7 @@ function trainVisualKind(L, tr, now){
     if (el._html !== html){ el._html = html; el.innerHTML = html; }
     el.classList.toggle("moving", !tr.atStation);
     el.classList.toggle("dwell", tr.atStation);
+    el.classList.toggle("special-arrow", !!vk);
   }
   for (const id in trainEls) if (!seen.has(id)){ trainEls[id].remove(); delete trainEls[id]; }
 
@@ -3893,7 +4233,9 @@ function trainVisualKind(L, tr, now){
   const terminus = tr => destOf(L, tr.dir, act, tr.to);
   for (const tr of running){
     const el = trainEls[tr.id], stop = act[tr.next][1];
-    el.setAttribute("aria-label", `${isLastTrain(current, tr, now) ? "Last train · " : ""}${trainToW(terminus(tr))}${isShortTo(L, tr.dir, act, tr.to) && !L.bound ? " (special-bound)" : ""}, ${tr.atStation ? "at" : "next stop"} ${stop}`);
+    const vk = trainVisualKind(L, tr, now);
+    const vl = vk === "testing" ? "TESTING · NO PASSENGERS" : vk === "shuttle" ? "shuttle" : vk === "turnback" ? "turnback" : vk === "extra" ? "extra/reported" : vk === "reverse" ? "reverse-direction" : "";
+    el.setAttribute("aria-label", `${isLastTrain(current, tr, now) ? "Last train · " : ""}${vl ? vl + " · " : ""}${trainToW(terminus(tr))}${isShortTo(L, tr.dir, act, tr.to) && !L.bound ? " (special-bound)" : ""}, ${tr.atStation ? "at" : "next stop"} ${stop}`);
     el.classList.toggle("sel", tr.id === selTrain);
     el.classList.toggle("seen", !!(window.repSeen && repSeen(tr.id)));
   }
@@ -3905,13 +4247,18 @@ function trainVisualKind(L, tr, now){
   } else {
     const stop = act[s.next][1];
     const where = s.atStation ? `Now at <b>${stop}</b>` : `Next stop <b>${stop}</b>`;
-    const pos = trainPositionInfo(current, s);
+    const testHTML = s.testing ? `<span class="sb">TESTING · NO PASSENGERS</span>` : "";
+    const pos = window.mrtTrainPosition ? mrtTrainPosition(current, s) : null;
     const posHTML = pos ? `<small class="posnote">📍 ${esc(pos.text)} · <b>${esc(pos.live ? "live-assisted estimate" : "scheduled estimate")}</b></small>` : "";
+    const vehicle = window.mrtVehicleInfo ? mrtVehicleInfo(s) : null;
+    const vehicleHTML = vehicle ? `<small class="posnote">🚆 <b>LTA vehicle</b>${vehicle.id ? " · " + esc(vehicle.id) : ""}${vehicle.label && vehicle.label !== vehicle.id ? " · " + esc(vehicle.label) : ""}${vehicle.plate ? " · " + esc(vehicle.plate) : ""}</small>` : "";
+    const slowSegs = window.mrtSlowSegments ? mrtSlowSegments(current, s.ref) : [];
     const wetHTML = wetNote(current, s) ? `<small class="posnote">${wetNote(current, s)}</small>` : "";
+    const slowHTML = slowSegs.length ? `<small class="posnote">⚠️ <b>Possible slow running</b> · delay increasing ${esc(slowSegs[0].from)} → ${esc(slowSegs[0].to)} (${Math.round(slowSegs[0].gain)}s)</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
       <div>${trainFaceHTML(current, s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${wetHTML}${journeyHTML(s)}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
-      <span class="eta">${(window.unifiedTrainPhase && window.unifiedTrainPhase(current,s,now) || {}).phase || (s.atStation ? "Boarding" : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min")}</span>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${testHTML}${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${vehicleHTML}${wetHTML}${slowHTML}${journeyHTML(s)}${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(current, s, now) : ""}${window.mrtTrainsetExplain && s.ref && s.ref.tid && /_\d+_\d+$/.test(String(s.ref.tid)) ? '<small class="posnote">Trainset evidence · '+esc(mrtTrainsetExplain(current, String(s.ref.tid).split("_").at(-2), now.iso))+'</small>' : ""}${window.mrtDisruptionHTML ? mrtDisruptionHTML(current) : ""}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.mrtRunNote ? mrtRunNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <span class="eta">${(window.unifiedTrainPhase && window.unifiedTrainPhase(current,s,now) || {}).phase || (s.atStation ? (s.doors ? "Doors closing" : "Boarding") : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min")}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
   }
@@ -4079,10 +4426,115 @@ const hasKey = () => { try { return !!(APP && APP.hasKey()); } catch(e){ return 
 const NO_SERVICE_RE = /\bno (?:train )?services?\b|\b(?:not available|unavailable|suspended|not (?:running|operating|in service))\b/i;
 // "running / operating / available" only counts when it's about trains, so "free bus services are (still) available" doesn't
 const STILL_RUN_RE = /additional (?:travel(?:l)?ing )?time|\bdelay(?:s|ed)?\b|\btrain(?:s| services?)\b[^.]*?\b(?:still|are|is|remain)\b[^.]*?\b(?:running|operating|available|in operation|in service)\b|\bslower\b|\bresum(?:ed|ing|es)\b|reduced (?:frequency|speed|service)|longer (?:waiting|travel(?:l)?ing) time/i;
+const PLANNED_CLOSURE_RE = /\b(?:planned(?: train)? (?:closure|maintenance|disruption|engineering|works?)|scheduled (?:maintenance|closure|engineering|works?)|early closure|late opening|full[- ]day closure|track (?:renewal|maintenance|works?)|signalling (?:upgrade|renewal|testing)|engineering (?:hours|works?)|maintenance works?|system renewal|upgrading works?|tunnel strengthening|scheduled works?)\b/i;
+const UNPLANNED_FAULT_RE = /\b(?:train fault|track fault|signal(?:ling)? fault|power fault|traction power|platform screen door fault|stalled train|incident|emergency|unplanned)\b/i;
+function msgMatchesLine(sg, m){
+  if (!m || !m.text) return false;
+  const txt = String(m.text);
+  const full = sg.line && LINES[sg.line] && LINES[sg.line].name;
+  return !!((sg.ltaLine && new RegExp("\\b" + sg.ltaLine + "\\b", "i").test(txt)) ||
+    (sg.line && new RegExp("\\b" + sg.line + "\\b", "i").test(txt)) ||
+    (full && txt.toLowerCase().includes(full.toLowerCase())));
+}
+function msgMatchesSeg(sg, m){
+  if (!m || !m.text) return false;
+  if (msgMatchesLine(sg, m)) return true;
+  const txt = String(m.text).toLowerCase();
+  const names = (sg.codes || []).map(c => (typeof NAME_OF !== "undefined" && NAME_OF[c]) || c).filter(Boolean);
+  return names.some(n => n && txt.includes(String(n).toLowerCase()));
+}
+function segKind(sg, msgs){
+  if (sg && (sg.planned === true || sg.maintenance === true || sg.kind === "planned")) return "planned";
+  if (sg && sg.kind === "outage") return "outage";
+  const list = Array.isArray(msgs) ? msgs : [];
+  const byLine = list.filter(m => msgMatchesLine(sg, m));
+  const related = byLine.length ? byLine : list.filter(m => msgMatchesSeg(sg, m));
+  const pool = related.length ? related : list;
+  const text = pool.map(m => String(m.text || "")).join(" ");
+  if (PLANNED_CLOSURE_RE.test(text) && !UNPLANNED_FAULT_RE.test(text)) return "planned";
+  return "outage";
+}
+function linesMentionedInText(text){
+  const t = String(text || "");
+  const found = [];
+  const patterns = [
+    ["NSL", /\b(?:NSL|North[- ]South Line)\b/i],
+    ["EWL", /\b(?:EWL|East[- ]West Line)\b/i],
+    ["CG", /\b(?:CGL|Changi Airport (?:Branch|Extension))\b/i],
+    ["NEL", /\b(?:NEL|North[- ]East Line)\b/i],
+    ["CCL", /\b(?:CCL|CEL|Circle Line)\b/i],
+    ["DTL", /\b(?:DTL|Downtown Line)\b/i],
+    ["TEL", /\b(?:TEL|Thomson[- ]East Coast Line)\b/i],
+    ["BP", /\b(?:BPL|BPLRT|Bukit Panjang LRT)\b/i],
+    ["SE", /\b(?:SLRT|Sengkang LRT)\b/i],
+    ["PE", /\b(?:PLRT|Punggol LRT)\b/i]
+  ];
+  for (const [code, re] of patterns) if (re.test(t)) found.push(code);
+  return found;
+}
+function classifyAlertState(state){
+  const out = {items: [], outages: [], planned: [], resumed: []};
+  if (!state) return out;
+  const msgs = Array.isArray(state.messages) ? state.messages : [];
+  const segs = Array.isArray(state.segments) ? state.segments : [];
+  const byLine = new Map();
+  const priority = {outage: 3, planned: 2, resumed: 1};
+
+  for (const sg of segs){
+    const rawKind = segKind(sg, msgs);
+    const kind = state.status === 2 ? rawKind : (rawKind === "planned" ? "planned" : "resumed");
+    const lineCodes = (sg.lines && sg.lines.length ? sg.lines : [sg.line]).filter(Boolean);
+    const keys = lineCodes.length ? lineCodes : [sg.ltaLine || "MRT"];
+    const detail = segTitle(sg);
+    for (const c of keys){
+      const prev = byLine.get(c);
+      if (!prev || priority[kind] > priority[prev.kind]){
+        byLine.set(c, {
+          line: LINES[c] ? c : null,
+          ltaLine: sg.ltaLine || c,
+          name: (LINES[c] && LINES[c].name) || LINE_NAME_LTA[sg.ltaLine] || c,
+          kind,
+          detail,
+          running: !!sg.running,
+          codes: sg.codes || []
+        });
+      }
+    }
+  }
+
+  // Also detect planned maintenance / closure notices posted in messages even when AffectedSegments is empty
+  for (const m of msgs){
+    const txt = String(m && m.text || "");
+    if (!PLANNED_CLOSURE_RE.test(txt) || UNPLANNED_FAULT_RE.test(txt)) continue;
+    const mentioned = linesMentionedInText(txt);
+    const snippet = txt.length > 90 ? txt.slice(0, 87).trim() + "…" : txt;
+    const targets = mentioned.length ? mentioned : (byLine.size ? [] : ["MRT"]);
+    for (const c of targets){
+      if (byLine.has(c)) continue;
+      byLine.set(c, {
+        line: LINES[c] ? c : null,
+        ltaLine: c === "CG" ? "CGL" : c,
+        name: (LINES[c] && LINES[c].name) || "MRT network",
+        kind: "planned",
+        detail: snippet,
+        running: false,
+        codes: []
+      });
+    }
+  }
+
+  for (const item of byLine.values()){
+    out.items.push(item);
+    if (item.kind === "outage") out.outages.push(item);
+    else if (item.kind === "planned") out.planned.push(item);
+    else out.resumed.push(item);
+  }
+  out.items.sort((a, b) => priority[b.kind] - priority[a.kind]);
+  return out;
+}
+window.mrtClassifyAlerts = classifyAlertState;
 function segRunning(sg, msgs){
-  const names = sg.codes.map(c => (typeof NAME_OF !== "undefined" && NAME_OF[c]) || c).filter(Boolean);
-  const about = m => (sg.ltaLine && new RegExp("\\b" + sg.ltaLine + "\\b", "i").test(m.text)) || names.some(n => n && m.text.toLowerCase().includes(String(n).toLowerCase()));
-  const m = msgs.find(about) || msgs[0];
+  const m = msgs.find(x => msgMatchesSeg(sg, x)) || msgs[0];
   if (!m) return false;
   // LTA's sentences about free buses and shuttles, shown on the disruption card
   sg.busText = String(m.text).split(/(?<=[.!?])\s+/).filter(s => /\b(?:bus(?:es)?|shuttles?|bridging)\b/i.test(s)).map(s => s.trim()).slice(0, 3);
@@ -4110,13 +4562,20 @@ function parseAlerts(body){
       codes,
       bus: list(sg.FreePublicBus),
       shuttle: list(sg.FreeMRTShuttle || sg.FreeMrtShuttle),
-      shuttleDir: sg.MRTShuttleDirection || ""
+      shuttleDir: sg.MRTShuttleDirection || "",
+      planned: !!(sg.Planned || sg.IsPlanned || /planned|maintenance/i.test(String(sg.Type || sg.Category || "")))
     };
   });
   const msgs = (v.Message || []).filter(m => m && m.Content)
     .map(m => ({text: m.Content, at: m.CreatedDate || ""}))
     .sort((a, b) => String(b.at).localeCompare(String(a.at)));
-  for (const sg of segs){ const r = segRunning(sg, msgs); sg.running = r === true; sg.noService = r === "no"; }
+  for (const sg of segs){
+    const r = segRunning(sg, msgs);
+    sg.running = r === true;
+    sg.noService = r === "no";
+    sg.kind = segKind(sg, msgs);
+    sg.planned = sg.kind === "planned";
+  }
   return {status: Number(v.Status) === 2 ? 2 : 1, segments: segs, messages: msgs, at: Date.now()};
 }
 function parseNews(xml){
@@ -4134,14 +4593,15 @@ function parseNews(xml){
 }
 
 /* --- refresh --- */
+let refreshAllAt = 0;
 async function refreshAll(){
   if (!APP || loading) return;
-  loading = true; renderUpdates();
+  loading = true; refreshAllAt = Date.now(); renderUpdates();
   const jobs = [];
   if (hasKey()){
     jobs.push(nativeGet(DATAMALL, true).then(({code, body}) => {
       if (SIM.alert) return;                               // test mode is showing a fake disruption
-      if (code === 200){ try { alertState = parseAlerts(body); store.set("mrt.alerts", alertState); alertError = ""; } catch(e){ alertError = "LTA sent something this app couldn't read."; } }
+      if (code === 200){ try { alertState = parseAlerts(body); store.set("mrt.alerts", alertState); try { if (window.mrtDisruptionObserve) window.mrtDisruptionObserve("LTA service alert refresh"); } catch(e){} alertError = ""; } catch(e){ alertError = "LTA sent something this app couldn't read."; } }
       else if (code === 401 || code === 403) alertError = "LTA turned down the request. Live alerts are unavailable for now.";
       else alertError = code === 0 ? "Couldn't reach LTA. Check your internet connection." : `LTA's service returned an error (${code}).`;
     }));
@@ -4153,13 +4613,21 @@ async function refreshAll(){
   loading = false;
   renderAll();
 }
-window.appResume = () => { refreshAll(); rtRefresh(); };     // called by the app every time it is opened
+// called by the app every time it is opened; Android can send several in a row, so anything refreshed in the last
+// 20 seconds is left alone (the minute timers keep it current), which keeps LTA's burst limit happy
+window.appResume = () => {
+  const now = Date.now(), skip = [];
+  if (now - refreshAllAt >= 20e3) refreshAll(); else skip.push("LTA alerts");
+  if (now - rtLast >= 20e3) rtRefresh(); else skip.push("GTFS-Realtime");
+  if (skip.length && window.__mrtDiag) window.__mrtDiag.push("debug", "api", `Resume: ${skip.join(" and ")} refreshed under 20 s ago, not asked again`);
+};
 
 /* ---------- LTA's live train feeds (GTFS Realtime, from LTA DataMall) ----------
    Trip updates: trains LTA reports as late, early or cancelled, matched to the timetable by LTA's own
    trip ids, then moved on the map and in arrival times like any other correction. Service alerts:
    shown on the Updates tab. The feeds only list trains and alerts when there's something to say,
    so most of the time they're empty and nothing changes. Checked every minute while the app is open. */
+const rtHist = {};                            // trip id -> [[time, delay s], ...] over the last half hour
 let rtState = store.get("mrt.rt", null);      // {at, feedAt, trips: {tripId: {d: delay s, x: cancelled}}, alerts: [...], err}
 const RT_EVERY = 30e3;
 function pbFields(b){                         // protocol buffers: {field: [values]}; varints as BigInt, bytes as Uint8Array
@@ -4170,8 +4638,8 @@ function pbFields(b){                         // protocol buffers: {field: [valu
     let v;
     if (w === 0) v = vint();
     else if (w === 2){ const n = Number(vint()); v = b.subarray(i, i + n); i += n; }
-    else if (w === 1){ i += 8; continue; }
-    else if (w === 5){ i += 4; continue; }
+    else if (w === 1){ v = b.subarray(i, i + 8); i += 8; }
+    else if (w === 5){ v = b.subarray(i, i + 4); i += 4; }
     else break;
     (out[f] ||= []).push(v);
   }
@@ -4179,32 +4647,51 @@ function pbFields(b){                         // protocol buffers: {field: [valu
 }
 const pbStr = v => v ? new TextDecoder().decode(v) : "";
 const pbInt = v => v == null ? null : Number(BigInt.asIntN(64, v));
+const pbF32 = v => v && v.length === 4 ? new DataView(v.buffer, v.byteOffset, 4).getFloat32(0, true) : null;
 const pbText = v => { if (!v) return ""; const t = (pbFields(v)[1] || []).map(pbFields); const en = t.find(x => /^en/i.test(pbStr((x[2] || [])[0]))) || t[0]; return en ? pbStr((en[1] || [])[0]) : ""; };
 function rtParse(b64, kind){
   const bin = atob(b64), b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
   const feed = pbFields(b), head = feed[1] ? pbFields(feed[1][0]) : {};
-  const res = {feedAt: head[3] ? pbInt(head[3][0]) * 1000 : 0, trips: {}, alerts: []};
+  const res = {feedAt: head[3] ? pbInt(head[3][0]) * 1000 : 0, trips: {}, vehicles: {}, alerts: []};
   for (const raw of feed[2] || []){
     const e = pbFields(raw);
     if (kind === "trips" && e[3]){
       const tu = pbFields(e[3][0]), trip = tu[1] ? pbFields(tu[1][0]) : {}, id = pbStr((trip[1] || [])[0]);
       if (!id) continue;
       const rel = trip[4] ? pbInt(trip[4][0]) : 0;            // 3 = cancelled
+      const veh = tu[3] ? pbFields(tu[3][0]) : {};
+      const vehicleId = pbStr((veh[1] || [])[0]);
+      const vehicleLabel = pbStr((veh[2] || [])[0]);
+      const vehiclePlate = pbStr((veh[3] || [])[0]);             // VehicleDescriptor.license_plate
+      const tripTimestamp = tu[4] ? pbInt(tu[4][0]) * 1000 : 0;
       let d = tu[5] ? pbInt(tu[5][0]) : null;
-      const ss = [];
-      for (const rawStop of tu[2] || []){
-        const u = pbFields(rawStop);
-        const ev = f => {
-          if (!f) return [null, null];
-          const x = pbFields(f[0]);
-          return [x[1] ? pbInt(x[1][0]) : null, x[2] ? pbInt(x[2][0]) : null];
-        };
-        const [ad, at] = ev(u[2]), [dd, dt] = ev(u[3]);
-        if (d == null && (ad != null || dd != null)) d = ad != null ? ad : dd;
-        ss.push([pbStr((u[4] || [])[0]), u[1] ? pbInt(u[1][0]) : null, ad, dd, u[5] ? pbInt(u[5][0]) : 0, at, dt]);
+      // each stop LTA says something about: [stop id, stop sequence, arrival delay, departure delay, 1 = not stopping,
+      // arrival time, departure time] (delays in seconds; times in seconds since 1970, when LTA gives a time not a delay)
+      const ss = [], ev = f => { if (!f) return [null, null]; const x = pbFields(f[0]); return [x[1] ? pbInt(x[1][0]) : null, x[2] ? pbInt(x[2][0]) : null]; };
+      for (const s of tu[2] || []){
+        const u = pbFields(s), [a, at] = ev(u[2]), [dd, dt] = ev(u[3]);
+        if (d == null && (a != null || dd != null)) d = a != null ? a : dd;    // the trip's delay: the first stop with one
+        ss.push([pbStr((u[4] || [])[0]), u[1] ? pbInt(u[1][0]) : null, a, dd, u[5] ? pbInt(u[5][0]) : 0, at, dt]);
       }
-      res.trips[id] = {d: d || 0, x: rel === 3 ? 1 : 0, route: pbStr((trip[5] || [])[0]), s: ss,
-        timestamp: tu[4] ? pbInt(tu[4][0]) * 1000 : 0};
+      const varies = ss.some(q => q[4] === 1 || (q[2] != null && q[2] !== d) || (q[3] != null && q[3] !== d) || (q[2] == null && q[3] == null && (q[5] || q[6])));
+      // trips LTA adds that aren't in the timetable: 1 = added, 8 = new (stop times with clock times), 6 = duplicated
+      // (an existing trip run again at another start time, in trip_properties or the trip's start_time)
+      if (rel === 1 || rel === 6 || rel === 8){
+        const props = tu[6] ? pbFields(tu[6][0]) : {}, start = pbStr((props[3] || [])[0]) || pbStr((trip[2] || [])[0]);
+        res.trips[rel === 6 ? id + "~" + start : id] = {d: 0, x: 0, route: pbStr((trip[5] || [])[0]), add: rel, start, base: id, s: ss, vehicle:(vehicleId||vehicleLabel||vehiclePlate)?{id:vehicleId,label:vehicleLabel,plate:vehiclePlate}:null, timestamp:tripTimestamp};
+        continue;
+      }
+      res.trips[id] = Object.assign({d: d || 0, x: rel === 3 ? 1 : 0, route: pbStr((trip[5] || [])[0]), vehicle:(vehicleId||vehicleLabel||vehiclePlate)?{id:vehicleId,label:vehicleLabel,plate:vehiclePlate}:null, timestamp:tripTimestamp}, varies ? {s: ss} : {});
+    }
+    if (kind === "trips" && e[4]){
+      // GTFS-RT VehiclePosition: trip 1, position 2 (lat 1, lon 2, bearing 3, speed 5: floats), current_stop_sequence 3,
+      // timestamp 5, stop_id 7, vehicle 8.
+      const vp = pbFields(e[4][0]), tr = vp[1] ? pbFields(vp[1][0]) : {}, ve = vp[8] ? pbFields(vp[8][0]) : {}, pos = vp[2] ? pbFields(vp[2][0]) : {};
+      const tripId = pbStr((tr[1] || [])[0]), vehicleId = pbStr((ve[1] || [])[0]), vehicleLabel = pbStr((ve[2] || [])[0]), vehiclePlate = pbStr((ve[3] || [])[0]);
+      const lat = pos[1] ? pbF32(pos[1][0]) : null, lon = pos[2] ? pbF32(pos[2][0]) : null;
+      const bearing = pos[3] ? pbF32(pos[3][0]) : null, speed = pos[5] ? pbF32(pos[5][0]) : null;
+      const stopSeq = vp[3] ? Number(vp[3][0]) : null, stopId = pbStr((vp[7] || [])[0]), ts = vp[5] ? pbInt(vp[5][0]) * 1000 : 0;
+      if (Number.isFinite(lat) && Number.isFinite(lon)) res.vehicles[tripId || vehicleId] = {tripId, vehicle:{id:vehicleId,label:vehicleLabel,plate:vehiclePlate},lat,lon,bearing,speed,stopSeq,stopId,timestamp:ts};
     }
     if (kind === "alerts" && e[5]){
       const a = pbFields(e[5][0]);
@@ -4222,25 +4709,80 @@ function rtGet(kind){
 }
 let rtBusy = false, rtLast = 0;
 async function rtRefresh(){
-  if (!APP || !APP.gtfsRealtime || !hasKey() || rtBusy || document.hidden) return;
+  if (!APP || !APP.gtfsRealtime || !hasKey() || document.hidden) return;
+  if (rtBusy){ if (window.__mrtDiag) window.__mrtDiag.push("debug", "gtfs", "GTFS-Realtime refresh skipped: one is already running"); return; }
   rtBusy = true; rtLast = Date.now();
-  const st = {at: Date.now(), feedAt: 0, trips: {}, alerts: [], err: ""};
+  if (window.__mrtDiag) window.__mrtDiag.push("debug", "gtfs", "GTFS-Realtime refresh started");
+  const st = {at: Date.now(), feedAt: 0, trips: {}, vehicles: {}, alerts: [], err: ""}, okKinds = {};
   for (const kind of ["trips", "alerts"]){
     const {code, body} = await rtGet(kind);
+    if (code === 200 && body){ try { if (window.mrtRtCapture) window.mrtRtCapture.consider(kind, body); } catch(e){} }
     if (code === 200 && body){
-      try { const r = rtParse(body, kind); st.feedAt = Math.max(st.feedAt, r.feedAt); Object.assign(st.trips, r.trips); st.alerts.push(...r.alerts); }
+      try { const r = rtParse(body, kind); st.feedAt = Math.max(st.feedAt, r.feedAt); Object.assign(st.trips, r.trips); Object.assign(st.vehicles, r.vehicles || {}); st.alerts.push(...r.alerts); okKinds[kind] = true; }
       catch(e){ st.err = "LTA's live feed couldn't be read."; }
     } else st.err = code ? `LTA's live feed returned an error (${code}).` : "Couldn't reach LTA's live feed.";
   }
   rtBusy = false;
+  rtEmptyFeed(st, okKinds);
+  // An empty feed is normal (LTA only lists trains and alerts when there's something to say), but a feed that
+  // failed is not "nothing to say": keep the last good trips/alerts, and their age, so the 10-minute limit in
+  // rtShifts still retires them, instead of a failure looking like a fresh, empty feed.
+  if (!okKinds.trips || !okKinds.alerts){
+    const prev = rtState || {at: 0, feedAt: 0, trips: {}, vehicles: {}, alerts: []};
+    if (!okKinds.trips){ st.trips = prev.trips || {}; st.vehicles = prev.vehicles || {}; }
+    if (!okKinds.alerts) st.alerts = prev.alerts || [];
+    st.at = prev.at || 0; st.feedAt = Math.max(st.feedAt, prev.feedAt || 0);
+    if (window.__mrtDiag) window.__mrtDiag.push("warn", "gtfs", `GTFS-Realtime ${!okKinds.trips && !okKinds.alerts ? "trips and alerts" : !okKinds.trips ? "trips" : "alerts"} failed: kept the last good data${prev.at ? ` from ${Math.round((Date.now() - prev.at) / 60000)} min ago` : " (none yet)"}`, {err: st.err});
+  }
   const now = Date.now();
   st.alerts = st.alerts.filter(a => !a.per.length || a.per.some(([s, e]) => (!s || s <= now) && (!e || e >= now)));
   const changed = !rtState || JSON.stringify([rtState.trips, rtState.alerts]) !== JSON.stringify([st.trips, st.alerts]);
-  rtState = st; store.set("mrt.rt", st);
-  if (changed){ for (const k in rtMapCache) delete rtMapCache[k]; for (const k in movedMix) delete movedMix[k]; mDirty = true; }
+  rtState = st; store.set("mrt.rt", st); try { if (window.mrtDisruptionObserve) window.mrtDisruptionObserve("GTFS-Realtime refresh"); } catch(e){}
+  // a record of extra trains LTA has added (so it's known whether LTA's feed ever does), the last 50
+  try {
+    const log = store.get("mrt.rtAdded", []) || [], have = new Set(log.map(x => x.id + "|" + x.day)), day = sgNow().iso;
+    let more = false;
+    for (const [id, u] of Object.entries(st.trips)) if (u.add && !have.has(id + "|" + day)){ log.unshift({id, day, at: now, kind: u.add, route: u.route || ""}); more = true; }
+    if (more) store.set("mrt.rtAdded", log.slice(0, 50));
+    // trains LTA ends early (every station from some point on marked "not stopping"), the last 50
+    const cl = store.get("mrt.rtCut", []) || [], haveC = new Set(cl.map(x => x.id + "|" + x.day)); let moreC = false;
+    for (const [id, u] of Object.entries(st.trips)){
+      const s = u.s || []; if (!s.length || u.add || !(s[s.length - 1] || [])[4] || haveC.has(id + "|" + day)) continue;
+      let K = s.length - 1; while (K > 0 && s[K][4] === 1) K--;
+      if (K >= 0 && K < s.length - 1){ cl.unshift({id, day, at: now, at_stop: s[K][0] || ""}); moreC = true; }
+    }
+    if (moreC) store.set("mrt.rtCut", cl.slice(0, 50));
+  } catch(e){}
+  // each trip's delay over the last half hour, to see whether it's falling behind or making up time
+  for (const [id, u] of Object.entries(st.trips)){ const q = rtHist[id] || (rtHist[id] = []); if (!q.length || q[q.length - 1][0] < now - 30e3) q.push([now, u.d || 0]); }
+  for (const id in rtHist){ const q = rtHist[id].filter(x => x[0] > now - 30 * 60e3); if (q.length) rtHist[id] = q; else delete rtHist[id]; }
+  if (changed){ for (const k in rtMapCache) delete rtMapCache[k]; for (const k in movedMix) delete movedMix[k]; rtVer++; mDirty = true; }
   renderUpdates();
 }
 setInterval(() => { if (Date.now() - rtLast >= RT_EVERY - 1000) rtRefresh(); }, 15e3);
+/* An empty trips feed (LTA answered, but listed no trains) is valid, and is not a failure: LTA only lists trains it
+   has something to say about, and sometimes lists none at all for long spells. */
+const RT_HOLD = 120e3;
+function rtEmptyFeed(st, okKinds){
+  try {
+    const prev = rtState || {}, now = Date.now(), n = Object.keys(st.trips || {}).length + Object.keys(st.vehicles || {}).length;
+    st.entities = okKinds.trips ? n : (prev.entities || 0);
+    st.status = !okKinds.trips ? "ERROR" : n ? "OK" : "EMPTY";
+    st.lastEntityAt = n ? now : (prev.lastEntityAt || 0);
+    if (st.status === "EMPTY" && prev.lastEntityAt && now - prev.lastEntityAt < RT_HOLD && Object.keys(prev.trips || {}).length){
+      st.trips = prev.trips; st.vehicles = prev.vehicles || {}; st.held = true;          // keep the last trains a moment
+    }
+    const h = store.get("mrt.rtHealth", null), day = sgNow().iso;
+    const H = h && h.day === day ? h : {day, ok: 0, empty: 0, err: 0, since: now};
+    if (st.status === "OK") H.ok++; else if (st.status === "EMPTY") H.empty++; else H.err++;
+    if (st.status !== (prev.status || "")) H.since = now;
+    H.lastEntityAt = st.lastEntityAt; store.set("mrt.rtHealth", H);
+    if (st.status !== prev.status && window.__mrtDiag)
+      window.__mrtDiag.push(st.status === "OK" ? "info" : "warn", "gtfs", st.status === "OK" ? `GTFS-Realtime: LTA lists ${n} train${n === 1 ? "" : "s"} again` : st.status === "EMPTY" ? `GTFS-Realtime: LTA answered with 0 entities${st.held ? " (keeping the last trains for 2 min)" : ""}; using LTA's timetable` : "GTFS-Realtime: no usable answer; keeping the last good data");
+  } catch(e){}
+}
+/* Whether LTA's live train feed holds trains right now (an empty feed counts as no live data). */
+window.mrtRtLive = () => { try { return !!(rtState && rtState.at && Date.now() - rtState.at < 10 * 60e3 && Object.keys(rtState.trips || {}).length); } catch(e){ return false; } };
 /* LTA's delays as minutes to move each of today's timetable runs by (cancelled: never shown). */
 const rtMapCache = {};
 const rtPosCache = {};
@@ -4325,18 +4867,85 @@ window.rtShifts = (code, iso) => {
   return rtMapCache[k] = m.size ? m : null;
 };
 /* For a train's card: what LTA's live feed says about it. */
+/* Is a train falling behind, making up time, or steady? From the delays LTA gives for its stops ahead, else
+   from how its delay has changed over the last few minutes. {kind: "behind" | "recovering" | "steady", by: seconds} */
+function rtTrend(code, r){
+  let st = null; try { st = rtState; } catch(e){ return null; }
+  const u = st && st.trips && r && r.tid && st.trips[r.tid]; if (!u) return null;
+  const given = (u.s || []).map(q => q[2] != null ? q[2] : q[3]).filter(x => x != null);
+  let by = given.length >= 2 ? given[given.length - 1] - given[0] : null;
+  if (by == null){
+    const q = (rtHist[r.tid] || []).filter(x => x[0] >= Date.now() - 10 * 60e3);
+    if (q.length >= 2 && q[q.length - 1][0] - q[0][0] >= 3 * 60e3) by = q[q.length - 1][1] - q[0][1];
+  }
+  if (by == null) return null;
+  return {kind: by >= 30 ? "behind" : by <= -30 ? "recovering" : "steady", by};
+}
+const fmtLate = s => (s < 0 ? "−" : "+") + (Math.abs(s) >= 90 ? `${Math.round(Math.abs(s) / 60)} min` : `${Math.round(Math.abs(s))}s`);
 window.rtTrainNote = (code, t) => {
+  const pr = t && t.ref && rtProfileFor(code, t.ref, null), tr = t && t.ref && rtTrend(code, t.ref);
+  const trend = !tr ? "" : tr.kind === "behind" ? ` · <b>falling behind</b> (${fmtLate(tr.by)} along the way)`
+    : tr.kind === "recovering" ? ` · <b>making up time</b> (${fmtLate(tr.by)} along the way)` : "";
+  if (pr){                                                     // LTA gives a delay for each stop, and maybe stops it skips
+    const p = t.ref.p, k = Math.max(0, Math.min(p.arr.length - 1, Math.round((t.next - p.f) * p.d))), v = pr.aD[k];
+    const st = LINES[code].stations, nm = q => (st[p.f + p.d * q] || [])[1] || "";
+    const steady = tr && tr.kind === "steady" && Math.abs(v) >= 60 ? " · running consistently late" : "";
+    const rows = [];
+    for (let q = k; q < p.arr.length && rows.length < 6; q++){
+      rows.push(`<div><span>${esc(nm(q))}</span><b>${pr.skip.has(q) ? "not stopping" : Math.abs(pr.aD[q]) < 5 ? "on time" : fmtLate(pr.aD[q])}</b></div>`);
+    }
+    const late = Math.abs(v) < 30 ? "On time" : v > 0 ? `${fmtLate(v)} late` : `${fmtLate(-v).slice(1)} early`;
+    if (pr.endK != null) return `<p class="hint" style="margin:0"><span class="sb">ends early</span> <b>LTA ends this train at ${esc(nm(pr.endK))}</b> instead of going all the way (live train feed). After that it's out of service.</p>`;
+    return `<p class="hint" style="margin:0"><b>${late} at ${esc(nm(k))}</b>${trend}${steady}, by LTA's live train feed. Its place on the map and its arrival times follow these.</p>
+      <div class="rtstops">${rows.join("")}</div>`;
+  }
+  if (trend){
+    const m0 = window.rtShifts(code, sgNow().iso), v0 = m0 && t && m0.get(t.id);
+    if (v0 != null && Math.abs(v0) >= 0.5) return `<p class="hint" style="margin:0"><b>Running about ${Math.round(Math.abs(v0))} min ${v0 > 0 ? "late" : "early"}</b>${trend}, by LTA's live train feed. Its place on the map and its arrival times allow for this.</p>`;
+  }
   const m = window.rtShifts(code, sgNow().iso), v = m && t && m.get(t.id);
   if (v == null || Math.abs(v) < 0.5) return "";
   return `<p class="hint" style="margin:0"><b>${v > 0 ? `Running about ${Math.round(v)} min late` : `Running about ${Math.round(-v)} min early`}</b>, by LTA's live train feed. Its place on the map and its arrival times allow for this.</p>`;
 };
+/* Extra trains LTA has added: how many today, and when the feed last had one. */
+function rtAddedHTML(){
+  const log = store.get("mrt.rtAdded", []) || [], day = sgNow().iso, today = log.filter(x => x.day === day);
+  if (!log.length) return `<p class="muted" style="margin:0">Extra trains from LTA: none seen yet. The app shows them on the map (dashed ring) if LTA's feed ever adds any.</p>`;
+  const last = log[0];
+  return `<p class="muted" style="margin:0">Extra trains from LTA: ${today.length} today${today.length ? "" : `, last seen ${esc(last.day)}`} (${esc(last.id)}${last.route ? ", " + esc(last.route) : ""}).</p>`;
+}
+/* Trains LTA has ended early: how many today, and the last one. */
+function rtCutHTML(){
+  const log = store.get("mrt.rtCut", []) || [], day = sgNow().iso, today = log.filter(x => x.day === day);
+  if (!log.length) return `<p class="muted" style="margin:0">Trains ended early by LTA: none seen yet. The app shows them as special-bound to where they end.</p>`;
+  const last = log[0], stop = String(last.at_stop || "").split("_")[0];
+  return `<p class="muted" style="margin:0">Trains ended early by LTA: ${today.length} today${today.length ? "" : `, last seen ${esc(last.day)}`} (${esc(last.id)}${stop ? ", ended at " + esc(stop) : ""}).</p>`;
+}
+function rtEmptyText(){
+  const H = store.get("mrt.rtHealth", null) || {}, t = x => x ? new Date(x + 8 * 3600e3).toISOString().slice(11, 16) : "";
+  const last = rtState.lastEntityAt || H.lastEntityAt;
+  const since = H.since && rtState.status === "EMPTY" ? ` since ${t(H.since)}` : "";
+  return `LTA is listing no trains right now${since} (an empty feed is valid: trains follow LTA's timetable meanwhile)` +
+    `${last ? `; it last listed trains at ${t(last)}${new Date(last).toDateString() !== new Date().toDateString() ? " on " + new Date(last + 8 * 3600e3).toISOString().slice(0, 10) : ""}` : "; it hasn't listed any trains yet on this phone"}` +
+    `${H.day ? ` · today: ${H.ok || 0} check${H.ok === 1 ? "" : "s"} with trains, ${H.empty || 0} empty, ${H.err || 0} failed` : ""}`;
+}
 function rtHTML(){
   if (!APP || !APP.gtfsRealtime || !hasKey()) return "";
   if (!rtState) return `<p class="muted">LTA live train feed: checking…</p>`;
-  const n = Object.values(rtState.trips || {}).filter(u => u.x || Math.abs(u.d) >= 30).length;
+  const trips = Object.values(rtState.trips || {});
+  const updates = trips.length;
+  const affected = trips.filter(u => u.x || Math.abs(u.d || 0) >= 30).length;
+  const age = rtState.at ? Math.max(0, Math.round((Date.now() - rtState.at) / 60000)) : null;
+  const feedAge = rtState.feedAt ? Math.max(0, Math.round((Date.now() - rtState.feedAt) / 60000)) : null;
   const al = (rtState.alerts || []).map(a => `<li><b>${esc(a.head || "Service alert")}</b>${a.text ? `<br><span class="muted">${esc(a.text)}</span>` : ""}${a.routes.length ? `<br><span class="muted">${esc(a.routes.join(", "))}</span>` : ""}</li>`).join("");
-  return `<div style="display:grid;gap:6px"><p class="muted" style="margin:0">LTA live train feed (GTFS Realtime): ${rtState.err ? esc(rtState.err) : n ? `${n} train run${n > 1 ? "s" : ""} listed as late, early or cancelled; the map and arrival times allow for them` : "no delays or cancellations listed right now"} · checked ${hhmm(rtState.at)}</p>
-    ${al ? `<ul class="msgs">${al}</ul>` : ""}</div>`;
+  const status = rtState.err ? esc(rtState.err) : updates
+    ? `${updates} GTFS-RT trip update${updates > 1 ? "s" : ""} ${rtState.held ? "kept from LTA's last answer (its newest answer listed none; kept up to 2 min)" : "received"}${affected ? ` · ${affected} delayed/cancelled` : " · no delay/cancellation corrections"}`
+    : rtEmptyText();
+  const freshness = age == null ? "" : ` · refreshed ${age === 0 ? "just now" : age + " min ago"}${feedAge != null ? ` · LTA feed timestamp ${feedAge === 0 ? "current" : feedAge + " min old"}` : ""}`;
+  return `<div style="display:grid;gap:6px"><p class="muted" style="margin:0">LTA live train feed (GTFS Realtime): ${status}${freshness}</p>
+    <p class="muted" style="margin:0">Departure predictions use <b>LTA timetable</b>; a train is marked <b>LIVE</b> only when its timetable trip has a matching fresh GTFS-RT update.</p>
+    ${updates && window.mrtInsights ? `<div><button type="button" class="btn ghost" onclick="window.mrtInsights && window.mrtInsights.open('live')">View live train changes (${updates}) ›</button></div>` : ""}
+    ${al ? `<ul class="msgs">${al}</ul>` : ""}${rtAddedHTML()}${rtCutHTML()}</div>`;
 }
 
 /* ---------- In-app updates ----------
@@ -4369,21 +4978,60 @@ function segTitle(sg){
   const span = names.length > 1 ? `${names[0]} to ${names[names.length-1]}` : (names[0] || "Stations not listed");
   return span;
 }
-function segHTML(sg){
+function alertKindBadge(kind){
+  if (kind === "planned") return `<span class="al-kind is-planned" title="Planned closure or scheduled maintenance">🔧 Planned closure</span>`;
+  if (kind === "resumed") return `<span class="al-kind is-resumed">✓ Resumed</span>`;
+  return `<span class="al-kind is-outage" title="Unplanned service outage or disruption">⚠ Service outage</span>`;
+}
+function alertLinesHTML(state){
+  const summary = classifyAlertState(state);
+  if (!summary.items.length) return "";
+  const title = summary.outages.length && summary.planned.length
+    ? "Service outages & planned maintenance"
+    : summary.planned.length && !summary.outages.length
+      ? "Lines undergoing planned maintenance"
+      : summary.outages.length
+        ? "Lines with active service outages"
+        : "Recently resumed lines";
+  return `<div class="al-status-box" role="region" aria-label="Line maintenance and outage status">
+    <div class="al-status-head">
+      <b>${esc(title)}</b>
+      <div class="al-legend">
+        <span><i class="al-dot is-outage" aria-hidden="true"></i>Service outage (${summary.outages.length})</span>
+        <span><i class="al-dot is-planned" aria-hidden="true"></i>Planned closure / maintenance (${summary.planned.length})</span>
+      </div>
+    </div>
+    <div class="al-lines">${summary.items.map(it => `<div class="al-line is-${it.kind}">
+      <span class="code" style="background:var(--${esc(it.line || "muted")})">${esc(it.ltaLine || it.line || "MRT")}</span>
+      <div class="al-line-main">
+        <b>${esc(it.name)}</b>
+        <small>${esc(it.detail)}</small>
+      </div>
+      ${alertKindBadge(it.kind)}
+    </div>`).join("")}</div>
+  </div>`;
+}
+function segHTML(sg, state){
   const c = sg.line;
+  const st = state || alertState;
+  const rawKind = segKind(sg, st && st.messages);
+  const kind = st && st.status !== 2 ? (rawKind === "planned" ? "planned" : "resumed") : rawKind;
   const pill = `<span class="code" style="background:var(--${c || "muted"})">${esc(sg.ltaLine || c)}</span>`;
   const dir = sg.direction && !/^both$/i.test(sg.direction) ? `Towards ${esc(NAME_OF[sg.direction] || sg.direction)}` : "Both directions";
   const extra = [];
   if (sg.bus.length) extra.push(sg.bus.some(x => /island/i.test(x)) ? "Free bus rides island-wide" : `Free regular buses at ${esc(sg.bus.map(x => NAME_OF[x] || x).join(", "))}`);
   if (sg.shuttle.length) extra.push(`Free bridging buses at ${esc(sg.shuttle.map(x => NAME_OF[x] || x).join(", "))}${sg.shuttleDir ? ` (${esc(sg.shuttleDir)})` : ""}`);
-  return `<div class="seg"><div class="h">${pill}${esc(segTitle(sg))}</div>
+  return `<div class="seg is-${kind}"><div class="h">${pill}<span>${esc(segTitle(sg))}</span>${alertKindBadge(kind)}</div>
     <span class="sub">${dir} · ${sg.codes.length} station${sg.codes.length === 1 ? "" : "s"} affected</span>
     ${sg.running ? `<span class="sub"><b>Trains are still running</b> through here, with delays (LTA)</span>` : ""}
     ${(sg.busText || []).map(s => `<span class="sub">🚌 ${esc(s)}</span>`).join("")}
     ${extra.map(x => `<span class="sub">${x}</span>`).join("")}</div>`;
 }
 function msgsHTML(msgs){
-  return msgs.length ? `<ul class="msgs">${msgs.map(m => `<li><span>${esc(m.text)}</span>${m.at ? `<span class="muted">${esc(m.at)}</span>` : ""}</li>`).join("")}</ul>` : "";
+  return msgs.length ? `<ul class="msgs">${msgs.map(m => {
+    const isPlan = PLANNED_CLOSURE_RE.test(String(m.text || "")) && !UNPLANNED_FAULT_RE.test(String(m.text || ""));
+    return `<li${isPlan ? ` class="is-planned"` : ""}><span>${esc(m.text)}</span>${m.at ? `<span class="muted">${esc(m.at)}${isPlan ? " · Planned maintenance" : ""}</span>` : ""}</li>`;
+  }).join("")}</ul>` : "";
 }
 
 function renderBanner(){
@@ -4430,20 +5078,25 @@ function renderOfficial(){
   const el = $("officialCard"), refreshBtn = `<button class="btn ghost" type="button" id="refreshBtn"${loading ? " disabled" : ""}>${loading ? "Refreshing…" : "Refresh now"}</button>`;
   let body;
   if (!APP){
-    const sample = {segments:[{lines:["NSL"],line:"NSL",ltaLine:"NSL",direction:"Both",codes:["NS1","NS2","NS3","NS4"],bus:["NS1","NS2","NS3","NS4"],shuttle:[],shuttleDir:""}],
+    const sample = {status: 2, segments:[
+        {lines:["NSL"],line:"NSL",ltaLine:"NSL",direction:"Both",codes:["NS1","NS2","NS3","NS4"],bus:["NS1","NS2","NS3","NS4"],shuttle:[],shuttleDir:"",kind:"outage",planned:false},
+        {lines:["EWL"],line:"EWL",ltaLine:"EWL",direction:"Both",codes:["EW24","EW25","EW26"],bus:[],shuttle:["EW24","EW26"],shuttleDir:"Both",kind:"planned",planned:true}
+      ],
       messages:[{text:"0712hrs: NSL – No train service between Jurong East and Choa Chu Kang due to a track fault. Free regular bus services are available at designated bus stops near the affected stations.", at:"Example"}]};
-    body = `<p class="muted">Live notices from LTA's official alerts feed appear here in your MRT Spotter phone app. Here's how a disruption looks:</p>
-      <div class="alert bad" style="cursor:default"><span><span class="chip sample">Sample</span></span>${sample.segments.map(segHTML).join("")}</div>${msgsHTML(sample.messages)}`;
+    body = `<p class="muted">Live notices from LTA's official alerts feed appear here in your MRT Spotter phone app. Here's how service outages and planned closures look:</p>
+      ${alertLinesHTML(sample)}
+      <div class="alert bad" style="cursor:default"><span><span class="chip sample">Sample</span></span>${sample.segments.map(sg => segHTML(sg, sample)).join("")}</div>${msgsHTML(sample.messages)}`;
   } else if (!hasKey()){
     body = `<p class="muted">${(window.MRT_WEB && !MRT_WEB.live) ? "Live disruption alerts aren't available on this website right now. Check SMRT or SBS Transit on X for updates." : "Live disruption alerts aren't included in this version of the app."}</p>`;
   } else if (alertState && alertState.status === 2){
-    body = `<div style="display:grid;gap:10px">${alertState.segments.map(segHTML).join("")}</div>
+    body = `${alertLinesHTML(alertState)}<div style="display:grid;gap:10px">${alertState.segments.map(sg => segHTML(sg, alertState)).join("")}</div>
       ${alertState.messages.length ? `<h2 style="font-size:16px;margin-top:6px">Announcements</h2>${msgsHTML(alertState.messages)}` : ""}`;
   } else if (alertState && alertState.segments.length){
-    body = `<p><b style="color:var(--good)">Train service has resumed.</b> Free rides are still available on these stretches:</p>
-      <div style="display:grid;gap:10px">${alertState.segments.map(segHTML).join("")}</div>${msgsHTML(alertState.messages)}`;
+    body = `${alertLinesHTML(alertState)}<p><b style="color:var(--good)">Train service has resumed.</b> Free rides are still available on these stretches:</p>
+      <div style="display:grid;gap:10px">${alertState.segments.map(sg => segHTML(sg, alertState)).join("")}</div>${msgsHTML(alertState.messages)}`;
   } else if (alertState){
-    body = `<p><b style="color:var(--good)">All train services are running normally.</b></p>${msgsHTML(alertState.messages)}`;
+    const maintHTML = alertLinesHTML(alertState);
+    body = `${maintHTML}<p><b style="color:var(--good)">${maintHTML ? "Regular train services are running normally outside scheduled maintenance." : "All train services are running normally."}</b></p>${msgsHTML(alertState.messages)}`;
   } else body = `<p class="muted">${loading ? "Loading…" : "No status yet."}</p>`;
   const meta = APP && hasKey() ? `<p class="muted">${alertState ? `Updated ${hhmm(alertState.at)}` : ""}${alertError ? ` · ${esc(alertError)}` : ""}</p>` : "";
   el.innerHTML = `<h2>LTA service status</h2><div style="display:grid;gap:10px">${body}${meta}${rtHTML()}<p class="muted">Source: Land Transport Authority (LTA), datamall.lta.gov.sg</p>${APP && hasKey() ? `<div>${refreshBtn}</div>` : ""}</div>`;
@@ -4778,7 +5431,7 @@ function stopFollowing(){
 }
 function trackCamera(){
   if (!followedRun) return;
-  const {line, id} = followedRun, t = trainById(trainsOn(line, sgNow()), id);
+  const {line, id} = followedRun, t = trainById(mapTrains(line, sgNow()), id);
   if (!t) { stopFollowing(); return; }
   followedRun.id = t.id;
   const rv = window.mrtRealtimeVehicle && window.mrtRealtimeVehicle(t);
@@ -4787,6 +5440,17 @@ function trackCamera(){
     : posOn(line,t.idx);
   view = viewAt(x, y, view.s, view.a || 0);
 }
+window.focusTrainOnMap = (line, id) => {
+  try {
+    const t = trainById(mapTrains(line, sgNow()), id);
+    if (!t) return false;
+    mSel = {type: "train", line, id: t.id};
+    const [x, y] = posOn(line, t.idx);
+    view = viewAt(x, y, Math.max(view.s || 0.08, 0.16), view.a || 0);
+    mapInfo(); mDirty = true;
+    return true;
+  } catch(e){ return false; }
+};
 $("followStop").onclick = stopFollowing;
 let mSel = null;          // {type:"train", line, id} or {type:"station", name}
 let mHits = [];           // trains drawn last frame, for tapping
@@ -5121,16 +5785,9 @@ function mapDraw(){
     for (let k = 1; k < p.length; k++){ const [xk, yk] = mPt(p[k][0], p[k][1]); ctx.lineTo(xk, yk); }
   };
 
-  // URA master-plan geometry is kept as an asset for future line-specific matching.\n  // Do NOT paint the raw layer here: it contains future/proposed rail corridors and can\n  // snap to the wrong existing line (e.g. an orange diagonal through Woodlands).\n  // disrupted stretches: red glow underneath
-  if (typeof alertState !== "undefined" && alertState && alertState.status === 2){
-    ctx.strokeStyle = MC.bad; ctx.globalAlpha = 0.35; ctx.lineWidth = lw * 3;
-    for (const sg of alertState.segments) for (const c of (sg.lines || [])){
-      const L = LINES[c], set = new Set(sg.codes); ctx.beginPath();
-      for (let i = 0; i < L.stations.length - 1; i++) if (set.has(L.stations[i][0]) && set.has(L.stations[i + 1][0])) path(c, i);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
+  // URA master-plan geometry is kept as an asset for future line-specific matching.
+  // Do NOT paint the raw layer here: it contains future/proposed rail corridors and can
+  // snap to the wrong existing line (e.g. an orange diagonal through Woodlands).
   // lines
   for (const c of MDRAW){
     const L = LINES[c], act = activeStations(L, now.iso).length, lrt = !!L.lrt;
@@ -5144,6 +5801,37 @@ function mapDraw(){
       if (L.future) ctx.globalAlpha = 0.5;
       ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
+  }
+  // Animated disruption overlay: paint over the normal track so it is visible on
+  // MRT, LRT loops and the Sentosa Express monorail.
+  if (typeof alertState !== "undefined" && alertState && alertState.status === 2){
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 360);
+    for (const sg of alertState.segments) for (const c of (sg.lines || [])){
+      const L = LINES[c]; if (!L) continue;
+      const set = new Set(sg.codes || []);
+      const affected = [];
+      for (let i = 0; i < L.stations.length - 1; i++){
+        if (set.has(L.stations[i][0]) && set.has(L.stations[i + 1][0])) affected.push(i);
+      }
+      if (!affected.length) continue;
+      ctx.strokeStyle = MC.bad;
+      ctx.globalAlpha = 0.22 + pulse * 0.18;
+      ctx.lineWidth = Math.max(2.5, lw * (1.7 + pulse * 0.7));
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      for (const i of affected) path(c, i);
+      ctx.stroke();
+      ctx.globalAlpha = 0.85 + pulse * 0.12;
+      ctx.lineWidth = Math.max(1.8, lw * 0.52);
+      ctx.setLineDash([lw * 2.4, lw * 2.0]);
+      ctx.lineDashOffset = -performance.now() / 90;
+      ctx.beginPath();
+      for (const i of affected) path(c, i);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+    }
+    ctx.globalAlpha = 1;
   }
   try { drawExits(ctx, zoom); } catch(e){}
   // wet rails: above-ground NSL / EWL / Changi branch stretches where NEA's gauges show rain (wetNow) get a
@@ -5231,10 +5919,11 @@ function mapDraw(){
   }
   // trains: small arrows pointing the way they travel, one side of the line per direction
   mHits = [];
-  const tr = clampN(lw * 0.9, 3.4, 7), tags = [];
+  const tr = clampN(lw * 0.9, 3.4, 7), tags = [], rtBadges = [];
   let total = 0;
   for (const c of MDRAW){
-    const list = trainsOn(c, now), Lc = LINES[c], actC = activeStations(Lc, now.iso); total += list.length;
+    const list = mapTrains(c, now), Lc = LINES[c], actC = activeStations(Lc, now.iso); total += list.length;
+    const rtShiftMap = window.rtShifts ? window.rtShifts(c, now.iso) : null;
     for (const t of list){
       const sb = isShortTo(Lc, t.dir, actC, t.to);            // special-bound trains: hollow arrows, or a dotted outline
       const [px, py, pdx, pdy] = posOn(c, t.idx);
@@ -5291,13 +5980,18 @@ function mapDraw(){
         const sh = tipAt - tr * 1.5 * k;
         drawLastBar(ctx, X + ux * sh, Y + uy * sh, ux, uy, tr * k, MC[c], MC.bg);
       }
+      const rtShift = rtShiftMap && rtShiftMap.has(t.id) ? Number(rtShiftMap.get(t.id)) : 0;
       if (liveGPS){
         ctx.beginPath(); ctx.arc(X, Y, tr * 2.5 * k, 0, Math.PI * 2);
         ctx.lineWidth = 2.2; ctx.strokeStyle = MC.good || MC.fg; ctx.setLineDash([]); ctx.stroke();
+      } else if (Math.abs(rtShift) >= 1){
+        ctx.beginPath(); ctx.arc(X, Y, tr * 2.35 * k, 0, Math.PI * 2);
+        ctx.lineWidth = 1.9; ctx.strokeStyle = rtShift >= 4 ? MC.bad : rtShift > 0 ? MC.cwm : MC.cwl; ctx.setLineDash([]); ctx.stroke();
+        if (zoom >= 1.4 || sel) rtBadges.push({X, Y, r: tr * 1.8 * k, shift: rtShift});
       }
       if (t.rep || t.added || (window.repSeen && repSeen(t.id))){   // reported or confirmed by a spotter, or an extra train LTA added: a ring round it
         ctx.beginPath(); ctx.arc(X, Y, tr * 2.1 * k, 0, Math.PI * 2);
-        ctx.lineWidth = 1.6; ctx.strokeStyle = MC.fg; ctx.setLineDash(t.rep ? [] : [2, 2]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.lineWidth = 1.6; ctx.strokeStyle = MC.fg; ctx.setLineDash(t.rep ? [] : t.added ? [5, 3] : [2, 2]); ctx.stroke(); ctx.setLineDash([]);
       }
       mHits.push({line: c, id: t.id, x: X, y: Y});
       const tag = window.spotTag ? spotTag(c, t, now.iso) : null;          // you logged this train: its tag, once zoomed in a little
@@ -5307,6 +6001,18 @@ function mapDraw(){
   wxActive = drawWeather(ctx);
   const tagBox = [];
   for (const g of tags) drawSpotTag(ctx, g.X, g.Y, g.r, g.tag, clampN(9 + zoom * 0.25, 10, 12), tagBox);
+  for (const b of rtBadges){
+    const txt = (b.shift > 0 ? "+" : "") + Math.round(b.shift) + "m";
+    ctx.save();
+    ctx.font = `700 10px "JetBrains Mono", ui-monospace, monospace`;
+    const w = Math.ceil(ctx.measureText(txt).width) + 8, h = 15;
+    const bx = b.X + b.r + 3, by = b.Y - h / 2;
+    ctx.fillStyle = b.shift >= 4 ? MC.bad : b.shift > 0 ? MC.cwm : MC.cwl;
+    ctx.beginPath(); ctx.roundRect(bx, by, w, h, 4); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+    ctx.fillText(txt, bx + w / 2, b.Y + 0.5);
+    ctx.restore();
+  }
   if (performance.now() - (mapDraw.wxPaint || 0) > 600){ mapDraw.wxPaint = performance.now(); paintWx(); }
   $("mapCount").textContent = total ? `${total} trains running · ${TT && !SIM.est ? "LTA timetable" : "estimated"} · ${dayText(sgNow()).split(" · ")[0]}` : "No trains running right now";
   mDirty = false;
@@ -5316,7 +6022,7 @@ function mapDraw(){
    right of the arrow, joined by a short line, with the model you entered. An eye for "Spotted", a gold star and gold
    edge for "Rode". The arrow itself isn't touched. */
 function drawSpotTag(ctx, x, y, r, tag, fs, avoid){
-  const ride = tag.kind === "ride", txt = tag.model || (ride ? "Rode" : "Spotted");
+  const ride = tag.kind === "ride", txt = tag.set || tag.model || (ride ? "Rode" : "Spotted");
   ctx.save();
   ctx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
   const ic = fs * 0.95, h = Math.round(fs + 7), w = Math.ceil(ctx.measureText(txt).width) + ic + 14;
@@ -5421,18 +6127,27 @@ function mapInfoHTML(){
   const now = sgNow();
   if (!mSel) return `<p class="hint" style="margin:0">Tap any train or station on the map · Pinch to zoom and rotate (or right-drag / Shift-drag).</p>`;
   if (mSel.type === "train"){
-    const L = LINES[mSel.line], t = trainById(trainsOn(mSel.line, now), mSel.id);
+    const L = LINES[mSel.line], t = trainById(mapTrains(mSel.line, now), mSel.id);
     if (!t){ mSel = null; return mapInfoHTML(); }
     mSel.id = t.id;                                          // it turned round: keep following the same train
+    if (t.extTest){                                          // out past the end of the line on a test run
+      const stop = L.stations[t.next][1], home = L.stations[EXT_TEST[mSel.line] ? L.stations.findIndex(s => s[0] === EXT_TEST[mSel.line][0]) : 0][1];
+      return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line}</span><b>Test run · ${esc(t.dir ? "back to " + home : "to " + L.stations[t.to][1])}</b><span class="sb">No passengers</span><button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
+      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next <b>${esc(stop)}</b>`}</span><span class="mi-t">Back at ${esc(home)} ~${Math.max(1, Math.round(t.backAt))} min</span></div>
+      <div class="mi-row"><small>Between trips it runs empty past ${esc(home)} to test the stretch that opens for passengers ${esc(opensText(L, L.stations[t.to] && L.stations[t.to][2] ? L.stations[t.to] : L.stations[L.stations.length - 1]))}.</small></div>
+      <div class="mi-trainmeta"><span><b>POSSIBLE</b> · where it is out there</span><span class="mi-source">LTA's timetable has it waiting at ${esc(home)}; the run out and back is fitted into that wait</span></div>`;
+    }
     const act = activeStations(L, now.iso), stop = act[t.next][1];
     const tid = t.ref && t.ref.tid ? String(t.ref.tid) : "";
-    const parts = tid.split("_"), run = parts.length >= 2 && /^\\d+$/.test(parts[parts.length - 2]) ? parts[parts.length - 2] : "";
+    const parts = tid.split("_"), run = parts.length >= 2 && /^\d+$/.test(parts[parts.length - 2]) ? parts[parts.length - 2] : "";
     const slot = typeof ttSlotOf === "function" ? ttSlotOf(tid) : "";
     const trainMeta = slot || run ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot || "—")}</b>${run ? ` · run ${esc(run)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
-      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? "Boarding" : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
+      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? (t.doors ? "Doors closing" : "Boarding") : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
       ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
       ${window.smartTrainNote && smartTrainNote(mSel.line, t) ? `<div class="mi-row">${smartTrainNote(mSel.line, t)}</div>` : ""}
+      ${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(mSel.line, t, now) : ""}
+      ${window.mrtDisruptionHTML ? mrtDisruptionHTML(mSel.line) : ""}
       <div class="mi-act"><button class="btn ghost" type="button" data-act="line">Open on Line Board</button></div>`;
   }
   const e = MSTN.find(x => x.name === mSel.name);
@@ -5815,8 +6530,9 @@ async function refreshWeather(force){
   wxBusy = true; wxLast = Date.now();
   const paths = ["two-hr-forecast", "rainfall", "air-temperature", "wind-direction", "wind-speed", "weather?api=lightning"], res = {};
   for (const p of paths){
+    if (document.hidden && p !== paths[0]){ wxBusy = false; wxLast = 0; return; }
     res[p] = await wxGet(p);
-    if (p === paths[0] && !res[p]){ wxBusy = false; return; }          // offline or not reachable: try again next time
+    if (p === paths[0] && !res[p]){ wxBusy = false; wxLast = Date.now() - WX_EVERY + 2 * 60e3; return; }
     await new Promise(r => setTimeout(r, 2200));                        // stays inside data.gov.sg's 6 requests every 10 seconds
   }
   const fc = wxForecast(res["two-hr-forecast"]), rain = wxReadings(res["rainfall"]), temp = wxReadings(res["air-temperature"]);
@@ -5828,7 +6544,10 @@ async function refreshWeather(force){
     wind = {from, knots: Math.round(spd * 10) / 10};
   }
   if (fc || rain){
-    wx = {got: Date.now(), fc, rain, temp, wind, lightning: wxLightning(res["weather?api=lightning"]), grid: wxGrid(rain),
+    const old = wx || {};
+    wx = {got: Date.now(), fc: fc || old.fc, rain: rain || old.rain, temp: temp || old.temp, wind: wind || old.wind,
+      lightning: res["weather?api=lightning"] ? wxLightning(res["weather?api=lightning"]) : old.lightning,
+      grid: rain ? wxGrid(rain) : old.grid,
       at: (rain && rain.at) || (fc && fc.at)};
     wxClouds = null;
   }
@@ -6770,6 +7489,57 @@ async function refreshCrowd(force){
     paintCrowd();
   }
 }
+/* ---------- Crowd forecast ----------
+   How busy each station is expected to be in each half hour today, from LTA DataMall's Platform Crowd Density
+   Forecast (PCDForecast), asked for line by line when a station page needs it, at most once a day per line. */
+var PCD_OF = {NSL: "NSL", EWL: "EWL", CG: "CGL", NEL: "NEL", CCL: "CCL", DTL: "DTL", TEL: "TEL", BP: "BPL", SE: "SLRT", SW: "SLRT", PE: "PLRT", PW: "PLRT"};
+var crowdFc = {}, fcBusy = {};
+try { crowdFc = store.get("mrt.crowdFc", {}) || {}; } catch(e){ crowdFc = {}; }
+async function loadForecast(l){
+  const day = sgNow().iso;
+  if (fcBusy[l] || (crowdFc[l] && (crowdFc[l].day === day || Date.now() - crowdFc[l].tried < 30 * 60e3))) return;
+  fcBusy[l] = true;
+  try {
+    const {code, body} = await nativeGet("https://datamall2.mytransport.sg/ltaodataservice/PCDForecast?TrainLine=" + l, true);
+    const st = {};
+    if (code === 200){
+      // {value: [{Date, Stations: [{Station, Interval: [{Start, CrowdLevel}, …]}, …]}]}, looked for anywhere in the answer
+      const walk = o => {
+        if (Array.isArray(o)) return o.forEach(walk);
+        if (!o || typeof o !== "object") return;
+        if (o.Station && Array.isArray(o.Interval)){
+          const c = ({CE1: "CC34", CE2: "CC33"})[o.Station] || String(o.Station).trim();
+          st[c] = o.Interval.map(x => [Date.parse(x.Start), String(x.CrowdLevel || "").trim().toLowerCase()]).filter(x => Number.isFinite(x[0]) && CROWD_RANK[x[1]]).sort((a, b) => a[0] - b[0]);
+          return;
+        }
+        Object.values(o).forEach(walk);
+      };
+      walk(JSON.parse(body));
+    }
+    crowdFc[l] = Object.keys(st).length ? {day, tried: Date.now(), st} : {day: "", tried: Date.now(), st: {}};
+    const keep = {}; for (const k in crowdFc) if (crowdFc[k].day === day) keep[k] = crowdFc[k];   // only today's
+    store.set("mrt.crowdFc", keep);
+  } catch(e){
+    crowdFc[l] = {day: "", tried: Date.now(), st: {}};
+  } finally { fcBusy[l] = false; }
+}
+/* The station page's "Crowd later": the next three hours in half hours, and the quietest of them. */
+function crowdForecastHTML(e){
+  if (!APP || !hasKey() || SIM.crowd) return "";
+  const now = Date.now(), rows = [], seen = new Set();
+  for (const x of e.codes){
+    const l = PCD_OF[x.line]; if (!l || seen.has(x.code)) continue;
+    seen.add(x.code);
+    const f = crowdFc[l];
+    if (!f || f.day !== sgNow().iso){ loadForecast(l); continue; }
+    const iv = (f.st[x.code] || []).filter(([t]) => t + 30 * 60e3 > now).slice(0, 6);
+    if (!iv.length) continue;
+    const quiet = iv.reduce((a, b) => CROWD_RANK[b[1]] < CROWD_RANK[a[1]] ? b : a);
+    const hm = t => new Date(t).toLocaleTimeString("en-SG", {hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Singapore"}).replace(/\s/g, "").replace(":00", "").toLowerCase();
+    rows.push(`<div class="fc-row">${codePills([[x.line, x.code]])}<span class="fc-iv">${iv.map(([t, lv]) => `<span class="cwd ${lv}" title="${esc(CROWD_TEXT[lv])} from ${hm(t)}">${hm(t)}</span>`).join("")}</span>${CROWD_RANK[quiet[1]] < CROWD_RANK[iv[0][1]] ? `<small>quieter from ${hm(quiet[0])}</small>` : ""}</div>`);
+  }
+  return rows.length ? `<div><p class="hsub">Crowd later · LTA forecast</p><div class="fc">${rows.join("")}</div></div>` : "";
+}
 $("mapCrowd").onclick = () => { crowdLayer = !crowdLayer; store.set("mrt.crowdLayer", crowdLayer); paintCrowd(); };
 setInterval(() => { if (!document.hidden) refreshCrowd(); }, 60e3);
 setInterval(paintCrowd, 5 * 60e3);           // drop figures once they're too old
@@ -7195,6 +7965,19 @@ function aWeatherText(e){
   const I = wxIsland();
   return `**Weather across Singapore**\n${I.wetAreas.length ? `Showers or rain forecast for ${I.wetAreas.length} of ${I.areas} areas, including ${I.wetAreas.slice(0, 4).join(", ")}${I.wetAreas.length > 4 ? "…" : ""}` : "No rain forecast"}${I.period ? ` (${I.period})` : ""}.${I.rainingGauges ? ` ${I.rainingGauges} rain gauges are measuring rain now.` : ""}${I.lightning ? " Lightning detected." : ""}${I.tempRange ? ` ${Math.round(I.tempRange[0])}–${Math.round(I.tempRange[1])}°C.` : ""}\nFrom NEA, updated ${wxClock(wx.at)}.`;
 }
+function aPeakTrainText(){
+  const base = sgNow();
+  const probe = m => {
+    const x = {...base, mins: m};
+    let total = 0; const by = [];
+    for (const c of ORDER){ try { const n = trainsOn(c, x).length; if (n){ total += n; by.push({c, n}); } } catch(_){} }
+    return {total, by};
+  };
+  const am = probe(480), pm = probe(1080), best = am.total >= pm.total ? am : pm, label = am.total >= pm.total ? "morning peak" : "evening peak";
+  if (!best.total) return "No peak-hour total is available from the timetable data right now.";
+  const top = best.by.sort((a, b) => b.n - a.n).slice(0, 4).map(x => aLineName(x.c) + " " + x.n).join(", ");
+  return "During peak hours, roughly **" + best.total + " trains are out** at the busiest point of the " + label + ". That is a timetable-based estimate, not a live signalling count. The biggest contributors are " + top + ".";
+}
 const A_HELP = "I can answer questions about Singapore's MRT and LRT from the app's own data: next trains, first and last trains, routes between stations, how often trains come, platform crowds, disruptions, and the history of stations, lines and train models.";
 const A_FARE = /\b(fares?|costs?|price|tickets?|ez ?link|simplygo|concession)\b|\bhow much\b(?! (time|longer|later))/;
 const A_FACIL = /\b(exits?|toilets?|restrooms?|lifts?|elevators?|escalators?|parking|wifi|atm|food|shops?|bus(es)? (number|service|stop)s?)\b/;
@@ -7228,7 +8011,8 @@ function aBuiltin(q){
   }
   const FL = /\b(first|last|earliest|latest|final) (train|trains|mrt|service|one)\b|\b(operating|opening|service) hours\b|\bwhat time (does|do|is|will) .*\b(start|end|stop|close|run)\b|\buntil what time\b|\bhow late\b/.test(n);
   const STATUS = /\b(disrupt\w*|delay\w*|breakdown|broke|faults?|faulty|down|working|normal\w*|status|issues?|problems?|alerts?|stuck|suspend\w*|running (ok|okay|fine|properly))\b/.test(n) || /^(is|are|any)\b.*\b(ok|okay|fine|alright|running)$/.test(n);
-  const CROWD = /\b(crowd\w*|busy|busiest|packed|full|squeez\w*|congest\w*|how many people|peak hour)\b/.test(n);
+  const TRAINCOUNT = /\b(how many|number of)\b.*\b(trains?|trainsets?|out|running)\b|\b(how many trains|number of trains)\b/.test(n);
+  const CROWD = /\b(crowd\w*|busy|busiest|packed|full|squeez\w*|congest\w*|how many people)\b/.test(n);
   const HIST = /\b(history|historic\w*|opened|built|story|named|called|origin|when did|how old|old is|backstory|background)\b/.test(n);
   const SOON = /\b(when will|when is .* open|open(ing)? date|opens|be open)\b/.test(n);
   const FREQ = /\b(how often|frequen\w*|interval|headway|every how|how many trains|trains running|trains are running|gap between)\b/.test(n);
@@ -7280,6 +8064,7 @@ function aBuiltin(q){
   }
   if ((HIST || SOON) && st[0] && !ln){ stAct(st[0]); return out(aStationHistText(st[0])); }
   if ((HIST || SOON) && ln && !st[0]){ lnAct(ln); return out(aLineText(ln, now, "hist")); }
+  if (TRAINCOUNT){ if (ln){ lnAct(ln); return out(aLineText(ln, now, "line")); } return out(aPeakTrainText()); }
   if (FREQ && ln){ lnAct(ln); return out(aLineText(ln, now, "freq")); }
   if (st[0]){
     stAct(st[0]);
@@ -8842,7 +9627,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
         const arr = nextArrivals(x.line, i, d, now, cnt || 3), to = dest(L, d, act);
         const items = arr.map((m, k) => ({m, sb: isShortTo(L, d, act, arr.to[k]) ? act[arr.to[k]] : null, last: isLastCall(x.line, i, d, now, m)}));
         const dis = segs.some(sg => (sg.lines || [sg.line]).includes(x.line) && (sg.codes || []).includes(x.code) && dirOk(sg, to));
-        out.push({line: x.line, code: x.code, to, items, dis, plat: platOf(x.line, i, d)});
+        out.push({line: x.line, code: x.code, to, items, dis, plat: platOf(x.line, i, d), i, d});
       }
     }
     return out;
@@ -8854,6 +9639,14 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   };
   const mins = m => m < 0.75 ? "Now" : String(Math.round(m));
 
+  /* First and last train each way, for the Home cards: from the timetable on the phone, so it works offline too. */
+  const flCache = new Map();
+  function firstLast(line, i, d){
+    if (i == null) return null;
+    const now = sgNow(), k = line + "|" + i + "|" + d + "|" + now.iso + "|" + (SIM.est ? 1 : 0);
+    if (!flCache.has(k)){ if (flCache.size > 200) flCache.clear(); let s = null; try { s = stopTimes(line, i, d, now); } catch(e){} flCache.set(k, s); }
+    return flCache.get(k);
+  }
   /* ---- Home ---- */
   function favCard(name){
     const e = aByName(name); if (!e) return "";
@@ -8862,7 +9655,8 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       if (r.opens) return `<div class="dirrow" style="--c:var(--${r.line})"><span class="ln"></span><span class="to">${esc(r.code)} opens ${esc(r.opens)}</span><span class="t"></span></div>`;
       const f = r.items[0];
       const t = !f ? (r.dis ? "No service · disruption" : "No more trains") : `<em>${fmt(f.m)}</em>${f.sb ? `<i class="sbc" title="Ends at ${esc(f.sb[1])}">→${esc(f.sb[0])}</i>` : ""}${r.items.slice(1).map(x => " · " + mins(x.m)).join("")}`;
-      return `<div class="dirrow" style="--c:var(--${r.line})"><span class="ln"></span><span class="to">${esc(toW(r.to))}${f && f.sb ? ` <span class="sb">next ends at ${esc(f.sb[1])}</span>` : ""}</span><span class="t">${t}${r.dis ? `<span class="slow">disrupted</span>` : ""}</span></div>`;
+      const ft = firstLast(r.line, r.i, r.d), fl = !ft ? "" : !f || f.m > 120 ? ` <small class="fl">first ${clockText(ft.first)}</small>` : ` <small class="fl">last ${clockText(ft.last)}</small>`;
+      return `<div class="dirrow" style="--c:var(--${r.line})"><span class="ln"></span><span class="to">${esc(toW(r.to))}${fl}${f && f.sb ? ` <span class="sb">next ends at ${esc(f.sb[1])}</span>` : ""}</span><span class="t">${t}${r.dis ? `<span class="slow">disrupted</span>` : ""}</span></div>`;
     }).join("");
     return `<button type="button" class="fav" data-fav="${esc(name)}"><div class="fav-h"><b>${esc(name)}</b>${codes}${crowdTop(e)}</div>${rows}</button>`;
   }
@@ -8949,9 +9743,27 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return `${window.mrtTaxiAvailability && window.mrtTaxiAvailability.enabled() ? window.mrtTaxiAvailability.stationHTML(e) : ""}<div><p class="hsub">Next trains${TT && !SIM.est ? " · LTA timetable" : " · estimated"}</p><div class="plat">${rows.join("")}</div>
         ${anySb ? `<p class="hint">Special-bound trains end at that station instead of going all the way.</p>` : ""}
         ${anyDis ? `<p class="hint" style="color:var(--bad)">Disruption on this stretch: times may be later than shown. See Updates for LTA's notice.</p>` : ""}</div>
+      ${stationTimesHTML(e, now)}
       ${open ? `<div><p class="hsub">Platform crowd${crowdFresh() ? ` · LTA, ${esc(crowdWindow())}` : ""}</p>${cws ? `<div class="hx-crowd">${cws}</div>` : `<p class="hint" style="margin:0">Crowd levels aren't available right now.</p>`}</div>` : ""}
+      ${typeof crowdForecastHTML === "function" ? crowdForecastHTML(e) : ""}
       ${typeof wxLine === "function" ? wxLine(e) : ""}
       ${window.mrtDisruptionHTML ? e.codes.map(c=>mrtDisruptionHTML(c.line)).filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join("") : ""}`;
+  }
+  /* First and last trains today, and the special-bound ones, for each line and direction at the station. */
+  function stationTimesHTML(e, now){
+    const rows = [];
+    for (const x of e.codes){
+      const L = LINES[x.line], n = activeStations(L, now.iso).length;
+      if (x.idx >= n) continue;
+      const idxs = L.stations.map((st, i) => st[0] === x.code ? i : -1).filter(i => i >= 0 && i < n);
+      for (const d of [0, 1]){
+        const i = idxs.find(i => L.bound ? !(d && i === 0) : d ? i > 0 : i < n - 1); if (i === undefined) continue;
+        rows.push(stopTimesHTML(x.line, i, d, now, true));
+      }
+    }
+    const h = rows.join("");
+    return h ? `<div><p class="hsub">First and last trains today${TT && !SIM.est ? " · LTA timetable" : " · estimated"}</p><div class="plat ftimes">${h}</div>
+      <p class="hint">Last is the last train going all the way (marked <i class="ltc">LAST</i> in next trains, and with a bar across its arrow on the map). Special-bound trains end at the station shown instead.</p></div>` : "";
   }
   /* Exits, and the places near each one (OpenStreetMap). */
   function exitsHTML(name){
@@ -9076,24 +9888,31 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   function trainLive(x){
     const T = trainNow(x); if (!T) return null;
     const {t, stop, to, full, sb} = T;
+    const depot = window.mrtDepotTransferFor ? mrtDepotTransferFor(x.line, t) : null;
     const phase=unifiedTrainPhase(x.line,t,T.now);
     const eta = phase && phase.phase ? phase.phase : t.atStation ? "At station · predicted" : t.eta < 0.5 ? "Arriving" : `In about ${Math.max(1, Math.round(t.eta))} min`;
     const tid = t.ref && t.ref.tid ? String(t.ref.tid) : "";
     const parsed = window.mrtRunGraph && window.mrtRunGraph.parseTripId ? window.mrtRunGraph.parseTripId(tid) : null;
     const slot = parsed && parsed.run != null ? String(parsed.run) : (typeof ttSlotOf === "function" ? ttSlotOf(tid) : "");
-    const tripNo = parsed && parsed.tripNo != null ? String(parsed.tripNo) : "";
-    const trainMeta = slot ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot)}</b>${tripNo ? ` · trip ${esc(tripNo)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
+    const src = trainPredictionSource(t);
+    const pf = platOf(x.line, Math.round(t.next), t.dir);
+    const trainMeta = slot && !t.added ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot)}</b> · run T${esc(slot.padStart(3, "0"))}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
     let trainsetHTML = "";
     if (slot && window.mrtTrainsetExplain) {
       const ex = window.mrtTrainsetExplain(x.line, slot, T.now.iso);
       if (ex && !/^No independent/i.test(ex)) trainsetHTML = `<div class="mi-intel"><p class="hsub">Trainset intelligence</p><p class="hint" style="margin:0">${esc(ex)}</p></div>`;
     }
     const disruptionHTML = window.mrtDisruptionHTML ? mrtDisruptionHTML(x.line) : "";
-    return `<div class="tsum" style="--c:var(--${x.line})">${trainFaceHTML(x.line, t.dir)}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span></div></div>
+    return `<div class="tsum" style="--c:var(--${x.line})">${trainFaceHTML(x.line, t.dir)}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}${pf ? ` · platform ${esc(pf)}` : ""}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span><br><span class="src">${esc(src.label)}</span></div></div>
+      ${t.added ? `<p class="hint" style="margin:0"><span class="sb">extra train</span> <b>Added by LTA today</b>, not in the timetable${t.added === 6 ? " (a timetabled trip run again at another time)" : ""}. From LTA's live train feed.</p>` : ""}
       ${trainMeta}
+      ${trainIntelHTML(x.line, t, T.now, slot)}
       ${phase && phase.phase ? `<p class="hint"><b>${esc(phase.phase)}</b> · ${esc(phase.source)} · predicted, not a confirmed physical movement</p>` : ""}
+      ${slot && window.spotSetHTML ? spotSetHTML(x.line, slot, T.now.iso) : ""}
       ${trainsetHTML}
       ${slot && window.mrtOperatingHistoryHTML ? mrtOperatingHistoryHTML(x.line,slot,T.now.iso) : ""}
+      ${depot ? `<p class="hint" style="margin:0"><span class="sb">${esc(depot.kind)}</span> at ${esc(depot.station)}${depot.gapSec ? ` · next published trip there ${Math.round(depot.gapSec/60)} min later` : ""} · ${esc(depot.label || "")}</p>` : ""}
+      ${slot && !t.added && window.mrtRunDayHTML ? mrtRunDayHTML(x.line, tid, T.now && T.now.mins != null ? T.now.mins * 60 : 0) : ""}
       ${disruptionHTML}
       ${casualDayTripHTML(x, T)}
       <div class="hfacts">
@@ -9103,13 +9922,13 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       ${isLastTrain(x.line, t, T.now) ? `<p class="hint" style="margin:0"><b>Last train</b> ${sb ? "of the day this way" : "going all the way"} today. After it, ${sb ? "no more trains run this way tonight" : "only special-bound trains (if any) run this way"}.</p>` : ""}
       ${window.spotTagHTML ? spotTagHTML(x.line, t, T.now.iso) : ""}
       ${window.rtTrainNote ? rtTrainNote(x.line, t) : ""}
-      ${sb ? `<p class="hint" style="margin:0">${BOUND_RE.test(to) ? `This train ends at <b>${esc(String(to).split(" ends at ")[1])}</b> instead of going on round the loop.` : `This train ends at <b>${esc(to)}</b> instead of going all the way to ${esc(full)}.`} On the map it's drawn hollow.</p>` : ""}`;
+      ${sb ? `<p class="hint" style="margin:0">${BOUND_RE.test(to) ? `This train ends at <b>${esc(String(to).split(" ends at ")[1])}</b> instead of going on round the loop.` : `This train ends at <b>${esc(to)}</b> instead of going all the way to ${esc(full)}.`} On the map it's drawn ${trainIcons() ? "with a dotted outline" : "hollow"}.</p>` : ""}`;
   }
   function trainStatic(x){
     const f = (FLEET[x.line] || []).filter(m => m[5] !== "soon");
     const list = f.map(([m, mk, cars, n, yr]) => `<button type="button" data-hx="model" data-m="${esc(m)}"><b>${esc(m)}</b><span>${esc(mk)} · ${typeof cars === "number" ? `${cars} cars` : `${esc(cars)} cars`}${n ? ` · ${n} in service` : ""}${yr ? ` · since ${yr}` : ""}${H_MODEL[m] ? " · history ›" : ""}</span></button>`).join("");
     return `${list ? `<div><p class="hsub">Train model</p><div class="hx-models">${list}</div><p class="hint">${f.length > 1 ? "Any of these can be running this train; operators don't publish which set is which." : ""}</p></div>` : ""}
-      <div class="mi-act"><button class="btn" type="button" data-hx="follow">Follow train</button><button class="btn ghost" type="button" data-sp="open" data-x="${esc(JSON.stringify({type: "train", line: x.line, id: x.id}))}">Log sighting</button><button class="btn ghost" type="button" data-hx="line">Open on Line Board</button></div>
+      <div class="mi-act"><button class="btn" type="button" data-hx="follow">Follow train</button><button class="btn ghost" type="button" data-sp="open" data-x="${esc(JSON.stringify({type: "train", line: x.line, id: x.id}))}">Spot this train</button><button class="btn ghost" type="button" data-hx="line">Open on Line Board</button></div>
       <div class="sp-box" id="hxLog" hidden></div>`;
   }
   function head(x){
@@ -9117,7 +9936,8 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       return [`${codePills(byName[x.name] || [])} Station`, x.name];
     }
     const T = trainNow(x); if (!T) return null;
-    return [`${lineChip(x.line, x.line === "CG" ? "CGL" : x.line)} ${esc(T.L.name)}${isLastTrain(x.line, T.t, T.now) ? `<span class="sb last">last train</span>` : ""}${T.sb ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(T.t) : ""}`, trainToW(T.to)];
+    const depot = window.mrtDepotTransferFor ? mrtDepotTransferFor(x.line, T.t) : null;
+    return [`${lineChip(x.line, x.line === "CG" ? "CGL" : x.line)} ${esc(T.L.name)}${isLastTrain(x.line, T.t, T.now) ? `<span class="sb last">last train</span>` : ""}${T.sb ? `<span class="sb">special-bound</span>` : ""}${depot ? `<span class="sb">${esc(depot.type === "depot_return" ? "leaves service" : "enters service")}</span>` : ""}${window.repTag ? repTag(T.t) : ""}`, trainToW(T.to)];
   }
   function hxRender(){
     if (!HX) return;
@@ -9130,12 +9950,14 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   }
   // Let async taxi responses update the actual station drawer, not just the map panel/history sheet.
   window.mrtStationSheetRefresh = () => { if (HX && HX.type === "station") hxRender(); };
+  const hxTabletMQ = matchMedia("(min-width:600px)");
   function hxOpen(x, fromMap){
   stopFollowing();
     const same = HX && key(HX) === key(x);
     HX = Object.assign({}, x, {fromMap: !!fromMap});
     const c = x.type === "train" ? x.line : ((byName[x.name] || [])[0] || ["NSL"])[0];
     $("hxSheet").style.setProperty("--c", `var(--${c})`);
+    $("hxSheet").classList.toggle("hx-train", x.type === "train"); $("hxBg").classList.toggle("hx-train", x.type === "train");
     if (!same){ $("hxSheet").classList.remove("expanded"); $("hxStatic").innerHTML = x.type === "train" ? trainStatic(x) : stationStatic(x.name); $("hxLive")._h = null; $("hxBody").scrollTop = 0; }
     hxRender();
     if (!HX) return;
@@ -9145,13 +9967,23 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       let p = null;
       if (x.type === "train"){ const T = trainNow(x); if (T) p = posOn(x.line, T.t.idx); }
       else { const e = aByName(x.name); if (e) p = [e.x, e.y]; }
-      if (p){ const [, sy0] = mPt(p[0], p[1]), aRot = view.a || 0, ca = Math.cos(aRot), sa = Math.sin(aRot); if (sy0 > mH * 0.32) flyTo(p[0] + mH * 0.26 * sa / view.s, p[1] + mH * 0.26 * ca / view.s, view.s); }
+      if (p && hxTabletMQ.matches){
+        // drawer (600px+): if the train is behind the drawer, slide the map left so it shows beside it
+        const w = $("hxSheet").offsetWidth, [px0] = mPt(p[0], p[1]), sx = $("mapCv").getBoundingClientRect().left + px0;
+        const aRot = view.a || 0, ca = Math.cos(aRot), sa = Math.sin(aRot);
+        if (sx > innerWidth - w - 24) flyTo(p[0] + (w / 2) * ca / view.s, p[1] - (w / 2) * sa / view.s, view.s);
+      }
+      else if (p){
+        const [, sy0] = mPt(p[0], p[1]), aRot = view.a || 0, ca = Math.cos(aRot), sa = Math.sin(aRot);
+        if (sy0 > mH * 0.32) flyTo(p[0] + mH * 0.26 * sa / view.s, p[1] + mH * 0.26 * ca / view.s, view.s);
+      }
     }
   }
   function hxClose(){
     if (!HX){ $("hxSheet").hidden = true; $("hxBg").hidden = true; return; }
     const was = HX; HX = null;
     $("hxSheet").hidden = true; $("hxBg").hidden = true;
+    document.body.classList.remove("hx-train-open");
     if (was.fromMap && mSel && key(mSel) === key(was)){ mSel = null; mDirty = true; mapInfo(); }
   }
   window.hxOpen = hxOpen;
@@ -9212,7 +10044,12 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       const here = curView === "home" || (curView === "trains" && trainView === "map");
       if (mSel && here){ if (!HX || key(HX) !== key(mSel)) hxOpen(mSel, true); }
       else if (HX && HX.fromMap && key(HX) !== key(mSel)) hxClose();
+    } else {
+      // wide screens: a tapped train opens its full details in the drawer; stations keep the card beside the map
+      if (mSel && curView === "trains"){ if (!HX || key(HX) !== key(mSel)) hxOpen(mSel, true); }
+      else if (HX && HX.fromMap && (!mSel || key(HX) !== key(mSel))) hxClose();
     }
+    document.body.classList.toggle("hx-train-open", !!HX && HX.type === "train");
     syncTrip();
   };
 
@@ -9292,7 +10129,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const rows = [], dis = [];
     for (const r of favDeps(e, 6)){
       if (r.opens){ rows.push({c: colOf(r.line), l: lineLabel(r.line), to: `${r.code} opens ${r.opens}`, t: []}); continue; }
-      rows.push({c: colOf(r.line), l: lineLabel(r.line), to: toW(r.to), t: r.items.map(it => Math.round((now + it.m * 60000) / 1000) * 1000), sb: r.items[0] && r.items[0].sb ? r.items[0].sb[1] : "", d: !!r.dis});
+      rows.push({c: colOf(r.line), l: lineLabel(r.line), to: toW(r.to), t: r.items.map(it => Math.round((now + it.m * 60000) / 1000) * 1000), sb: r.items[0] && r.items[0].sb ? r.items[0].sb[1] : "", d: !!r.dis, plat: r.plat || ""});
       if (r.dis && !dis.includes(r.line)) dis.push(r.line);
     }
     let dtext = "";
@@ -9300,11 +10137,33 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       const msg = alertState && alertState.messages && alertState.messages[0] ? alertState.messages[0].text : "";
       dtext = `Disruption on the ${dis.map(lineFull).join(" and ")}${msg ? ": " + msg : ""}`.slice(0, 160);
     }
-    return {at: now, st: name, codes: (byName[name] || []).map(x => x[1]).join(" "), rows: rows.slice(0, 4), dis: dtext};
+    return Object.assign({at: now, st: name, codes: (byName[name] || []).map(x => x[1]).join(" "), rows: rows.slice(0, 6), dis: dtext}, widgetLive());
   }
+  /* For widgets showing any station: LTA's live delays (trip id -> seconds), cancelled trips, and lines with a disruption. */
+  function widgetLive(){
+    const live = {}, gone = [];
+    let st = null; try { st = rtState; } catch(e){}
+    if (st && st.trips && Date.now() - st.at < 10 * 60e3) for (const [id, u] of Object.entries(st.trips)){ if (u.x) gone.push(id); else if (u.d) live[id] = u.d; }
+    let disLines = []; try { disLines = [...disruptedLines()]; } catch(e){}
+    return {live, gone, disLines};
+  }
+  /* What widgets need to work trains out by themselves: line colours and names, where each direction goes,
+     public holidays (Sunday timetable), and the slower trains (SLOW). Sent when the app opens. */
+  function pushWidgetMeta(){
+    if (!has("widgetMeta")) return;
+    const iso = sgNow().iso, lines = {};
+    for (const c of TT_LINES){
+      const L = LINES[c]; if (!L) continue;
+      const act = activeStations(L, iso);
+      lines[c] = {c: colOf(c), l: lineFull(c), dest: [dest(L, 0, act), dest(L, 1, act)], slow: [slowPerStop(c, 0) * 60, slowPerStop(c, 1) * 60]};
+    }
+    call("widgetMeta", JSON.stringify({ph: Object.keys(PH_DAYS), lines}));
+  }
+  window.appOpenStation = name => { if (aByName(name)) hxOpen({type: "station", name}, false); };   // a widget was tapped
+  setTimeout(pushWidgetMeta, 3000);
   function pushWidget(force){
     if (!has("widgetData") || !realTime()) return;
-    const s = widgetSnap(), sig = JSON.stringify([s.st, s.dis, s.rows.map(r => [r.to, r.t.slice(0, 2).map(t => Math.round(t / 60000))])]);
+    const s = widgetSnap(), sig = JSON.stringify([s.st, s.dis, s.disLines, s.live, s.gone, s.rows.map(r => [r.to, r.t.slice(0, 2).map(t => Math.round(t / 60000))])]);
     if (!force && sig === wSig && Date.now() - wAt < 300000) return;
     wSig = sig; wAt = Date.now();
     call("widgetData", JSON.stringify(s));
@@ -9358,24 +10217,47 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     if (b.dataset.nt === "ask") call("askNotify"); else call("openNotifySettings");
   });
 
-  /* ===== Trip reminders: from the planned times (the timetable), not from where you are ===== */
+  /* ===== Trip reminders: from the timetable and LTA's live delays (not from where you are) ===== */
   const REM_KEY = "mrt.remind";
   let remind = store.get(REM_KEY, null);
   if (remind && !(remind.end > Date.now())) remind = null;
   let remMsg = "";
   const tripKey = r => r ? r.a + "|" + r.b : "";
+  /* Which train a trip leg boards (LTA's trip id), and how late LTA says it is (seconds): the timetable run that
+     leaves the leg's first station closest to its boarding time, in the direction of its last station. The app
+     then checks that train in LTA's live feed just before each reminder and moves the reminder with it. */
+  function legTrain(l){
+    try {
+      const L = LINES[l.line], now = sgNow(), list = ttTrips(l.line, now.iso); if (!L || !list) return null;
+      const st = L.stations, fr = st.map((s, i) => s[1] === l.from ? i : -1).filter(i => i >= 0), to = st.map((s, i) => s[1] === l.to ? i : -1).filter(i => i >= 0);
+      const mv = moved(l.line, now.iso); let best = null;
+      for (const r of list){
+        const p = r.p;
+        for (const i of fr){
+          const k = (i - p.f) * p.d; if (k < 0 || k >= p.arr.length - 1) continue;
+          if (!to.some(j => { const q = (j - p.f) * p.d; return q > k && q < p.arr.length; })) continue;
+          const dt = Math.abs(ttAt(l.line, r, k, mv) / 60 - l.board);
+          if (dt < 1.5 && (!best || dt < best.dt)) best = {dt, r};
+        }
+      }
+      if (!best || !best.r.tid) return null;
+      let d = 0; try { const u = rtState && rtState.trips && rtState.trips[best.r.tid]; d = u && !u.x ? u.d || 0 : 0; } catch(e){}
+      return {tid: best.r.tid, delay: d};
+    } catch(e){ return null; }
+  }
   function remindPlan(r){
     const nowM = sgNow().mins, t0 = Date.now(), ep = m => Math.round(t0 + (m - nowM) * 60000), out = [];
     const legs = r.legs.filter(l => l.line);
     legs.forEach((l, k) => {
       if (l.wait == null) return;
+      const tr = legTrain(l), tag = tr ? {tid: tr.tid, delay: tr.delay} : {};
       const nx = legs[k + 1], last = k === legs.length - 1, bd = ep(l.board);
       if (bd - 120000 > t0 + 20000) out.push({at: bd - 120000, title: k ? `Change at ${l.from}` : `Your train from ${l.from}`,
-        text: `${lineFull(l.line)} ${towardsW(l.toward)} at ${clockText(l.board)}, in about 2 min.`});
+        text: `${lineFull(l.line)} ${towardsW(l.toward)} at ${clockText(l.board)}, in about 2 min.`, ...tag});
       const per = l.stops > 0 ? l.ride / l.stops : 2;
       const al = Math.max(ep(l.arrive - per), bd + 30000);
       if (al > t0 + 15000) out.push({at: al, title: `Alight at ${l.to} next`,
-        text: `Your train arrives at ${l.to} in 1 stop, about ${clockText(l.arrive)}.${last ? "" : nx ? ` Then change to the ${lineFull(nx.line)} ${towardsW(nx.toward)}.` : ""}`});
+        text: `Your train arrives at ${l.to} in 1 stop, about ${clockText(l.arrive)}.${last ? "" : nx ? ` Then change to the ${lineFull(nx.line)} ${towardsW(nx.toward)}.` : ""}`, ...tag});
     });
     return out.sort((x, y) => x.at - y.at).slice(0, 8);
   }
@@ -9396,7 +10278,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   };
   window.tripRemindNote = r => {
     const on = remind && remind.key === tripKey(r) && remind.end > Date.now();
-    const t = on ? `Reminders at ${remind.at.map(x => clockText(((x + 8 * 3600e3) % 864e5) / 60000)).join(", ")} · from the planned times, so delays don't show.` : "";
+    const t = on ? `Reminders at ${remind.at.map(x => clockText(((x + 8 * 3600e3) % 864e5) / 60000)).join(", ")} · they follow LTA's live train feed: a few minutes before each one, the app checks your train again and moves the reminder if it's late, even with the app closed.` : "";
     const m = remMsg ? `${remMsg}${nState() === "off" ? ` <button class="btn ghost" type="button" data-nt="settings">Open settings</button>` : ""}` : "";
     return t || m ? `<p class="rt-rem">${t}${t && m ? "<br>" : ""}${m}</p>` : "";
   };
@@ -9441,6 +10323,17 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   };
 
   /* ===== Spotter's log and badges ===== */
+  /* Train set numbers, the way trainspotters (and SGTrains) write them, by line group. */
+  const SET_GROUP = {NSL: "nsew", EWL: "nsew", CG: "nsew", NEL: "nel", CCL: "ccl", DTL: "dtl", TEL: "tel", BP: "bp", SE: "sp", SW: "sp", PE: "sp", PW: "sp", SEN: "sen"};
+  const SET_FMT = {
+    nsew: {ph: "e.g. 601/602", re: "\\s*\\d{3,4}\\s*/\\s*\\d{3,4}\\s*", tip: "Both car numbers of the set, e.g. 601/602"},
+    dtl: {ph: "e.g. 9001", re: "\\s*\\d{4}\\s*", tip: "The set's 4-digit number, e.g. 9001"},
+    "": {ph: "Set number", re: ".{1,16}", tip: "The set number as written on the train"}
+  };
+  /* SGTrains' running-status page for each line group (opened in the browser; the app doesn't read it). */
+  const SG_PAGE = {nsew: "https://spotters.sgtrains.com/spotting-train-nsewl", dtl: "https://spotters.sgtrains.com/spotting-train-dtl",
+    sp: "https://spotters.sgtrains.com/spotting-train-splrt", sen: "https://spotters.sgtrains.com/spotting-train-se"};
+  const normSet = v => String(v || "").trim().replace(/\s*\/\s*/g, "/").replace(/\s+/g, " ").slice(0, 16);
   const SP_KEY = "mrt.spots";
   let spots = store.get(SP_KEY, []); if (!Array.isArray(spots)) spots = [];
   // timetable intelligence picks up a new sighting straight away (it also looks every 30 s)
@@ -9471,12 +10364,16 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     // which train this is, so the map can tag it while it runs: its id for today's service, plus line, direction and
     // departure time as a fallback if the id changes (e.g. the timetable finishes loading)
     const tk = T ? esc(JSON.stringify({id: T.t.id, day: T.now.iso, dir: T.t.dir, dep: Number.isFinite(T.t.dep) ? Math.round(T.t.dep * 10) / 10 : null})) : "";
-    return `<form class="sp-form" data-line="${esc(x.line)}" data-sb="${T && T.sb ? esc(T.to) : ""}" data-tk="${tk}">
+    const slot = T && T.t.ref && window.ttSlotOf ? ttSlotOf(T.t.ref.tid) : "", fs = SET_FMT[SET_GROUP[x.line] || ""] || SET_FMT[""];
+    return `<form class="sp-form" data-line="${esc(x.line)}" data-sb="${T && T.sb ? esc(T.to) : ""}" data-tk="${tk}" data-slot="${esc(slot)}" data-dir="${T ? esc(T.full) : ""}">
+      ${slot || T ? `<p class="hint" style="margin:0">${slot ? `<b>Train slot ${esc(slot)}</b> (run T${esc(slot.padStart(3, "0"))}) · ` : ""}${x.line === "CG" ? "CGL" : esc(x.line)}${T ? ` · towards ${esc(T.full)}` : ""}</p>` : ""}
       <div class="sp-kind" role="radiogroup" aria-label="What happened"><label><input type="radio" name="spk" value="spot" checked><span>Spotted</span></label><label><input type="radio" name="spk" value="ride"><span>Rode</span></label></div>
-      <label class="rt-f"><span>Model</span><select name="model">${ms.map(m => `<option>${esc(m)}</option>`).join("")}<option value="">Not sure</option></select></label>
+      <datalist id="spSetList">${[...new Set(spots.filter(s => s.set && (SET_GROUP[s.line] || s.line) === (SET_GROUP[x.line] || x.line)).map(s => s.set))].slice(0, 40).map(s => `<option value="${esc(s)}">`).join("")}</datalist>
+      <label class="rt-f"><span>Fleet / set</span><input name="set" list="spSetList" maxlength="16" placeholder="${esc(fs.ph)}" pattern="${esc(fs.re)}" title="${esc(fs.tip)}" autocomplete="off" inputmode="text"></label>
+      <label class="rt-f"><span>Model</span><select name="model"><option value="" selected>Not sure</option>${ms.map(m => `<option>${esc(m)}</option>`).join("")}</select></label>
       <label class="rt-f"><span>Station</span><select name="st">${names.map(n => `<option${n === here ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
       <label class="rt-f"><span>Time</span><input name="time" type="time" value="${t}"></label>
-      <label class="rt-f sp-note"><span>Note</span><input name="note" maxlength="120" placeholder="Optional, e.g. set number or livery" autocomplete="off"></label>
+      <label class="rt-f sp-note"><span>Note</span><input name="note" maxlength="120" placeholder="Optional, e.g. livery or where you saw it" autocomplete="off"></label>
       ${T && T.sb ? `<p class="hint" style="margin:0">Special-bound: ends at ${esc(T.to)}.</p>` : ""}
       <div class="mi-act"><button class="btn" type="submit">Save sighting</button><button class="btn ghost" type="button" data-sp="cancel">Cancel</button></div>
     </form>`;
@@ -9499,40 +10396,54 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     }
     let tk = null; try { tk = f.dataset.tk ? JSON.parse(f.dataset.tk) : null; } catch(err){}
     if (tk) tk = anchorLink(f.dataset.line, tk, String(fd.get("st") || ""), at, fd.get("spk") === "ride" ? "ride" : "spot");
+    const lo = tk ? learnFrom(f.dataset.line, tk, String(fd.get("st") || ""), at, fd.get("spk") === "ride" ? "ride" : "spot") : null;
     spots.unshift({id: Date.now().toString(36), at, line: f.dataset.line, model: String(fd.get("model") || ""), st: String(fd.get("st") || ""),
-      note: String(fd.get("note") || "").trim().slice(0, 120), kind: fd.get("spk") === "ride" ? "ride" : "spot", sb: f.dataset.sb || "", ...(tk ? {tk} : {})});
+      note: String(fd.get("note") || "").trim().slice(0, 120), kind: fd.get("spk") === "ride" ? "ride" : "spot", sb: f.dataset.sb || "",
+      set: normSet(fd.get("set")), slot: f.dataset.slot || "", dir: f.dataset.dir || "", ...(tk ? {tk} : {}), ...(lo ? {lo} : {})});
     if (spots.length > 2000) spots.length = 2000;
     saveSpots(); tagIdx = null; spVer++;
+    sharedPost(spots[0]);
     const box = $("hxLog"); box.innerHTML = `<p class="sp-ok">Saved to your Spotter's log · ${spots.length} sighting${spots.length === 1 ? "" : "s"}</p><div class="mi-act"><button class="btn ghost" type="button" data-sp="log">Open Spotter's log</button></div>`;
     hmSub();
   });
 
   // the Spotter's log screen
-  const F = {line: "", model: "", kind: ""};
+  const F = {line: "", model: "", kind: "", set: ""};
+  /* Every set you've logged: how often, on which lines and slots, and when and where you last saw it. */
+  function setsHTML(){
+    const by = new Map();
+    for (const s of spots){ if (!s.set) continue; let g = by.get(s.set); if (!g) by.set(s.set, g = {set: s.set, n: 0, last: s, lines: new Set(), slots: new Set(), days: new Set()}); g.n++; g.lines.add(s.line); if (s.slot) g.slots.add(s.slot); g.days.add(new Date(s.at + 8 * 3600e3).toISOString().slice(0, 10)); }
+    if (!by.size) return "";
+    const rows = [...by.values()].sort((a, b) => b.last.at - a.last.at).map(g => `<button type="button" data-spset="${esc(g.set)}" class="${F.set === g.set ? "on" : ""}" style="--c:var(--${esc(g.last.line)})"><b>${watch.includes(g.set) ? "★ " : ""}${esc(g.set)}</b><span>${g.n} sighting${g.n === 1 ? "" : "s"} · ${g.days.size} day${g.days.size === 1 ? "" : "s"}${g.slots.size ? ` · slot${g.slots.size === 1 ? "" : "s"} ${esc([...g.slots].slice(0, 4).join(", "))}` : ""}<br>last ${esc(new Date(g.last.at + 8 * 3600e3).toISOString().slice(5, 10).split("-").reverse().join("/"))} ${esc(hm24(g.last.at))} at ${esc(g.last.st)}</span></button>`).join("");
+    return `<div class="hm-h"><h2>Your sets</h2>${F.set ? `<button type="button" data-spset="">Show all</button>` : ""}</div><div class="sp-sets">${rows}</div>`;
+  }
   let spMsg = "";
   function spotHTML(){
     const got = BADGES.map(b => { const [n, of] = b.n(spots); return {...b, have: n, of, done: n >= of}; });
     const lines = [...new Set(spots.map(s => s.line))].filter(c => LINES[c]).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     const models = [...new Set(spots.filter(s => !F.line || s.line === F.line).map(s => s.model).filter(Boolean))].sort();
-    const list = spots.filter(s => (!F.line || s.line === F.line) && (!F.model || s.model === F.model) && (!F.kind || s.kind === F.kind));
+    const list = spots.filter(s => (!F.line || s.line === F.line) && (!F.model || s.model === F.model) && (!F.kind || s.kind === F.kind) && (!F.set || s.set === F.set));
     const opt = (v, cur, label) => `<option value="${esc(v)}"${v === cur ? " selected" : ""}>${esc(label)}</option>`;
     return `<div class="sp-top"><button type="button" class="sp-back" data-spv="home" aria-label="Back to Home">‹</button><h2>Spotter's log</h2></div>
       <div class="sp-stats"><div><b>${spots.length}</b><span>sightings</span></div><div><b>${new Set(spots.map(s => s.line)).size}</b><span>lines</span></div><div><b>${new Set(spots.map(s => s.model).filter(Boolean)).size}</b><span>models</span></div><div><b>${got.filter(b => b.done).length}<small>/${got.length}</small></b><span>badges</span></div></div>
       <div class="hm-h"><h2>Badges</h2></div>
       <div class="sp-badges">${got.map(b => `<div class="sp-badge${b.done ? " on" : ""}" title="${esc(b.desc)}"><i>${esc(BADGE_IC[b.id] || "★")}</i><b>${esc(b.name)}</b><span>${b.done ? "Earned" : `${b.have}/${b.of}`} · ${esc(b.desc)}</span></div>`).join("")}</div>
-      <div class="hm-h"><h2>Sightings</h2><button type="button" data-spv="export"${spots.length ? "" : " disabled"}>Export</button></div>
+      ${setsHTML()}
+      ${sharedHTML()}
+      ${learnHTML()}
+      <div class="hm-h"><h2>Sightings${F.set ? ` of ${esc(F.set)}` : ""}</h2><button type="button" data-spv="export"${spots.length ? "" : " disabled"}>Export</button></div>
       ${spMsg ? `<p class="sp-ok">${esc(spMsg)}</p>` : ""}
       ${spots.length ? `<div class="sp-filt">
         <select data-spf="line" aria-label="Line">${opt("", F.line, "All lines")}${lines.map(c => opt(c, F.line, lineFull(c))).join("")}</select>
         <select data-spf="model" aria-label="Model">${opt("", F.model, "All models")}${models.map(m => opt(m, F.model, m)).join("")}</select>
         <select data-spf="kind" aria-label="Spotted or rode">${opt("", F.kind, "Spotted & rode")}${opt("spot", F.kind, "Spotted")}${opt("ride", F.kind, "Rode")}</select></div>` : ""}
-      <div class="sp-list">${list.length ? list.map(s => `<div class="sp-item" style="--c:var(--${esc(s.line)})"><div class="sp-h">${LINES[s.line] ? chip(s.line) : ""}<b>${esc(s.model || "Model not sure")}</b>${s.kind === "ride" ? `<span class="sp-tag">rode</span>` : ""}${s.sb ? `<span class="sb">to ${esc(s.sb)}</span>` : ""}<button type="button" data-spdel="${esc(s.id)}" aria-label="Delete this sighting">×</button></div>
+      <div class="sp-list">${list.length ? list.map(s => `<div class="sp-item" style="--c:var(--${esc(s.line)})"><div class="sp-h">${LINES[s.line] ? chip(s.line) : ""}<b>${esc(s.set ? s.set + (s.model ? " · " + s.model : "") : s.model || "Model not sure")}</b>${s.kind === "ride" ? `<span class="sp-tag">rode</span>` : ""}${s.sb ? `<span class="sb">to ${esc(s.sb)}</span>` : ""}<button type="button" data-spdel="${esc(s.id)}" aria-label="Delete this sighting">×</button></div>
           <span>${esc(s.st)} · ${esc(hm24(s.at))}</span>${s.note ? `<span class="sp-n">${esc(s.note)}</span>` : ""}</div>`).join("")
-        : `<div class="fav-empty"><b>${spots.length ? "No sightings match" : "No sightings yet"}</b><p>${spots.length ? "Try other filters." : "Tap a train on the map, then Log sighting. Sightings stay on this phone."}</p></div>`}</div>`;
+        : `<div class="fav-empty"><b>${spots.length ? "No sightings match" : "No sightings yet"}</b><p>${spots.length ? "Try other filters." : "Tap a train on the map, then Spot this train. Sightings stay on this phone."}</p></div>`}</div>`;
   }
   function spotRender(){ const r = $("spotRoot"); if (r) setHTML(r, spotHTML()); }
   function exportText(){
-    return "My MRT Spotter's log\n" + spots.map(s => `${hm24(s.at)} · ${lineLabel(s.line)} · ${s.model || "model not sure"} · ${s.st}${s.kind === "ride" ? " · rode" : ""}${s.sb ? " · to " + s.sb : ""}${s.note ? " · " + s.note : ""}`).join("\n");
+    return "My MRT Spotter's log\n" + spots.map(s => `${hm24(s.at)} · ${lineLabel(s.line)}${s.set ? " · " + s.set : ""}${s.slot ? " · slot " + s.slot : ""} · ${s.model || "model not sure"} · ${s.st}${s.kind === "ride" ? " · rode" : ""}${s.sb ? " · to " + s.sb : ""}${s.note ? " · " + s.note : ""}`).join("\n");
   }
   async function exportLog(){
     const t = exportText();
@@ -9543,12 +10454,21 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     spMsg = ok ? "Copied your log to the clipboard." : "Couldn't copy here."; spotRender();
   }
   $("spotRoot").addEventListener("click", e => {
-    const v = e.target.closest("[data-spv]"), d = e.target.closest("[data-spdel]");
+    const v = e.target.closest("[data-spv]"), d = e.target.closest("[data-spdel]"), ss = e.target.closest("[data-spset]");
+    if (ss){ F.set = F.set === ss.dataset.spset ? "" : ss.dataset.spset; spMsg = ""; spotRender(); return; }
+    const uw = e.target.closest("[data-spunwatch]");
+    if (uw){ watch = watch.filter(w => w !== uw.dataset.spunwatch); store.set(WATCH_KEY, watch); spotRender(); return; }
     if (v && v.dataset.spv === "home") showView("home");
     if (v && v.dataset.spv === "export") exportLog();
     if (d && confirm("Delete this sighting?")){ spots = spots.filter(s => s.id !== d.dataset.spdel); saveSpots(); tagIdx = null; spVer++; mDirty = true; spotRender(); hmSub(); }
   });
   $("spotRoot").addEventListener("change", e => {
+    if (e.target.id === "shOn" || e.target.id === "shUrl" || e.target.id === "shKey"){
+      SH.on = $("shOn").checked; SH.url = $("shUrl").value.trim(); SH.key = $("shKey").value.trim(); store.set(SH_KEY, SH);
+      shared = {day: "", items: [], at: 0, err: ""}; sharedFetch(true).then(spotRender); spotRender(); return;
+    }
+    if (e.target.id === "watchAdd"){ const v = normSet(e.target.value); if (v && !watch.includes(v)){ watch.push(v); store.set(WATCH_KEY, watch); watchCheck(); } spotRender(); return; }
+    if (e.target.id === "learnOn"){ learnOn = e.target.checked; store.set(LEARN_KEY, learnOn); mDirty = true; return; }
     const f = e.target.closest("[data-spf]"); if (!f) return;
     F[f.dataset.spf] = f.value; if (f.dataset.spf === "line") F.model = ""; spMsg = ""; spotRender();
   });
@@ -9602,6 +10522,125 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return out;
   }
   const stIndex = (code, name, iso) => activeStations(LINES[code], iso).findIndex(x => x[1] === name);
+
+  /* ---- Learned timing ----
+     Each sighting of a train the app could identify is compared with the timetable (the same comparison as
+     anchorRuns: LTA's times, with the slower-trains setting, before any live delay). Over the last 60 days,
+     sightings on a line, one way, in one hour of the day give how late that line usually runs then. With at
+     least 3 sightings, trains LTA's live feed says nothing about are moved by that much (at most 5 min).
+     On the North-South Line that's a correction to the fixed SLOW setting, by time of day. Trains LTA reports
+     on are left to LTA. You can turn it off in the Spotter's log. */
+  const LEARN_KEY = "mrt.learn", LEARN_MIN = 3, LEARN_MAX = 5, LEARN_DAYS = 60;
+  let learnOn = store.get(LEARN_KEY, true) !== false;
+  function learnFrom(code, tk, stName, at, kind){
+    try {
+      if (!tk || !tk.anc || !ttTrips(code, tk.day)) return null;
+      const st = stIndex(code, stName, tk.day); if (st < 0) return null;
+      const run = anchorRuns(code, tk.dir, st, svcMins(at), kind, tk.day).find(r => r.id === tk.id); if (!run) return null;
+      const mv = window.rtShifts ? window.rtShifts(code, tk.day) : null;
+      if (mv && mv.has(tk.id)) return null;                        // LTA had a live delay for it: not the usual timing
+      const r = ttTrips(code, tk.day).find(x => `${code}t${x.s}p${x.pi}` === tk.id);
+      if (r && rtProfileFor(code, r, null)) return null;
+      return {d: tk.dir, h: Math.floor(svcMins(at) / 60) % 24, off: Math.round(run.shift * 100) / 100};
+    } catch(e){ return null; }
+  }
+  let learnCache = null;
+  function learnTable(){
+    if (learnCache && learnCache.ver === spVer) return learnCache.t;
+    const since = Date.now() - LEARN_DAYS * 864e5, by = {};
+    for (const s of spots){
+      if (!s.lo || s.at < since || !Number.isFinite(s.lo.off)) continue;
+      (by[s.line + "|" + s.lo.d + "|" + s.lo.h] ||= []).push(s.lo.off);
+    }
+    const t = {};
+    for (const [k, v] of Object.entries(by)){
+      const a = v.slice().sort((x, y) => x - y), med = a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+      t[k] = {n: a.length, off: Math.max(-LEARN_MAX, Math.min(LEARN_MAX, med))};
+    }
+    learnCache = {ver: spVer, t};
+    return t;
+  }
+  window.learnedLate = (code, dir) => {
+    if (!learnOn || SIM.est) return 0;
+    const b = learnTable()[code + "|" + dir + "|" + Math.floor(sgNow().mins / 60) % 24];
+    return b && b.n >= LEARN_MIN ? b.off : 0;
+  };
+  /* ---- Shared sightings (worker-spots) and rare-train alerts ----
+     With a server set up (worker-spots/README.md) and sharing on, a sighting with a set number is sent there, and
+     today's sightings from every sharing phone come back every 2 minutes while the app is open. Sets you watch
+     get a notification the first time they're spotted each day. */
+  const SH_KEY = "mrt.shared", WATCH_KEY = "mrt.watch", SEEN_KEY = "mrt.watchSeen";
+  let SH = store.get(SH_KEY, null) || {};
+  if (!SH.device) { SH.device = Array.from({length: 16}, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]).join(""); store.set(SH_KEY, SH); }
+  let watch = store.get(WATCH_KEY, []); if (!Array.isArray(watch)) watch = [];
+  let shared = {day: "", items: [], at: 0, err: ""};
+  const shOK = () => !!(SH.on && SH.url && SH.key && APP && APP.sharedSpots);
+  function shCall(path, body){
+    return new Promise(res => { const id = "sh" + (++reqId); pending[id] = (code, b) => res({code, body: b}); APP.sharedSpots(id, SH.url.replace(/\/+$/, "") + path, SH.key, body ? JSON.stringify(body) : ""); });
+  }
+  function sharedPost(s){
+    if (!shOK() || !s.set || !s.slot) return;
+    shCall("/sightings", {line: s.line, slot: s.slot, set: s.set, st: s.st, at: s.at, dir: s.dir || "", model: s.model || "", device: SH.device})
+      .then(r => { shared.err = r.code === 200 ? "" : r.code === 403 ? "The server says the key is wrong." : `Couldn't send it (${r.code || "no connection"}).`; sharedFetch(true); });
+  }
+  let shBusy = false;
+  async function sharedFetch(force){
+    if (!shOK() || shBusy || document.hidden) return;
+    if (!force && Date.now() - shared.at < 110e3) return;
+    shBusy = true;
+    try {
+      const day = sgNow().iso, r = await shCall("/sightings?day=" + day);
+      if (r.code === 200){ const j = JSON.parse(r.body); shared = {day: j.day || day, items: Array.isArray(j.items) ? j.items : [], at: Date.now(), err: ""}; watchCheck(); mDirty = true; }
+      else shared.err = r.code === 403 ? "The server says the key is wrong." : `Couldn't reach the server (${r.code || "no connection"}).`;
+    } catch(e){ shared.err = "The server's answer couldn't be read."; }
+    shBusy = false;
+  }
+  setInterval(() => sharedFetch(false), 30e3); setTimeout(() => sharedFetch(true), 4000);
+  window.sharedSetFor = (line, slot, iso) => {
+    if (!shOK() || shared.day !== iso) return null;
+    let best = null;
+    for (const it of shared.items) if (it.line === line && it.slot === String(slot) && (!best || it.n > best.n || (it.n === best.n && it.last.at > best.last.at))) best = it;
+    return best;
+  };
+  function watchCheck(){
+    if (!watch.length || !APP || !APP.spotNotify) return;
+    const seen = store.get(SEEN_KEY, {}) || {}, day = shared.day; let changed = false;
+    for (const it of shared.items){
+      if (!watch.includes(it.set)) continue;
+      const k = day + "|" + it.set + "|" + it.line + "|" + it.slot; if (seen[k]) continue;
+      seen[k] = 1; changed = true;
+      let where = "";
+      try { const t = trainsOn(it.line, sgNow()).find(x => x.ref && ttSlotOf(x.ref.tid) === it.slot); if (t){ const act = activeStations(LINES[it.line], sgNow().iso); where = ` Now ${t.atStation ? "at" : "heading for"} ${act[t.next][1]}, towards ${dest(LINES[it.line], t.dir, act)}.`; } } catch(e){}
+      APP.spotNotify(`${it.set} is out today`, `${it.line === "CG" ? "CGL" : it.line} slot ${it.slot}: spotted ${hm24(it.last.at)} at ${it.last.st} (${it.n} spotter${it.n === 1 ? "" : "s"}).${where}`);
+    }
+    if (changed){ for (const k in seen) if (!k.startsWith(day)) delete seen[k]; store.set(SEEN_KEY, seen); }
+  }
+  function sharedHTML(){
+    if (!APP || !APP.sharedSpots) return "";
+    const st = !SH.on ? "Off." : !SH.url || !SH.key ? "Add the server address and key to start." : shared.err ? shared.err : shared.at ? `Working · ${shared.items.length} set${shared.items.length === 1 ? "" : "s"} spotted today by everyone sharing · checked ${hm24(shared.at)}` : "Checking…";
+    return `<div class="hm-h"><h2>Shared sightings</h2></div>
+      <p class="hint" style="margin:0 0 6px">Share sightings that have a set number with everyone using the same server, and see theirs on train cards. Set up the server with worker-spots/README.md in the repo.</p>
+      <label class="toggle"><input type="checkbox" id="shOn"${SH.on ? " checked" : ""}> Share my sightings</label>
+      <label class="rt-f"><span>Server</span><input id="shUrl" value="${esc(SH.url || "")}" placeholder="https://mrt-spots.your-name.workers.dev" autocomplete="off" inputmode="url"></label>
+      <label class="rt-f"><span>Key</span><input id="shKey" type="password" value="${esc(SH.key || "")}" placeholder="SPOTS_KEY" autocomplete="off"></label>
+      <p class="hint" style="margin:4px 0">${esc(st)}</p>
+      <div class="hm-h"><h2>Watched sets</h2></div>
+      <p class="hint" style="margin:0 0 6px">A notification when one of these is spotted today (needs shared sightings).</p>
+      <div class="sp-watch">${watch.map(w => `<button type="button" class="hchip" data-spunwatch="${esc(w)}">★ ${esc(w)} ×</button>`).join("")}</div>
+      <label class="rt-f"><span>Watch a set</span><input id="watchAdd" maxlength="16" placeholder="e.g. 601/602" autocomplete="off"></label>`;
+  }
+  function learnHTML(){
+    const t = learnTable(), rows = Object.entries(t).sort((a, b) => a[0].localeCompare(b[0]));
+    if (!rows.length) return "";
+    const act = c => activeStations(LINES[c], sgNow().iso);
+    const hr = h => { const x = h % 12 || 12; return `${x}${h < 12 ? "am" : "pm"}`; };
+    const list = rows.map(([k, v]) => { const [c, d, h] = k.split("|"); const L = LINES[c]; if (!L) return "";
+      return `<div class="lrn" style="--c:var(--${c})"><span>${esc(c === "CG" ? "CGL" : c)} towards ${esc(dest(L, +d, act(c)))} · ${hr(+h)}–${hr(+h + 1)}</span><b>${v.n >= LEARN_MIN ? `${v.off > 0 ? "+" : ""}${v.off.toFixed(1)} min` : "learning"}</b><small>${v.n} sighting${v.n === 1 ? "" : "s"}</small></div>`; }).join("");
+    return `<div class="hm-h"><h2>Learned timing</h2></div>
+      <p class="hint" style="margin:0 0 6px">From your sightings: how late (+) or early (−) each line runs at each hour compared with the timetable. Used for trains LTA's live feed says nothing about, once there are ${LEARN_MIN} sightings.</p>
+      <label class="toggle"><input type="checkbox" id="learnOn"${learnOn ? " checked" : ""}> Use learned timing</label>
+      <div class="lrns">${list}</div>`;
+  }
   // at save: keep the train you picked if it fits; if it can't have been at that station then (more than
   // ANCHOR_MAX minutes off, or its trip doesn't stop there), link the one going the same way that was nearest to it
   function anchorLink(code, tk, stName, at, kind){
@@ -9648,13 +10687,33 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       }
     }
     const A = anchors(line, iso), a = A.tag.size ? A.tag.get(t.id) : null; if (a) return a;
-    if (!tagIdx.n) return null;
-    return tagIdx.id.get(line + "|" + t.id) || (Number.isFinite(t.dep) && tagIdx.dep.get(depKey(line, t.dir, t.dep))) || null;
+    const own = tagIdx.n ? tagIdx.id.get(line + "|" + t.id) || (Number.isFinite(t.dep) && tagIdx.dep.get(depKey(line, t.dir, t.dep))) || null : null;
+    if (own) return own;
+    // a set you spotted on this train's slot earlier today: the same train, on a later trip (after turning back)
+    const slot = t.ref && t.ref.tid ? ttSlotOf(t.ref.tid) : "";
+    return slot ? window.spotSetFor(line, slot, iso) : null;
+  };
+  /* Which train set is running a train slot today, from sightings on this phone (Spot this train). The slot keeps
+     the same train all day, so a set spotted on slot 420 this morning is still slot 420 this afternoon (unless it's
+     swapped, so the time it was spotted is shown). The latest sighting wins. */
+  const sgDay = at => new Date(at + 8 * 3600e3).toISOString().slice(0, 10);              // the day in Singapore, like sgNow().iso
+  window.spotSetFor = (line, slot, iso) => {
+    if (!slot) return null;
+    for (const s of spots) if (s.set && s.slot === slot && s.line === line && sgDay(s.at) === iso) return s;   // newest first
+    return null;
+  };
+  window.spotSetHTML = (line, slot, iso) => {
+    const s = window.spotSetFor(line, slot, iso), run = "T" + String(slot).padStart(3, "0");
+    const sg = SG_PAGE[SET_GROUP[line] || ""] || "https://spotters.sgtrains.com/";
+    const mine = s ? `<p class="hint" style="margin:0"><b>${esc(s.set)}</b>${s.model ? ` · ${esc(s.model)}` : ""} · spotted ${esc(hm24(s.at))} at ${esc(s.st)} <span class="sb">app spotting</span></p>` : "";
+    const sh = window.sharedSetFor ? window.sharedSetFor(line, slot, iso) : null;
+    const shl = sh && !(s && s.set === sh.set && sh.n === 1) ? `<p class="hint" style="margin:0"><b>${esc(sh.set)}</b> · ${sh.n} spotter${sh.n === 1 ? "" : "s"} · last ${esc(hm24(sh.last.at))} at ${esc(sh.last.st)} <span class="sb">shared</span></p>` : "";
+    return `${mine}${shl}<p class="hint" style="margin:0"><a href="${esc(sg)}" target="_blank" rel="noopener">Look up run ${esc(run)} on SGTrains</a> (opens in your browser)</p>`;
   };
   // the train sheet's line: "You logged: C151C · spotted at Bishan 7.12pm · note"
   window.spotTagHTML = (line, t, iso) => {
     const s = window.spotTag(line, t, iso); if (!s) return "";
-    return `<p class="sp-you"><i aria-hidden="true">${s.kind === "ride" ? "★" : "◉"}</i><span><b>You logged:</b> ${esc(s.model || "model not sure")} · ${s.kind === "ride" ? "rode" : "spotted"} at ${esc(s.st)} ${esc(hm24(s.at))}${s.note ? ` · ${esc(s.note)}` : ""}${anchors(line, iso).tag.get(t.id) === s ? `<small>Position set from your sighting</small>` : ""}</span></p>`;
+    return `<p class="sp-you"><i aria-hidden="true">${s.kind === "ride" ? "★" : "◉"}</i><span><b>You logged:</b> ${esc(s.set ? s.set + (s.model ? " · " + s.model : "") : s.model || "model not sure")} · ${s.kind === "ride" ? "rode" : "spotted"} at ${esc(s.st)} ${esc(hm24(s.at))}${s.note ? ` · ${esc(s.note)}` : ""}${anchors(line, iso).tag.get(t.id) === s ? `<small>Position set from your sighting</small>` : ""}</span></p>`;
   };
 })();
 </script>
@@ -9664,4 +10723,4 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
 <script src="mrt-intelligence.js"></script><script src="depot-transfers.js"></script><script src="engineering-intelligence.js"></script><script src="trainset-intelligence.js"></script><script src="operating-history.js"></script><script src="disruption-intelligence.js"></script><script src="run-graph.js"></script><script src="gtfs-lab.js"></script><script src="timetable-intelligence.js"></script>
 <script src="disruption-engine.js"></script>
 <script src="spotter-schedule.js"></script>
-<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="bus.js"></script><script src="taxi-availability.js"></script>
+<script>window.MRT_PRODUCTION=true;window.MRT_DEV_FEATURES=false;</script><script src="eng-sightings-logic.js"></script><script src="eng-sightings.js"></script><script src="spotter-planner.js"></script><script src="ops-lab.js"></script><script src="smart.js"></script><script src="trip-reminders.js"></script><script src="mrt-insights.js"></script><script src="fleet-dex.js"></script><script src="bus.js"></script><script src="taxi-availability.js"></script>

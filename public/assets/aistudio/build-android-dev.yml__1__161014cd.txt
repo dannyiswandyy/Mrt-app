@@ -1,0 +1,338 @@
+# Cross-channel verification build after public-core sync 0fc5827 (23 Nov 2026).
+# Manual rebuild requested: keep DEV distribution private; production release stays separate.
+# MRT Dev - Android app builder (Fast Incremental Build)
+# Rebuild trigger: read the saved dev update token again.
+name: Build MRT Dev app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/build-android-dev.yml
+      - rust/mrt-timetable-core/**
+      - android/**
+      - tests/**
+      - data/**
+      - signing/**        # the signing key: a change to it needs a new build (23 Nov: builds stopped while it was missing)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read     # What's new: past builds' versions, read once from this repo's Actions history
+
+concurrency:
+  group: build-mrt-dev
+  cancel-in-progress: true
+
+env:
+  CHANNEL: dev
+
+jobs:
+  build:
+    needs: safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # What's new is made from the whole history
+
+      - name: Prepare clean workspace copy
+        run: |
+          rm -rf mrt-tracker-app
+          cp -a android mrt-tracker-app
+
+      # Java 17 for the Android build. Without this the runner's own Java (now 25) is used, and Android's
+      # release lint check crashes on it ("Execution failed for task ':app:lintVitalAnalyzeRelease' > 25.0.5").
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          cache-read-only: false
+
+      - name: Build Rust timetable for Android phones and emulators
+        run: bash rust/mrt-timetable-core/build-android.sh mrt-tracker-app/app/src/main/jniLibs
+
+      - name: Test midnight station boards and the Rust bridge on the JVM
+        run: |
+          cargo build --manifest-path rust/mrt-timetable-core/Cargo.toml
+          export MRT_TEST_JNI=1
+          export LD_LIBRARY_PATH="$PWD/rust/mrt-timetable-core/target/debug:${LD_LIBRARY_PATH:-}"
+          gradle -p mrt-tracker-app :app:testDebugUnitTest -Pchannel=dev
+
+      - name: Prepare Android signing
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p signing
+          if [ -n "$ANDROID_KEYSTORE_B64" ]; then
+            echo "$ANDROID_KEYSTORE_B64" | base64 --decode > signing/mrt-tracker.jks
+          elif [ -f signing/mrt-tracker.jks ]; then
+            ANDROID_KEYSTORE_PASSWORD="mrttracker"
+            ANDROID_KEY_ALIAS="mrttracker"
+            ANDROID_KEY_PASSWORD="mrttracker"
+          else
+            echo "::error::Missing Android signing keystore."
+            exit 1
+          fi
+          {
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore OSM & URA map cache
+        id: map-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+          restore-keys: osm-buildings-v1-
+
+      # Fetches URA, LTA & OSM data in parallel—and skips slow OSM rebuilds if cache is already warm
+      - name: Fetch URA, LTA & OSM data in parallel
+        env:
+          ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
+          ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
+          ONEMAP_TOKEN: ${{ secrets.ONEMAP_TOKEN }}
+          LTA_ACCOUNT_KEY: ${{ secrets.LTA_ACCOUNT_KEY }}
+          DATA_GOV_SG_API_KEY: ${{ secrets.DATA_GOV_SG_API_KEY }}
+        run: |
+          python3 mrt-tracker-app/tools/build_timetable.py mrt-tracker-app data/lta-timetable.json &
+          PID_LTA=$!
+
+          python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache &
+          PID_BLD=$!
+
+          [ -f mrt-tracker-app/tools/build_tracks.py ] && python3 mrt-tracker-app/tools/build_tracks.py mrt-tracker-app osm-cache &
+          PID_TRK=$!
+
+          [ -f mrt-tracker-app/tools/build_exits.py ] && python3 mrt-tracker-app/tools/build_exits.py mrt-tracker-app osm-cache &
+          PID_EXT=$!
+
+          [ -f mrt-tracker-app/tools/build_skytrain.py ] && python3 mrt-tracker-app/tools/build_skytrain.py mrt-tracker-app osm-cache &
+          PID_SKY=$!
+
+          # LTA's bus stops and which way loop buses go, for "Buses here" on station cards (never fails the build)
+          [ -f mrt-tracker-app/tools/build_bus.py ] && python3 mrt-tracker-app/tools/build_bus.py mrt-tracker-app osm-cache &
+          PID_BUS=$!
+
+          # The timetable is what the app runs on: if it couldn't be built, stop rather than ship an app without it.
+          wait $PID_LTA || { echo "::error::LTA's timetable couldn't be built, so the app wasn't built."; exit 1; }
+          wait $PID_BLD ${PID_TRK:-} ${PID_EXT:-} ${PID_SKY:-} ${PID_BUS:-} || true
+
+          # MRT tracks from URA's Master Plan rail lines (data.gov.sg), matched to each station-to-station piece and
+          # added to tracks.json after build_tracks.py has written it. Only the matched pieces are packed (small).
+          python3 mrt-tracker-app/tools/build_ura_rail.py mrt-tracker-app osm-cache
+
+          # The rail network (lines, stations, track shapes) for the native Kotlin preview, read from the app page
+          # without changing it, after the tracks above are written (never fails the build)
+          python3 mrt-tracker-app/tools/build_onemap_rail.py mrt-tracker-app
+          python3 mrt-tracker-app/tools/build_network.py mrt-tracker-app
+          test -s mrt-tracker-app/app/src/main/assets/network.json
+
+      # URA's rail lines as downloaded, kept for a week so the track matching can be checked against them
+      - name: Keep URA rail lines for checking
+        if: hashFiles('osm-cache/ura-rail.geojson') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ura-rail-lines
+          path: osm-cache/ura-rail.geojson
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Save LTA timetable snapshot (non-blocking)
+        run: |
+          if [ -f data/lta-timetable.json ] && [ -n "$(git status --porcelain data/lta-timetable.json)" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add data/lta-timetable.json
+            git commit -m "Save LTA train timetable [skip ci]"
+            git pull --rebase --autostash || true
+            git push || true
+          fi
+
+      - name: Save OSM cache
+        if: steps.map-cache.outputs.cache-hit != 'true' && hashFiles('osm-cache/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+
+      - name: Check dev update token can read the release
+        env:
+          DEV_UPDATE_TOKEN: ${{ secrets.DEV_UPDATE_TOKEN }}
+        run: |
+          if [ -z "${DEV_UPDATE_TOKEN}" ]; then
+            echo "::error::DEV_UPDATE_TOKEN is not set"
+            exit 1
+          fi
+          # Clean the token exactly like the app (Updater.token) and tests/updater_fetch.py do:
+          # spaces, quotes and a "Bearer " / "token " prefix are removed before it is used.
+          TOKEN=$(python3 -I -c 'import os,sys; sys.path.insert(0,"tests"); from updater_fetch import sanitize_token; print(sanitize_token(os.environ["DEV_UPDATE_TOKEN"]))')
+          if [ -z "${TOKEN}" ]; then
+            echo "::error::DEV_UPDATE_TOKEN is empty after removing spaces, quotes and Bearer/token"
+            exit 1
+          fi
+          echo "::add-mask::${TOKEN}"
+          case "${TOKEN}" in
+            github_pat_*) echo "Token type: fine-grained (github_pat_...)" ;;
+            ghp_*) echo "Token type: classic (ghp_...)" ;;
+            *) echo "Token type: not a GitHub personal access token (it should start with github_pat_ or ghp_)" ;;
+          esac
+          if [ "${TOKEN}" != "${DEV_UPDATE_TOKEN}" ]; then
+            echo "Note: the saved secret had extra spaces, quotes or a Bearer/token prefix; they were removed."
+          fi
+          tmp=$(mktemp)
+          trap 'rm -f "$tmp"' EXIT
+          code=$(curl -sS -o "$tmp" -w "%{http_code}" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/dev")
+          echo "Dev release API HTTP status: ${code}"
+          if [ "${code}" != "200" ]; then
+            case "${code}" in
+              401) echo "::error::GitHub says DEV_UPDATE_TOKEN is not a valid token (HTTP 401): it has expired, been deleted, or was copied wrong. Make a new read-only token for ${{ github.repository }} and save it as DEV_UPDATE_TOKEN." ;;
+              404) echo "::error::DEV_UPDATE_TOKEN works but cannot see ${{ github.repository }} or its dev release (HTTP 404). Make the token on the account that owns the repo, with this repo selected and Contents: Read-only." ;;
+              403) echo "::error::GitHub refused DEV_UPDATE_TOKEN (HTTP 403): the account may block this kind of token, or the token lacks Contents: Read-only." ;;
+              *) echo "::error::Dev release API HTTP status: ${code}" ;;
+            esac
+            exit 1
+          fi
+          py=0
+          python3 -c 'import json,sys; exec("try:\n d=json.load(open(sys.argv[1],encoding=\"utf-8\"))\nexcept Exception:\n sys.exit(1)\ntag=d.get(\"tag_name\")\nnames=[a.get(\"name\") for a in (d.get(\"assets\") or []) if isinstance(a, dict) and isinstance(a.get(\"name\"), str)]\nprint(tag)\nprint(\"\\n\".join(names))\nsys.exit(0 if tag==\"dev\" and \"mrt-dev.apk\" in names and \"version.json\" in names else 1)\n")' "$tmp" || py=$?
+          rm -f "$tmp"
+          if [ "$py" -ne 0 ]; then
+            echo "::error::Dev release JSON did not have tag dev with assets mrt-dev.apk and version.json"
+            exit 1
+          fi
+
+      - name: Check dev update download
+        env:
+          DEV_UPDATE_TOKEN: ${{ secrets.DEV_UPDATE_TOKEN }}
+        run: python3 tests/updater_fetch.py --live
+
+      - name: Build signed release APK
+        env:
+          ORG_GRADLE_PROJECT_aiKey: ${{ secrets.OPENAI_API_KEY }}
+          ORG_GRADLE_PROJECT_geminiKey: ${{ secrets.GEMINI_API_KEY }}
+          ORG_GRADLE_PROJECT_ltaKey: ${{ secrets.LTA_ACCOUNT_KEY }}
+          DEV_UPDATE_TOKEN: ${{ secrets.DEV_UPDATE_TOKEN }}
+        run: |
+          VC=$(( ( $(date +%s) - 1767225600 ) / 60 ))
+          VN=$(TZ=Asia/Singapore date +%Y.%m.%d-%H%M)-dev
+          APK=mrt-dev.apk
+          echo "VN=$VN" >> "$GITHUB_ENV"
+          echo "APK=$APK" >> "$GITHUB_ENV"
+
+          # What's new (Settings, and once after each update) and the release notes: every version's changes, from
+          # the repo's history (android/tools/build_changelog.py). Each build records its version on the commit it
+          # built (git notes, refs/notes/versions) after publishing; the first time, past builds are read from Actions.
+          git fetch -q origin "+refs/notes/versions:refs/notes/versions" || true
+          BACKFILL=""; git notes --ref=versions list | grep -q . || BACKFILL="--backfill build-android-dev.yml"
+          GH_TOKEN="${{ github.token }}" GH_REPO="${{ github.repository }}" python3 android/tools/build_changelog.py \
+            --paths android .github/workflows/build-android-dev.yml rust $BACKFILL \
+            --step '^(Build the app|Build signed release APK)$' --suffix -dev \
+            --version "$VN" --out mrt-tracker-app/app/src/main/assets/changelog.js --notes changes.md \
+            || echo "::warning::What's new couldn't be made; the app says the list comes with the next version"
+
+          UPDATE_REPO=""
+          if [ -n "$DEV_UPDATE_TOKEN" ]; then
+            UPDATE_REPO="${{ github.repository }}"
+            export ORG_GRADLE_PROJECT_updateToken="$DEV_UPDATE_TOKEN"
+          fi
+
+          gradle -p mrt-tracker-app assembleRelease \
+            --no-daemon \
+            --parallel \
+            --build-cache \
+            --configuration-cache \
+            -Pvc=$VC \
+            -Pvn="$VN" \
+            -Pchannel="$CHANNEL" \
+            -PupdateRepo="$UPDATE_REPO" \
+            -Pks="$GITHUB_WORKSPACE/signing/mrt-tracker.jks" \
+            -PksPassword="$ANDROID_KEYSTORE_PASSWORD" \
+            -PksAlias="$ANDROID_KEY_ALIAS" \
+            -PksKeyPassword="$ANDROID_KEY_PASSWORD"
+
+          cp mrt-tracker-app/app/build/outputs/apk/release/app-release.apk "$APK"
+          printf '{"versionCode":%s,"versionName":"%s","buildComplete":true}\n' "$VC" "$VN" > version.json
+
+      # Keep the APK attached to the workflow run as a normal downloadable Actions artifact.
+      # The release upload remains as the distribution channel; this makes the build artifact
+      # available even when release assets are not surfaced by the Actions artifact API.
+      - name: Verify timetable libraries in the signed APK
+        run: |
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            unzip -tq mrt-dev.apk "lib/$abi/libmrt_timetable_core.so"
+          done
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrt-dev-apk
+          path: |
+            mrt-dev.apk
+            version.json
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Check the built APK update token
+        run: python3 tests/updater_fetch.py --embedded-apk mrt-dev.apk
+
+      - name: Publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          { echo "MRT Spotter Dev build ($VN). Download mrt-dev.apk on Android and open to install alongside the public app."
+            echo; cat changes.md 2>/dev/null || true; } > notes.md
+          if gh release view dev >/dev/null 2>&1; then
+            gh release upload dev "$APK" version.json --clobber
+            gh release edit dev \
+              --title "MRT Spotter Dev $VN" \
+              --notes-file notes.md
+          else
+            gh release create dev "$APK" version.json \
+              --title "MRT Spotter Dev $VN" \
+              --prerelease \
+              --latest=false \
+              --notes-file notes.md
+          fi
+          # What's new: this commit shipped as $VN (and the past builds, the first time)
+          python3 android/tools/build_changelog.py --paths android --version "$VN" --record
+          git push -q origin refs/notes/versions || echo "::warning::couldn't save this version for What's new"
+
+  # Runs before anything is published. If the page has a script error, doesn't start or freezes,
+  # the build stops here and the dev release stays on the last good version.
+  safety:
+    name: Safety check (page starts, no freeze)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: AGENTS.md rules and syntax check
+        run: |
+          python3 -c "import yaml" 2>/dev/null || python3 -m pip install --quiet --break-system-packages pyyaml
+          python3 tests/rules_check.py
+      - name: Timetable and page tests
+        run: node --test tests/*.test.mjs
+      - name: Page starts and doesn't freeze (headless Chrome)
+        run: |
+          npm install --no-save --no-package-lock --silent playwright@1.49.1
+          npx playwright install chromium
+          node tests/page-starts.mjs

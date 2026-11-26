@@ -298,6 +298,9 @@ jobs:
           cp web/disruption-engine.js mrt-tracker-app/app/src/main/assets/disruption-engine.js
           cp web/skytrain.js mrt-tracker-app/app/src/main/assets/skytrain.js
           cp web/smart.js mrt-tracker-app/app/src/main/assets/smart.js
+          cp web/trip-reminders.js mrt-tracker-app/app/src/main/assets/trip-reminders.js
+          cp web/mrt-insights.js mrt-tracker-app/app/src/main/assets/mrt-insights.js
+          cp web/fleet-dex.js mrt-tracker-app/app/src/main/assets/fleet-dex.js
           cp web/bus.js mrt-tracker-app/app/src/main/assets/bus.js
           cp web/taxi-availability.js mrt-tracker-app/app/src/main/assets/taxi-availability.js
           cp web/tracker-ui.css mrt-tracker-app/app/src/main/assets/tracker-ui.css
