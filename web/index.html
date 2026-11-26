@@ -1034,6 +1034,7 @@ body.on-map .hx-sheet{max-height:58vh}
 .sp-kind span{display:block;text-align:center;padding:8px;border-radius:10px;border:1px solid var(--rule);font:600 14px var(--body);cursor:pointer;background:var(--panel)}
 .sp-kind input:checked + span{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .sp-kind input:focus-visible + span{outline:2px solid var(--fg);outline-offset:2px}
+.sp-form:has(input[name=spk][value=ride]:checked) .sp-when{display:none}
 .sp-ok{margin:0;font-size:13.5px;font-weight:600;color:var(--good,#1f9d55)}
 .sp-you{margin:0;display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--c,#888) 12%,transparent);font-size:13.5px;line-height:1.35}
 .sp-you i{font-style:normal;font-weight:700;color:var(--c,inherit)}
@@ -2367,9 +2368,11 @@ function departures(code, day, dir = 0){
 const leg = L => L.run + L.dwell;
 /* Trains that run slower than scheduled. The extra time builds up stop by stop, so a train is
    `add` minutes later by the time it reaches station `at`: [towards the line's last station, towards its first].
-   North-South Line, measured at Canberra: 1 min later towards Marina South Pier, 3 min later towards Jurong East.
-   Now used on LTA's timetable only: estimated times use the real station-to-station times (SEG below). */
-const SLOW = {NSL: {at: "NS12", add: [1, 3]}};
+   None at the moment. The North-South Line used to have {at: "NS12", add: [1, 3]} (measured at Canberra: 1 min later
+   towards Marina South Pier, 3 min later towards Jurong East), but on LTA's own timetable that put its trains up to
+   about 5 minutes behind the real ones, both ways (checked on the platform, Nov 2026), while the other lines, with
+   nothing added, matched. Your sightings can still correct a line by time of day (Learned timing). */
+const SLOW = {};
 const slowCache = {};
 function slowPerStop(code, dir){                 // extra minutes per stop travelled
   const S = SLOW[code]; if (!S) return 0;
@@ -11324,14 +11327,15 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const T = window.hxTrainNow ? hxTrainNow(x) : null, L = LINES[x.line]; if (!L) return "";
     const ms = modelsOf(x.line), names = [...new Set(L.stations.map(s => s[1]))];
     const here = T ? T.stop : names[0];
-    const t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 16);
+    const opened = Date.now(), t = new Date(opened + 8 * 3600e3).toISOString().slice(11, 16);
     // which train this is, so the map can tag it while it runs: its id for today's service, plus line, direction and
     // departure time as a fallback if the id changes (e.g. the timetable finishes loading)
     const tk = T ? esc(JSON.stringify({id: T.t.id, day: T.now.iso, dir: T.t.dir, dep: Number.isFinite(T.t.dep) ? Math.round(T.t.dep * 10) / 10 : null})) : "";
     const slot = T && T.t.ref && window.ttSlotOf ? ttSlotOf(T.t.ref.tid) : "", fs = SET_FMT[SET_GROUP[x.line] || ""] || SET_FMT[""];
-    return `<form class="sp-form" data-line="${esc(x.line)}" data-sb="${T && T.sb ? esc(T.to) : ""}" data-tk="${tk}" data-slot="${esc(slot)}" data-dir="${T ? esc(T.full) : ""}">
+    return `<form class="sp-form" data-at="${opened}" data-t="${t}" data-line="${esc(x.line)}" data-sb="${T && T.sb ? esc(T.to) : ""}" data-tk="${tk}" data-slot="${esc(slot)}" data-dir="${T ? esc(T.full) : ""}">
       ${slot || T ? `<p class="hint" style="margin:0">${slot ? `<b>Train slot ${esc(slot)}</b> (run T${esc(slot.padStart(3, "0"))}) · ` : ""}${x.line === "CG" ? "CGL" : esc(x.line)}${T ? ` · towards ${esc(T.full)}` : ""}</p>` : ""}
       <div class="sp-kind" role="radiogroup" aria-label="What happened"><label><input type="radio" name="spk" value="spot" checked><span>Spotted</span></label><label><input type="radio" name="spk" value="ride"><span>Rode</span></label></div>
+      <div class="sp-kind sp-when" role="radiogroup" aria-label="When you saw it"><label><input type="radio" name="sph" value="arr" checked><span>Arriving</span></label><label><input type="radio" name="sph" value="mid"><span>Stopped</span></label><label><input type="radio" name="sph" value="dep"><span>Leaving</span></label></div>
       <datalist id="spSetList">${[...new Set(spots.filter(s => s.set && (SET_GROUP[s.line] || s.line) === (SET_GROUP[x.line] || x.line)).map(s => s.set))].slice(0, 40).map(s => `<option value="${esc(s)}">`).join("")}</datalist>
       <label class="rt-f"><span>Fleet / set</span><input name="set" list="spSetList" maxlength="16" placeholder="${esc(fs.ph)}" pattern="${esc(fs.re)}" title="${esc(fs.tip)}" autocomplete="off" inputmode="text"></label>
       <label class="rt-f"><span>Model</span><select name="model"><option value="" selected>Not sure</option>${ms.map(m => `<option>${esc(m)}</option>`).join("")}</select></label>
@@ -11352,17 +11356,22 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   $("hxBody").addEventListener("submit", e => {
     const f = e.target.closest(".sp-form"); if (!f) return;
     e.preventDefault();
-    const fd = new FormData(f), [hh, mm] = String(fd.get("time") || "").split(":").map(Number);
-    let at = Date.now();
-    if (Number.isFinite(hh) && Number.isFinite(mm)){
-      const d = new Date(Date.now() + 8 * 3600e3); d.setUTCHours(hh, mm, 0, 0);
+    const fd = new FormData(f), tv = String(fd.get("time") || ""), [hh, mm] = tv.split(":").map(Number);
+    // the time left as it was: when you opened this, to the second (the time box only has minutes, and rounding
+    // down put the train up to a minute too far along: already leaving when you'd seen it just arrive)
+    let at = +f.dataset.at || Date.now();
+    if (tv !== f.dataset.t && Number.isFinite(hh) && Number.isFinite(mm)){
+      const d = new Date(Date.now() + 8 * 3600e3); d.setUTCHours(hh, mm, 30, 0);      // a time you typed: the middle of that minute
       at = d.getTime() - 8 * 3600e3; if (at > Date.now() + 60000) at -= 864e5;      // a time later than now means yesterday
     }
+    const kind = fd.get("spk") === "ride" ? "ride" : "spot";
+    const ph = kind === "spot" ? (["arr", "mid", "dep"].includes(fd.get("sph")) ? String(fd.get("sph")) : "arr") : "";
+    const ak = ancKind({kind, ph});
     let tk = null; try { tk = f.dataset.tk ? JSON.parse(f.dataset.tk) : null; } catch(err){}
-    if (tk) tk = anchorLink(f.dataset.line, tk, String(fd.get("st") || ""), at, fd.get("spk") === "ride" ? "ride" : "spot");
-    const lo = tk ? learnFrom(f.dataset.line, tk, String(fd.get("st") || ""), at, fd.get("spk") === "ride" ? "ride" : "spot") : null;
+    if (tk) tk = anchorLink(f.dataset.line, tk, String(fd.get("st") || ""), at, ak);
+    const lo = tk ? learnFrom(f.dataset.line, tk, String(fd.get("st") || ""), at, ak) : null;
     spots.unshift({id: Date.now().toString(36), at, line: f.dataset.line, model: String(fd.get("model") || ""), st: String(fd.get("st") || ""),
-      note: String(fd.get("note") || "").trim().slice(0, 120), kind: fd.get("spk") === "ride" ? "ride" : "spot", sb: f.dataset.sb || "",
+      note: String(fd.get("note") || "").trim().slice(0, 120), kind, ...(ph ? {ph} : {}), sb: f.dataset.sb || "",
       set: normSet(fd.get("set")), slot: f.dataset.slot || "", dir: f.dataset.dir || "", ...(tk ? {tk} : {}), ...(lo ? {lo} : {})});
     if (spots.length > 2000) spots.length = 2000;
     saveSpots(); tagIdx = null; spVer++;
@@ -11472,27 +11481,31 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       for (const r of ttl){
         const p = r.p; if ((p.d > 0 ? 0 : 1) !== dir) continue;
         const k = (st - p.f) * p.d; if (k < 0 || k > p.arr.length - 1) continue;
-        const x = kind === "ride" ? p.dep[k] : (p.arr[k] + p.dep[k]) / 2;
+        // the moment at the station: leaving (rode it, or saw it leave), arriving, or (older sightings) mid-stop
+        const x = kind === "ride" || kind === "dep" ? p.dep[k] : kind === "arr" ? p.arr[k] : (p.arr[k] + p.dep[k]) / 2;
         out.push({id: `${code}t${r.s}p${r.pi}`, dep: r.s / 60, shift: (tm * 60 - late - r.s - x) / 60});
       }
     } else {
       const T = legsOf(code, dir, n), k = dir ? (n - 1) - st : st, late = camAdj(code, dir), now = sgNow();
       for (const r of runsFor(code, now.iso === iso ? dayOf(now) : dayOf(Object.assign({}, now, {iso})), dir)){
         if (k < r.a || k > r.b) continue;
-        const e = kind === "ride" ? (k < r.b ? T.off[k] : T.off[k] - L.dwell / 2) : Math.max(r.a ? T.off[r.a] - L.dwell : 0, T.off[k] - L.dwell / 2);
+        const e = kind === "ride" || kind === "dep" ? (k < r.b ? T.off[k] : T.off[k] - L.dwell / 2)
+          : Math.max(r.a ? T.off[r.a] - L.dwell : 0, T.off[k] - (kind === "arr" ? L.dwell : L.dwell / 2));
         out.push({id: code + dir + r.t, dep: r.t, shift: tm - late - r.t - e});
       }
     }
     return out;
   }
   const stIndex = (code, name, iso) => activeStations(LINES[code], iso).findIndex(x => x[1] === name);
+  // what a sighting's time means for anchorRuns: "ride", "arr" (saw it arrive), "dep" (saw it leave), or "spot" (mid-stop)
+  const ancKind = s => s.kind === "ride" ? "ride" : s.ph === "arr" || s.ph === "dep" ? s.ph : "spot";
 
   /* ---- Learned timing ----
      Each sighting of a train the app could identify is compared with the timetable (the same comparison as
      anchorRuns: LTA's times, with the slower-trains setting, before any live delay). Over the last 60 days,
      sightings on a line, one way, in one hour of the day give how late that line usually runs then. With at
      least 3 sightings, trains LTA's live feed says nothing about are moved by that much (at most 5 min).
-     On the North-South Line that's a correction to the fixed SLOW setting, by time of day. Trains LTA reports
+     (The North-South Line no longer has a fixed SLOW setting on top of LTA's times.) Trains LTA reports
      on are left to LTA. You can turn it off in the Spotter's log. */
   const LEARN_KEY = "mrt.learn", LEARN_MIN = 3, LEARN_MAX = 5, LEARN_DAYS = 60;
   let learnOn = store.get(LEARN_KEY, true) !== false;
@@ -11629,7 +11642,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     for (let i = spots.length - 1; i >= 0; i--){             // oldest first, so the newest sighting of a train wins
       const s = spots[i], k = s.tk; if (!k || !k.anc || k.day !== iso || s.line !== code) continue;
       const st = stIndex(code, s.st, iso); if (st < 0) continue;
-      const runs = anchorRuns(code, k.dir, st, svcMins(s.at), s.kind, iso);
+      const runs = anchorRuns(code, k.dir, st, svcMins(s.at), ancKind(s), iso);
       // the linked train; after a switch between estimates and the timetable its id changes, so the nearest one
       let r = runs.find(x => x.id === k.id);
       if (!r){ for (const x of runs) if (!r || Math.abs(x.shift) < Math.abs(r.shift)) r = x; if (r && Math.abs(r.shift) > ANCHOR_MAX) r = null; }
