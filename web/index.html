@@ -848,6 +848,8 @@ select,input[type="time"],input[type="text"],textarea{
 
 
 .mapctl button.m3dn{position:relative;font-size:0}
+.mi-hold{flex-wrap:wrap;gap:6px;align-items:center}
+.mi-hold .btn{min-height:36px;padding:4px 10px}
 /* What's new (Settings, and once after each update): every version's changes */
 .wn-v{padding:12px 0;border-top:1px solid var(--rule)}
 .wn-v:first-of-type{border-top:0;padding-top:4px}
@@ -2822,6 +2824,51 @@ function cutTrain(t, c, n){
   const next = Math.max(0, Math.min(n - 1, cutNext(p, nd))), at = Math.abs(p - Math.round(p)) < 0.03;
   return Object.assign({}, t, {dir: nd, idx: p, next, to: nd ? 0 : n - 1, eta: Math.abs(next - p) * 2, atStation: at, turned: turnAt});
 }
+/* ---------- Bunching: a late train holds up the trains behind it ----------
+   LTA's timetable keeps trains minutes apart. When one runs late (LTA's live feed, a sighting, the Live cam, or a Dev
+   test hold), the train behind can't come closer than BUNCH_GAP seconds behind it: it slows down, or waits at the
+   station before or outside the one the late train is at, and then carries that delay on to the trains behind it.
+   It's the app's own working-out from the timetable (POSSIBLE): LTA's live feed doesn't say where trains are held.
+   Only on lines with one track each way, from the front train back, each way separately. */
+const BUNCH_LINES = ["NSL", "EWL", "CG", "NEL", "DTL", "TEL"], BUNCH_GAP = 90;
+const BUNCH = {};                                          // line -> {at: clock seconds, d: Map(run id -> seconds held)}
+function bunchHeld(code, r){
+  const b = BUNCH[code]; if (!b || !b.d.size) return 0;
+  let now = 0; try { now = sgNow().mins * 60; } catch(e){ return 0; }
+  if (Math.abs(now - b.at) > 90) return 0;                 // worked out for another time (a probe, a simulation)
+  return b.d.get(`${code}t${r.s}p${r.pi}`) || 0;
+}
+function bunchUp(code, now, list){
+  if (!BUNCH_LINES.includes(code) || list.length < 2) return list;
+  const n = LINES[code].stations.length, held = new Map(), byId = new Map();
+  const arrAt = (r, s) => { const k = (s - r.p.f) * r.p.d; return k >= 0 && k <= r.p.arr.length - 1 && Number.isInteger(k) ? r.s + r.p.arr[k] : null; };
+  for (const dir of [0, 1]){
+    const q = t => dir ? n - 1 - t.idx : t.idx;
+    // in timetable order (where each would be if it were on time: LTA's timetable has no train overtaking another),
+    // so a late train is still ahead of the on-time one behind it, even where that one would already be past it
+    const onTime = t => { const r = t.ref, st = ttState(r, t.clk); return dir ? n - 1 - (st ? st.idx : t.clk < r.s ? r.p.f : r.p.f + r.p.d * (r.p.arr.length - 1)) : (st ? st.idx : t.clk < r.s ? r.p.f : r.p.f + r.p.d * (r.p.arr.length - 1)); };
+    const run = list.filter(t => t.dir === dir && t.ref && t.ref.p && t.lag != null && !t.layover && !t.rep && !t.testing && !t.cutLTA)
+      .map(t => ({t, o: onTime(t)})).sort((a, b) => b.o - a.o).map(x => x.t);
+    for (let i = 1; i < run.length; i++){
+      const a = run[i - 1], f = run[i];                       // f follows a
+      if (q(a) >= n - 1 - 1e-6) continue;                     // at the end of the line: there's a second platform
+      const s = Math.round(f.next), ta = arrAt(a.ref, s), tf = arrAt(f.ref, s);
+      if (ta == null || tf == null || tf <= ta) continue;     // not on the same stretch, or f was due there first
+      const need = a.lag - f.lag - Math.max(0, tf - ta - BUNCH_GAP);
+      if (need < 5) continue;
+      const r = f.ref, p = r.p, st = ttState(r, f.clk - f.lag - need, f.clk);
+      const nf = Object.assign({}, f, st ? {idx: st.idx, atStation: st.at, doors: st.doors, next: p.f + p.d * (st.at ? st.k : st.k + 1)}
+        : {idx: p.f, atStation: true, doors: false, next: p.f},
+        {eta: f.eta + need / 60, lag: f.lag + need, held: need, heldBehind: a.id});
+      // and never up to the train ahead: it waits outside the station that train is at, or keeps half a stretch back
+      const cap = q(a) - (a.atStation ? 0.35 : 0.5);
+      if (q(nf) > cap){ nf.idx = dir ? n - 1 - cap : cap; nf.atStation = false; nf.doors = false; nf.stopped = true; nf.next = dir ? Math.floor(nf.idx) : Math.ceil(nf.idx); }
+      run[i] = nf; byId.set(f.id, nf); held.set(f.id, need);
+    }
+  }
+  BUNCH[code] = {at: now.mins * 60, d: held};
+  return byId.size ? list.map(t => byId.get(t.id) || t) : list;
+}
 function trainsOn(code, now, noReports){
 function devTestingTrains(code, now){
   if (!window.MRT_DEV_FEATURES || !window.mrtDevScenario || window.mrtDevScenario.type !== "testing") return [];
@@ -2842,7 +2889,7 @@ function devTestingTrains(code, now){
     atStation,layover,turning,testing:true,nonRevenue:true,passengerService:false,
     devScenario:"TEL5/DTL3e systems integration test",testBoundary:boundary,testTerminal:n-1}];
 }
-  const list = trainsOnRaw(code, now, noReports).concat(devTestingTrains(code, now)), cuts = lineCuts(code, now.iso);
+  const list = bunchUp(code, now, trainsOnRaw(code, now, noReports)).concat(devTestingTrains(code, now)), cuts = lineCuts(code, now.iso);
   if (!cuts.length) return list;
   const n = activeStations(LINES[code], now.iso).length, out = [];
   for (let t of list){
@@ -3241,7 +3288,21 @@ function ttProfSched(r, R, S, sec){
   const w = R[j + 1] - R[j], rate = w > 0 ? (S[j + 1] - S[j]) / w : 1;
   return {sec: r.s + (w > 0 ? S[j] + (e - R[j]) * rate : S[j + 1]), rate: rate || 1};
 }
+/* ---------- Dev test mode: hold a train at a station ----------
+   To see what the trains behind do when one is held: the train waits `add` seconds more than LTA's timetable at stop
+   `k` of its run, then carries on that much late. MRT Dev only (window.MRT_DEV_FEATURES); from the train's map card. */
+const TEST_HOLD = new Map();                              // run id -> {k, add}
+function testHoldOf(code, r){
+  if (!TEST_HOLD.size || window.MRT_DEV_FEATURES !== true) return null;
+  const h = TEST_HOLD.get(`${code}t${r.s}p${r.pi}`); if (!h) return null;
+  if (!h.R){
+    const p = r.p; h.R = []; h.S = [];
+    for (let k = 0; k < p.arr.length; k++){ h.R.push(p.arr[k] + (k > h.k ? h.add : 0), p.dep[k] + (k >= h.k ? h.add : 0)); h.S.push(p.arr[k], p.dep[k]); }
+  }
+  return h;
+}
 function ttSched(code, r, sec, mv){
+  const th = testHoldOf(code, r); if (th) return ttProfSched(r, th.R, th.S, sec);
   const m = mv && mv.get(`${code}t${r.s}p${r.pi}`), pr = rtProfileFor(code, r, m);
   if (pr) return ttProfSched(r, pr.R, pr.S, sec);  // LTA's delay at each stop
   if (m) return {sec: sec - m * 60, rate: 1};
@@ -3336,6 +3397,11 @@ function ttLearned(code, r){
 }
 /* When a run gets to the stop `k` stops along it, in clock time (seconds): the other way round from ttSched. */
 function ttAt(code, r, k, mv){
+  const th = testHoldOf(code, r); if (th) return r.s + th.R[2 * k];
+  const bh = bunchHeld(code, r); if (bh) return ttAtOwn(code, r, k, mv) + bh;       // held up by the train ahead
+  return ttAtOwn(code, r, k, mv);
+}
+function ttAtOwn(code, r, k, mv){
   const live = typeof rtTimesFor === "function" ? rtTimesFor(code, r) : null;
   if (live && live.arr[k] != null) return live.arr[k];
   const m = mv && mv.get(code + "t" + r.s + "p" + r.pi);
@@ -3436,8 +3502,9 @@ function ttTrainsOn(code, now, list){
         next: past ? endIdx : p.f + p.d * Math.min(nk, ek), eta: past ? 0 : Math.max(0, (ttAt(code, r, Math.min(nk, ek), mv) - (now.mins * 60 - late[p.d > 0 ? 0 : 1])) / 60), atStation: past || st.at, doors: !past && st.doors});
       continue;
     }
-    out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
-      next: p.f + p.d * nk, eta: Math.max(0, (ttAt(code, r, nk, mv) - (now.mins * 60 - late[p.d > 0 ? 0 : 1])) / 60), atStation: st.at, doors: st.doors});
+    { const clk = now.mins * 60 - late[p.d > 0 ? 0 : 1];
+      out.push({id: runId(r), prev: pr ? runId(pr) : undefined, dir: p.d > 0 ? 0 : 1, dep: r.s / 60, ref: r, idx: st.idx, to: p.to,
+        next: p.f + p.d * nk, eta: Math.max(0, (ttAt(code, r, nk, mv) - clk) / 60), atStation: st.at, doors: st.doors, lag: clk - sec, clk}); }
   }
   for (const r of rtAddedRuns(code, now.iso)){                // extra trains LTA added today
     const sec = now.mins * 60 - late[r.p.d > 0 ? 0 : 1], st = ttState(r, sec);
@@ -3523,7 +3590,8 @@ function trainById(list, id){
    Trains that end at Expo or Bayshore carry on empty to Sungei Bedok (via Xilin or Bedok South) and come back for
    their next trip, testing the new stretch, when their turnaround is 8 minutes or more. LTA's timetable (GTFS) has them waiting at Expo or Bayshore instead, so
    on the map they go out and back within that wait: the same train, same arrow. Only the map moves them; next
-   trains, the Line Board and trip plans still have them waiting there, as LTA's timetable does. */
+   trains, the Line Board and trip plans still have them waiting there, as LTA's timetable does. Only in MRT Dev
+   (window.MRT_DEV_FEATURES): MRT Spotter and the website don't show them. */
 const EXT_TEST = {DTL: ["DT35", "DT37"], TEL: ["TE29", "TE31"]};
 const EXT_LEG = 120;                       // seconds between two stations out there, at most
 const EXT_MIN_WAIT = 8 * 60;               // only trains with at least this long a turnaround in LTA's timetable go out
@@ -3531,7 +3599,7 @@ const EXT_DWELL = 30;                      // seconds it stops at each station o
 const EXT_OFF = 40, EXT_ON = 40;           // seconds at Expo or Bayshore for passengers to get off, and on for its next trip
 function mapTrains(code, now){
   const list = trainsOn(code, now), e = EXT_TEST[code], L = LINES[code];
-  if (!e || !L || SIM.est) return list;
+  if (!e || !L || SIM.est || window.MRT_DEV_FEATURES !== true) return list;   // MRT Dev only: MRT Spotter shows them waiting, as LTA's timetable has them
   const a = L.stations.findIndex(s => s[0] === e[0]), b = L.stations.findIndex(s => s[0] === e[1]);
   if (a < 0 || b <= a || !L.stations[b][2] || stationServiceOpen(L.stations[b], now.iso) || activeStations(L, now.iso).length !== a + 1) return list;
   const ttl = ttTrips(code, now.iso); if (!ttl) return list;
@@ -4257,10 +4325,11 @@ function trainVisualKind(L, tr, now){
     const vehicleHTML = vehicle ? `<small class="posnote">🚆 <b>LTA vehicle</b>${vehicle.id ? " · " + esc(vehicle.id) : ""}${vehicle.label && vehicle.label !== vehicle.id ? " · " + esc(vehicle.label) : ""}${vehicle.plate ? " · " + esc(vehicle.plate) : ""}</small>` : "";
     const slowSegs = window.mrtSlowSegments ? mrtSlowSegments(current, s.ref) : [];
     const wetHTML = wetNote(current, s) ? `<small class="posnote">${wetNote(current, s)}</small>` : "";
+    const heldHTML = s.held ? `<small class="posnote">⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(s.held / 60))} min · POSSIBLE</small>` : "";
     const slowHTML = slowSegs.length ? `<small class="posnote">⚠️ <b>Possible slow running</b> · delay increasing ${esc(slowSegs[0].from)} → ${esc(slowSegs[0].to)} (${Math.round(slowSegs[0].gain)}s)</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
       <div>${trainFaceHTML(current, s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${testHTML}${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${vehicleHTML}${wetHTML}${slowHTML}${journeyHTML(s)}${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(current, s, now) : ""}${window.mrtTrainsetExplain && s.ref && s.ref.tid && /_\d+_\d+$/.test(String(s.ref.tid)) ? '<small class="posnote">Trainset evidence · '+esc(mrtTrainsetExplain(current, String(s.ref.tid).split("_").at(-2), now.iso))+'</small>' : ""}${window.mrtDisruptionHTML ? mrtDisruptionHTML(current) : ""}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.mrtRunNote ? mrtRunNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${testHTML}${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${vehicleHTML}${wetHTML}${heldHTML}${slowHTML}${journeyHTML(s)}${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(current, s, now) : ""}${window.mrtTrainsetExplain && s.ref && s.ref.tid && /_\d+_\d+$/.test(String(s.ref.tid)) ? '<small class="posnote">Trainset evidence · '+esc(mrtTrainsetExplain(current, String(s.ref.tid).split("_").at(-2), now.iso))+'</small>' : ""}${window.mrtDisruptionHTML ? mrtDisruptionHTML(current) : ""}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.mrtRunNote ? mrtRunNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
       <span class="eta">${(window.unifiedTrainPhase && window.unifiedTrainPhase(current,s,now) || {}).phase || (s.atStation ? (s.doors ? "Doors closing" : "Boarding") : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min")}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
@@ -6126,6 +6195,21 @@ function mapDutyHTML(code, tid, iso){
     '<p class="hint" style="margin:8px 0 0"><b>LTA-timed duty estimate, not an official roster or live status:</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm); OP LN = Off-Peak start with scheduled passenger service beyond 11pm. '+
     (finalScheduledTrip ? 'This is the last scheduled passenger trip in this run; depot withdrawal is unconfirmed.' : 'Ending this trip does not mean the full duty has ended.')+'</p></details>';
 }
+/* Dev test mode, on a train's card: hold it at its station (or the next one) for `min` minutes; 0 lets it go. */
+function testHoldSet(code, id, min){
+  if (window.MRT_DEV_FEATURES !== true) return;
+  if (!min){ TEST_HOLD.delete(id); mDirty = true; return; }
+  const t = trainById(mapTrains(code, sgNow()), id); if (!t || !t.ref || !t.ref.p) return;
+  const p = t.ref.p, k = Math.max(0, Math.min(p.arr.length - 1, Math.round((t.next - p.f) * p.d)));
+  TEST_HOLD.set(t.id, {k, add: min * 60, at: LINES[code].stations[p.f + p.d * k][1]});
+  mDirty = true;
+}
+/* Dev test mode, on a train's map card: hold it at its station (or the next one) for a few minutes. */
+function testHoldHTML(code, t, stop){
+  const id = t.id, h = TEST_HOLD.get(id);
+  if (h) return `<div class="mi-row mi-hold"><small>🧪 <b>Test hold</b> · ${Math.round(h.add / 60)} min extra at ${esc(h.at)} (MRT Dev test, not real)</small><button class="btn ghost" type="button" data-act="unhold" data-hx="unhold">Let it go</button></div>`;
+  return `<div class="mi-row mi-hold"><small>🧪 Test: hold it at ${esc(stop)} for</small>${[1, 2, 3, 5].map(m => `<button class="btn ghost" type="button" data-act="hold" data-hx="hold" data-min="${m}">${m} min</button>`).join("")}</div>`;
+}
 function mapInfoHTML(){
   const now = sgNow();
   if (!mSel) return `<p class="hint" style="margin:0">Tap any train or station on the map · Pinch to zoom and rotate (or right-drag / Shift-drag).</p>`;
@@ -6148,6 +6232,8 @@ function mapInfoHTML(){
     return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
       <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? (t.doors ? "Doors closing" : "Boarding") : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
       ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
+      ${t.held ? `<div class="mi-row"><small>⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(t.held / 60))} min late because of it · <b>POSSIBLE</b>: the app keeps trains at least ${BUNCH_GAP} s apart when one runs late</small></div>` : ""}
+      ${window.MRT_DEV_FEATURES === true && t.ref && t.ref.p && !t.layover ? testHoldHTML(mSel.line, t, stop) : ""}
       ${window.smartTrainNote && smartTrainNote(mSel.line, t) ? `<div class="mi-row">${smartTrainNote(mSel.line, t)}</div>` : ""}
       ${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(mSel.line, t, now) : ""}
       ${window.mrtDisruptionHTML ? mrtDisruptionHTML(mSel.line) : ""}
@@ -6183,6 +6269,7 @@ $("mapInfo").addEventListener("click", ev => {
   if (act === "taxi-refresh" && mSel && mSel.type === "station" && window.mrtTaxiAvailability){ window.mrtTaxiAvailability.refresh(true); return; }
   if (act === "hist" && mSel && mSel.type === "station"){ histOpen("station", mSel.name); return; }
   if (act === "report" && mSel && mSel.type === "station" && window.repOpen){ const e = MSTN.find(x => x.name === mSel.name); if (e) repOpen(e.codes[0].line, e.codes[0].idx); return; }
+  if ((act === "hold" || act === "unhold") && mSel && mSel.type === "train"){ testHoldSet(mSel.line, mSel.id, act === "hold" ? +b.dataset.min || 2 : 0); mapInfo(); return; }
   if (act === "line" && mSel && mSel.type === "train"){ const line = mSel.line, id = mSel.id; setTrainView("line"); select(line); selTrain = id; tick(); return; }
   if (act === "lineat" && mSel && mSel.type === "station"){ const name = mSel.name; setTrainView("line"); select(b.dataset.line, name); }
 });
@@ -7242,7 +7329,7 @@ function wnDate(d){ const [y, m, dd] = String(d || "").split("-"); return y && m
 function wnBlock(e, cur, bare){
   const here = !!cur && e.v === cur;
   if (bare) return `<section class="wn-v"><p class="muted">${esc(wnDate(e.date))}</p><ul>${(e.items || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>`;
-  return `<section class="wn-v${here ? " cur" : ""}"><h3>${e.v ? esc(e.v) : "Latest"}<span class="muted">· ${esc(wnDate(e.date))}</span>${here ? `<span class="wn-tag">This version</span>` : ""}</h3>
+  return `<section class="wn-v${here ? " cur" : ""}"><h3>${e.v ? esc(e.v) : e.day ? "Earlier changes" : "Latest"}<span class="muted">· ${esc(wnDate(e.date))}</span>${here ? `<span class="wn-tag">This version</span>` : ""}</h3>
     <ul>${(e.items || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>`;
 }
 function wnCard(id){
@@ -9842,7 +9929,9 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     if(!r || !p || !Array.isArray(p.arr) || !Array.isArray(p.dep) || !Number.isFinite(r.s)) return null;
     const k=Math.round((train.atStation ? train.idx : train.next)-p.f)*p.d;
     if(k<0 || k>=p.arr.length) return null;
-    const rt=typeof rtTimesFor==="function" ? rtTimesFor(code,r) : null;
+    if(train.held) return {phase: train.atStation ? "HELD AT PLATFORM" : "HELD", source: "behind a late train", held: true};   // bunchUp
+    const th=testHoldOf(code,r);                                   // Dev test hold: its own times
+    const rt=th ? {arr: th.R.filter((_, i) => !(i % 2)).map(x => r.s + x), dep: th.R.filter((_, i) => i % 2).map(x => r.s + x)} : typeof rtTimesFor==="function" ? rtTimesFor(code,r) : null;
     const arr=rt && Number.isFinite(rt.arr[k]) ? rt.arr[k] : r.s+p.arr[k];
     const dep=rt && Number.isFinite(rt.dep[k]) ? rt.dep[k] : r.s+p.dep[k];
     const sec=now && Number.isFinite(now.mins) ? now.mins*60 : NaN;
@@ -9908,6 +9997,8 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const disruptionHTML = window.mrtDisruptionHTML ? mrtDisruptionHTML(x.line) : "";
     return `<div class="tsum" style="--c:var(--${x.line})">${trainFaceHTML(x.line, t.dir)}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}${pf ? ` · platform ${esc(pf)}` : ""}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span><br><span class="src">${esc(src.label)}</span></div></div>
       ${t.added ? `<p class="hint" style="margin:0"><span class="sb">extra train</span> <b>Added by LTA today</b>, not in the timetable${t.added === 6 ? " (a timetabled trip run again at another time)" : ""}. From LTA's live train feed.</p>` : ""}
+      ${t.held ? `<p class="hint" style="margin:0">⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(t.held / 60))} min late because of it · <b>POSSIBLE</b>: the app keeps trains at least ${BUNCH_GAP} s apart when one runs late</p>` : ""}
+      ${window.MRT_DEV_FEATURES === true && t.ref && t.ref.p && !t.layover ? testHoldHTML(x.line, t, stop) : ""}
       ${trainMeta}
       ${trainIntelHTML(x.line, t, T.now, slot)}
       ${phase && phase.phase ? `<p class="hint"><b>${esc(phase.phase)}</b> · ${esc(phase.source)} · predicted, not a confirmed physical movement</p>` : ""}
@@ -10034,6 +10125,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
         const s = Math.max(fitScale * (BLD_FULL + 4), Math.min(mW, mH) / span);
         flyTo((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2, s); }, 80); return; }
     if (act === "board" && x.type === "station"){ const n = x.name, ls = (byName[n] || []).map(y => y[0]); hxClose(); showView("trains"); setTrainView("line"); select(ls.includes(current) ? current : ls[0], n); return; }
+    if ((act === "hold" || act === "unhold") && x.type === "train"){ testHoldSet(x.line, x.id, act === "hold" ? +b.dataset.min || 2 : 0); hxRender(); return; }
     if (act === "line" && x.type === "train"){ hxClose(); showView("trains"); setTrainView("line"); select(x.line); selTrain = x.id; tick(); return; }
     if (act === "report" && x.type === "station" && window.repOpen){ const e2 = aByName(x.name); if (e2){ hxClose(); repOpen(e2.codes[0].line, e2.codes[0].idx); } return; }
     if ((act === "from" || act === "to") && x.type === "station"){ const n = x.name; hxClose(); tripShow(act, n); return; }

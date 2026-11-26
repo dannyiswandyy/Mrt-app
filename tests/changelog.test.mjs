@@ -19,10 +19,10 @@ function repo(){
   const git = (...a) => execFileSync("git", a, {cwd: dir, env, encoding: "utf-8"});
   git("init", "-q", "-b", "main");
   let n = 0;
-  const commit = (msg, file = "web/page.txt") => {
+  const commit = (msg, file = "web/page.txt", e = env) => {
     mkdirSync(join(dir, file, ".."), {recursive: true});
     writeFileSync(join(dir, file), String(++n));
-    git("add", "-A"); git("commit", "-q", "-m", msg);
+    execFileSync("git", ["add", "-A"], {cwd: dir, env: e}); execFileSync("git", ["commit", "-q", "-m", msg], {cwd: dir, env: e});
     return git("rev-parse", "HEAD").trim();
   };
   const note = (sha, v) => git("notes", "--ref=versions", "append", "-m", v, sha);
@@ -55,6 +55,23 @@ test("each version lists the changes since the version before it, newest first",
     assert.equal(list[0].date, "2026-11-22");
     assert.match(notes, /^### What's new in 2026\.11\.22-0800 · 22 Nov 2026\n\n- Taxis at stations/);
     assert.match(notes, /### Every version/);
+  } finally { r.done(); }
+});
+
+test("changes from before versions were recorded are listed by day", () => {
+  const r = repo();
+  try {
+    const at = d => ({...env, GIT_AUTHOR_DATE: d, GIT_COMMITTER_DATE: d});
+    r.commit("Map: first try", "web/page.txt", at("2026-11-18T10:00:00+08:00"));
+    r.commit("Line Board: first try", "web/page.txt", at("2026-11-19T10:00:00+08:00"));
+    const a = r.commit("Clock: seconds", "web/page.txt", at("2026-11-20T09:00:00+08:00"));
+    r.note(a, "2026.11.20-1000");
+    const {list, notes} = r.run();
+    assert.deepEqual(list.map(e => [e.v, e.date, !!e.day, e.items.join()]), [
+      ["2026.11.20-1000", "2026-11-20", false, "Clock: seconds"],
+      [null, "2026-11-19", true, "Line Board: first try"],
+      [null, "2026-11-18", true, "Map: first try"]]);
+    assert.match(notes, /\*\*Earlier changes · 19 Nov 2026\*\*/);
   } finally { r.done(); }
 });
 

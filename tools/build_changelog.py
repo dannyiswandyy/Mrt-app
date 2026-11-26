@@ -178,6 +178,8 @@ def main():
         for x in git("rev-list", c, *[f"^{s}" for s in seen]).split():
             shipped.setdefault(x, v)
         seen.add(c)
+    # the first recorded build holds everything before it too: changes from before its day are listed by day
+    first = builds[0][0] if builds else None
 
     entries = {}
     def entry(key, v, date):
@@ -203,7 +205,11 @@ def main():
             text = "" if SKIP.match(subject.strip()) else tidy(subject, o.public)
         day = datetime.fromtimestamp(int(ts), SGT).strftime("%Y-%m-%d")
         v = shipped.get(sha)
-        e = entry(v, v, ver_date(v)) if v else entry("latest", None, day)
+        if v and v == first and day < ver_date(v):
+            e = entry("day:" + day, None, day)
+            e["day"] = True
+        else:
+            e = entry(v, v, ver_date(v)) if v else entry("latest", None, day)
         if not text:
             e["fixes"] = True
             continue
@@ -220,7 +226,7 @@ def main():
         if e["more"]:
             e["items"].append(f"…and {e['more']} more change{'s' if e['more'] > 1 else ''}")
         del e["more"]
-    out = sorted(entries.values(), key=lambda e: (e["v"] is None, ver_time(e["v"]) or e["date"]), reverse=True)
+    out = sorted(entries.values(), key=lambda e: ver_time(e["v"]) or e["date"].replace("-", ""), reverse=True)
     if "latest" in entries:                       # the website's changes since the newest app build go first
         out.remove(entries["latest"]); out.insert(0, entries["latest"])
 
@@ -234,7 +240,7 @@ def main():
     if o.notes:
         def label(e):
             d = datetime.strptime(e["date"], "%Y-%m-%d").strftime("%-d %b %Y")
-            return f"{e['v']} · {d}" if e["v"] else f"Latest · {d}"
+            return f"{e['v']} · {d}" if e["v"] else f"Earlier changes · {d}" if e.get("day") else f"Latest · {d}"
         md, size = [], 0
         for i, e in enumerate(out):
             block = ([f"### What's new in {label(e)}", ""] if i == 0 else [f"**{label(e)}**", ""]) + \
