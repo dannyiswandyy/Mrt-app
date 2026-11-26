@@ -228,6 +228,9 @@ def main():
         with open(o.out, "w", encoding="utf-8") as f:
             f.write("/* What's new: made from the repo's history by build_changelog.py when this was built. Don't edit. */\n")
             f.write("window.MRT_CHANGELOG = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
+            # the newest app version: the website, which is built from the same page, shows it as its own
+            newest = o.version or (builds[-1][0] if builds else "")
+            f.write("window.MRT_APP_VERSION = " + json.dumps(newest) + ";\n")
     if o.notes:
         def label(e):
             d = datetime.strptime(e["date"], "%Y-%m-%d").strftime("%-d %b %Y")

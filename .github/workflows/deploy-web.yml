@@ -8,6 +8,10 @@ on:
     branches: [main]
     paths: ['web/**', 'tools/**', 'tests/**', '.github/workflows/deploy-web.yml']
   workflow_dispatch:
+  # after each app release: the site then shows that app version (What's new, Settings)
+  workflow_run:
+    workflows: ["Build MRT Tracker app"]
+    types: [completed]
   # Rebuild the published LTA GTFS timetable every hour (at minute 17 UTC).
   # GitHub scheduled jobs may start late; keep the last good schedule if LTA is unavailable.
   schedule:

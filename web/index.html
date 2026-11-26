@@ -1799,7 +1799,10 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
   if (inApp){ runMain(); return; }
 
   const C = window.MRT_WEB_CONFIG || {}, PROXY = String(C.proxy || "").trim().replace(/\/+$/, "");
-  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false, build: "2026.11.15-1246"};
+  const W = window.MRT_WEB = {proxy: PROXY, relay: false, live: false, ai: false, yt: false};
+  // the website is the same page as the public app: it shows that app version as its own (changelog.js, made when
+  // the site is published; the site is published again after every app release)
+  { const s = document.createElement("script"); s.src = "changelog.js"; document.head.appendChild(s); }
   const within = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
   const getText = (u, ms) => within(fetch(u, {cache: "no-cache"}).then(r => r.ok ? r.text() : null).catch(() => null), ms);
   const reply = (id, code, body) => setTimeout(() => { if (window.__native) window.__native(id, code, body || ""); }, 0);
@@ -1823,7 +1826,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
   let tt = "", bld = "", trk = "", ex = "";
   const bridge = {
     getChannel: () => "beta",                      // the normal MRT Spotter, not MRT Dev
-    getVersion: () => W.build,
+    getVersion: () => window.MRT_APP_VERSION || "website",
     getTimetable: () => tt,
     getBuildings: () => bld,
     getTracks: () => trk,                          // "" if this deploy has none; the page then draws those two lines straight
@@ -7232,8 +7235,8 @@ function wnLoad(){
   });
   return wnLoad.p;
 }
-/* This app's version; "" on the website, which has no version of its own. */
-function wnVersion(){ try { return APP && APP.getVersion && !window.MRT_WEB ? String(APP.getVersion() || "") : ""; } catch(e){ return ""; } }
+/* This app's version (the website: the public app version it's the same as). */
+function wnVersion(){ try { return APP && APP.getVersion ? String(APP.getVersion() || "") : ""; } catch(e){ return ""; } }
 const WN_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function wnDate(d){ const [y, m, dd] = String(d || "").split("-"); return y && m && dd ? `${+dd} ${WN_MON[m - 1]} ${y}` : ""; }
 function wnBlock(e, cur, bare){
@@ -7325,7 +7328,7 @@ window.appBack = () => {
 /* What's new: the first time the app opens after an update, show what changed in it (not on a first install). */
 setTimeout(() => {
   try {
-    const v = wnVersion(); if (!v) return;
+    const v = wnVersion(); if (!v || window.MRT_WEB) return;      // the app only: the website isn't installed
     const was = store.get("mrt.seenVersion", "");
     store.set("mrt.seenVersion", v);
     if (!was || was === v) return;

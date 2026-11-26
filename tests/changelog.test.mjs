@@ -29,7 +29,7 @@ function repo(){
   const run = (...a) => {
     execFileSync("python3", [SCRIPT, "--paths", "web", "--out", "cl.js", "--notes", "notes.md", ...a], {cwd: dir, env, stdio: "pipe"});
     const w = {}; new Function("window", readFileSync(join(dir, "cl.js"), "utf-8"))(w);
-    return {list: w.MRT_CHANGELOG, notes: readFileSync(join(dir, "notes.md"), "utf-8")};
+    return {list: w.MRT_CHANGELOG, appVersion: w.MRT_APP_VERSION, notes: readFileSync(join(dir, "notes.md"), "utf-8")};
   };
   return {dir, commit, note, run, done: () => rmSync(dir, {recursive: true, force: true})};
 }
@@ -44,8 +44,9 @@ test("each version lists the changes since the version before it, newest first",
     r.note(b, "2026.11.21-0900");
     r.note(b, "2026.11.21-1500");                    // built again with nothing new
     r.commit("Taxis at stations");
-    const {list, notes} = r.run("--version", "2026.11.22-0800");
+    const {list, notes, appVersion} = r.run("--version", "2026.11.22-0800");
     assert.deepEqual(list.map(e => e.v), ["2026.11.22-0800", "2026.11.21-1500", "2026.11.21-0900", "2026.11.20-1000"]);
+    assert.equal(appVersion, "2026.11.22-0800");
     assert.deepEqual(list[0].items, ["Taxis at stations"]);
     assert.deepEqual(list[1].items, ["Newest LTA train timetable"]);
     // names of the AI, "fix:" and the part about checks are left out
@@ -74,7 +75,8 @@ test("a version whose changes are all behind the scenes says so, and the website
     const a = r.commit("Rebuild the app after the regression tests change");
     r.note(a, "2026.11.20-1000");
     r.commit("Map: neater labels");
-    const {list} = r.run();                          // the website: no version of its own
+    const {list, appVersion} = r.run();              // the website: no version of its own
+    assert.equal(appVersion, "2026.11.20-1000");      // it shows the newest app version it's the same as
     assert.equal(list[0].v, null);
     assert.deepEqual(list[0].items, ["Map: neater labels"]);
     assert.deepEqual(list[1].items, ["Small fixes and improvements"]);
