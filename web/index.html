@@ -229,6 +229,8 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .mapattr{position:absolute;right:8px;bottom:6px;max-width:52%;text-align:right;font-size:10px;line-height:1.25;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 4px rgba(0,0,0,.6);pointer-events:none}
 .mapctl button{width:38px;height:38px;border-radius:9px;border:1px solid var(--rule);background:var(--panel);color:var(--fg);font:600 18px var(--body);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.15)}
 .mapctl button:hover{background:var(--soft)}
+.mapctl button.m3d{font-size:13px;letter-spacing:.02em}
+.mapctl button.m3d[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .mapctl button[hidden]{display:none}
 .mapinfo{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-top:8px;display:grid;gap:6px;font-size:14px;box-shadow:var(--shadow)}
 .mi-h{display:flex;align-items:center;gap:8px}
@@ -847,6 +849,12 @@ select,input[type="time"],input[type="text"],textarea{
 }
 
 
+/* 3D map */
+.mapwrap canvas.m3d-cv,.mapwrap canvas.m3d-ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mapwrap canvas.m3d-ov{touch-action:none;cursor:grab}
+.mapwrap canvas.m3d-ov:active{cursor:grabbing}
+.mapwrap canvas[hidden]{display:none}
+.mapwrap.m3d-on #mapCv{visibility:hidden}
 .mapctl button.m3dn{position:relative;font-size:0}
 .mi-hold{flex-wrap:wrap;gap:6px;align-items:center}
 .mi-hold .btn{min-height:36px;padding:4px 10px}
@@ -1389,6 +1397,7 @@ h1 .brand-name{overflow:hidden;text-overflow:ellipsis}
 .mapcount{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--rule);color:var(--fg);font-weight:600;box-shadow:var(--shadow-soft)}
 .mapctl button{background:color-mix(in srgb,var(--panel) 92%,transparent)!important;border:1px solid var(--rule)!important;color:var(--fg)!important;box-shadow:var(--shadow-soft)!important;font-size:18px}
 .mapctl button:hover{transform:none}
+.mapctl button.m3d[aria-pressed="true"]{background:var(--fg)!important;color:var(--panel)!important;border-color:var(--fg)!important}
 
 /* line board */
 .status{padding:13px 15px}
@@ -1603,6 +1612,8 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
     <section id="mapView">
       <div class="mapwrap" id="mapWrap">
         <canvas id="mapCv" aria-label="Map of all MRT and LRT lines with estimated train positions. Drag to move; two fingers to zoom and rotate."></canvas>
+<canvas class="m3d-cv" id="m3dCv" hidden aria-hidden="true"></canvas>
+<canvas class="m3d-ov" id="m3dOv" hidden aria-label="3D map of the lines and trains. Drag to move; two fingers to zoom, turn and tilt."></canvas>
         <div class="mapstack" id="mapStack">
         <div class="mapcount" id="mapCount"></div><button type="button" class="follow-stop" id="followStop" hidden>Stop following</button>
         <button type="button" class="mapcrowd" id="mapCrowd" aria-pressed="false" hidden>
@@ -1615,7 +1626,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
           <button type="button" id="mapIn" aria-label="Zoom in" title="Zoom in">+</button>
           <button type="button" id="mapOut" aria-label="Zoom out" title="Zoom out">−</button>
           <button type="button" id="mapReset" aria-label="Show whole network" title="Reset map">⤢</button>
-          <button type="button" id="map3dN" class="m3dn" aria-label="Point north" title="Point north">N</button>
+          <button type="button" id="map3d" class="m3d" aria-pressed="true" aria-label="3D buildings" title="3D buildings" hidden>3D</button><button type="button" id="map3dN" class="m3dn" aria-label="Point north" title="Point north">N</button>
         <div class="maplegend" id="mapLegend">
           <button type="button" class="maplegend-btn" id="mapLegendBtn" aria-expanded="false" aria-controls="mapLegendCard" aria-label="Map legend" title="Map legend">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><path d="M12 7.5h.01"/></svg>
@@ -1718,7 +1729,7 @@ h1 .brand-mark{border-radius:7px;box-shadow:0 0 0 1px var(--rule),0 1px 2px rgba
 
   <footer>
     <p><b>How this works.</b> In the MRT Spotter phone app, trains and next-train times follow LTA's official train timetable, the same published schedule journey planners use, including public holidays. Where the timetable isn't available, they're estimated from typical frequencies and the operators' own station-to-station travel times. Either way, they show the schedule, so delays don't appear on the map; disruption notices from LTA appear under Updates.</p>
-    <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and SMRT for the off-peak trips ending at Joo Koon. How many North-South, East-West, Changi Airport branch, North East, Circle and Thomson-East Coast line trains are out, and the morning-peak trips from Yishun: SMRT's and SBS Transit's train duty rosters (Oct–Nov 2026) and a train run number roster sheet. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. MRT and LRT track shapes: URA Master Plan rail lines (Urban Redevelopment Authority, via data.gov.sg, under the Singapore Open Data Licence), downloaded while the app and website are built; SG Rail Data where they don't match. Building outlines: © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
+    <p><b>Sources.</b> Disruption notices: Land Transport Authority (LTA), datamall.lta.gov.sg. News: Google News (news.google.com), with each outlet named on its headline. Social media links: SMRT on X (@SMRT_Singapore) and Facebook (SMRTCorpSG), SBS Transit on X (@SBSTransit_Ltd) and Facebook (SBSTransit), LTA on X (@LTAsg). Train models: SGTrains (sgtrains.com). Live cam: RailCam Singapore (@railcamsg) on YouTube. First, last and special-bound trains: SMRT and SBS Transit's first and last train timetables, as listed by Metro Time Info (metro-time-info.appspot.com), and SMRT for the off-peak trips ending at Joo Koon. How many North-South, East-West, Changi Airport branch, North East, Circle and Thomson-East Coast line trains are out, and the morning-peak trips from Yishun: SMRT's and SBS Transit's train duty rosters (Oct–Nov 2026) and a train run number roster sheet. RTS Link and Sentosa Express tracks (phone app): © OpenStreetMap contributors, downloaded while the app is built. Station-to-station travel times: SMRT's station-by-station train timings (North-South and East-West lines), SBS Transit's first and last train timings at every station (North East and Downtown lines) and Land Transport Guru's station-by-station timings (Thomson-East Coast, Downtown and Circle lines). Satellite map photos: Esri World Imagery (Esri, Vantor, Earthstar Geographics and the GIS User Community). RTS Link: LTA, Wikipedia and AsiaOne. Sentosa Express: Wikipedia, SGTrains and Land Transport Guru; times are estimated from its 7am–midnight hours and 3-minute gaps. Platform crowds: LTA DataMall (datamall2.mytransport.sg), Station Crowd Density Real Time. History: Wikipedia, SGTrains, Land Transport Guru (landtransportguru.net) and LTA news releases. Ask: answers by Claude (Anthropic) when it can be reached, otherwise built-in answers from the app's own data. Map: station locations and track shapes from SG Rail Data by Lim Chee Aun (github.com/cheeaun/sgraildata), based on data.gov.sg and LTA data. MRT and LRT track shapes: URA Master Plan rail lines (Urban Redevelopment Authority, via data.gov.sg, under the Singapore Open Data Licence), downloaded while the app and website are built; SG Rail Data where they don't match. Building outlines and heights: © OpenStreetMap contributors (openstreetmap.org/copyright). Weather: National Environment Agency (NEA), via data.gov.sg, under the Singapore Open Data Licence.</p>
   </footer>
 </div>
 
@@ -3822,6 +3833,7 @@ const clockText = m => { m = Math.round(m) % 1440; const h = Math.floor(m / 60),
    dark parts of the front (its face, frames, grilles) a darker shade of it, and windows and lights white. The icon
    stays upright however the map is turned; a small pointer beside it shows which way the train is going, on the
    same side of the line as the arrows (trains keep left). */
+const TIP_BIG = 2.3;                          // the map's pointer, × the Line Board's small tip
 function trainIcons(){ return true; }       // switch the train pictures off here to go back to the arrows
 // Shapes, in fractions of the icon's width (x) and height (y): a = width / height, r1 / r2 = roof / skirt corner
 // rounding, taper = how much narrower the roof is, chamfer = [across, down] for cut-off roof corners. Parts:
@@ -3891,19 +3903,21 @@ const LINE_TRAIN = {NSL: "r151", EWL: "r151", CG: "r151", CCL: "c830", NEL: "c75
                     APM1: "skytrain", APM2: "skytrain", APM3: "skytrain", APM4: "skytrain", APM5: "skytrain"};
 // Draws line's train h px tall centred on X, Y with its pointer towards ux, uy; returns how far the pointer's tip is
 // from X, Y. dots: a colour for a dotted outline over the rim (special-bound trains), or nothing for a plain rim.
-function drawTrainIcon(ctx, X, Y, ux, uy, h, body, detail, rim, rimW, line, dots){
+// ps: how big the pointer is (1: the small tip the Line Board uses; the map's is bigger, with rounded corners).
+function drawTrainIcon(ctx, X, Y, ux, uy, h, body, detail, rim, rimW, line, dots, ps = 1){
   const sh = TRAIN_SHAPES[LINE_TRAIN[line]] || TRAIN_SHAPES.r151;
   const w = h * sh.a, x0 = X - w / 2, y0 = Y - h / 2, big = h >= 15, shade = "rgba(0,0,0,0.36)";
   const px = f => x0 + w * f, py = f => y0 + h * f;
   // the pointer first, so the icon's outline sits on top of its base
   const edge = Math.min(Math.abs(ux) > 1e-6 ? (w / 2) / Math.abs(ux) : 1e9, Math.abs(uy) > 1e-6 ? (h / 2) / Math.abs(uy) : 1e9);
-  const p = Math.max(2.6, h * 0.2), b0 = edge - p * 0.15, tip = edge + p * 1.25;
+  const p = Math.max(2.6, h * 0.2) * ps, rnd = ps > 1 ? p * 0.3 : 0, b0 = edge - p * 0.15, tip = edge + p * 1.25 - rnd * 0.5;
   ctx.beginPath();
   ctx.moveTo(X + ux * tip, Y + uy * tip);
   ctx.lineTo(X + ux * b0 - uy * p * 0.85, Y + uy * b0 + ux * p * 0.85);
   ctx.lineTo(X + ux * b0 + uy * p * 0.85, Y + uy * b0 - ux * p * 0.85);
   ctx.closePath();
-  ctx.lineJoin = "round"; ctx.lineWidth = rimW; ctx.strokeStyle = rim; ctx.stroke();
+  ctx.lineJoin = "round"; ctx.lineWidth = rimW + rnd; ctx.strokeStyle = rim; ctx.stroke();
+  if (rnd){ ctx.lineWidth = rnd; ctx.strokeStyle = body; ctx.stroke(); }   // a big pointer gets rounded corners
   ctx.fillStyle = body; ctx.fill();
   // body: rounded roof, straight (or slightly tapering) sides, then the skirt rounding in underneath
   const r1 = w * sh.r1, r2 = w * sh.r2, tp = w * (sh.taper || 0);
@@ -5262,6 +5276,7 @@ function renderBanner(){
         const stations = MSTN.filter(e => e.codes.some(c => codes.has(c.code)));
         if (!stations.length) return;
         showView("trains"); setTrainView("map");
+        if ($("mapWrap").classList.contains("m3d-on")) $("map3d").click();
         mapResize();
         if (!view) return;
         const xs = stations.map(e => e.x), ys = stations.map(e => e.y);
@@ -5632,7 +5647,7 @@ function stopFollowing(){
 function trackCamera(){
   if (!followedRun) return;
   const {line, id} = followedRun, t = trainById(mapTrains(line, sgNow()), id);
-  if (!t) { stopFollowing(); return; }
+  if (!t || $("mapWrap").classList.contains("m3d-on")) { stopFollowing(); return; }
   followedRun.id = t.id;
   const rv = window.mrtRealtimeVehicle && window.mrtRealtimeVehicle(t);
   const [x,y] = rv && Number.isFinite(rv.lat) && Number.isFinite(rv.lon)
@@ -5887,7 +5902,7 @@ function drawBuildings(ctx, zoom){
 /* ---- satellite background ----
    Esri World Imagery tiles, placed with the same projection the map data uses (build_map.py),
    so stations and lines sit on the right spot in the photo. It's the map's only background (the plain
-   2D map was dropped; its building outlines and weather now show on the photo). Without photos, for example
+   2D map was dropped; its 3D buildings and weather now show on the photo). Without photos, for example
    offline, the map is drawn on the plain page colour as before. */
 const SAT_URL = (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
 const P_LAT0 = 1.3521, P_LON0 = 103.8198, P_KX = 111320 * Math.cos(P_LAT0 * Math.PI / 180), P_KY = 110574;
@@ -6150,7 +6165,7 @@ function mapDraw(){
       if (icons){
         // special-bound trains keep the line's train with a dotted outline (dashes over the rim)
         tipAt = drawTrainIcon(ctx, X, Y, ux, uy, tr * 3 * k, MC[c], "#fff", sel && !sb ? MC.fg : MC.bg,
-                              sel ? 2.5 : sb ? 2 : 1.3, c, sb ? MC.fg : null);
+                              sel ? 2.5 : sb ? 2 : 1.3, c, sb ? MC.fg : null, TIP_BIG);
       } else {
         ctx.beginPath();
         ctx.moveTo(X + ux * tr * 1.5 * k, Y + uy * tr * 1.5 * k);
@@ -6218,7 +6233,7 @@ function mapDraw(){
   mDirty = false;
 }
 
-/* A sighting you logged, shown next to that train's arrow (the map): a small dark label up and to the
+/* A sighting you logged, shown next to that train's arrow (2D map and 3D overlay): a small dark label up and to the
    right of the arrow, joined by a short line, with the model you entered. An eye for "Spotted", a gold star and gold
    edge for "Rode". The arrow itself isn't touched. */
 function drawSpotTag(ctx, x, y, r, tag, fs, avoid){
@@ -9222,10 +9237,728 @@ renderAll();
 refreshAll();
 refreshCrowd(true);
 
+/* ---------- 3D map ----------
+   The 3D button turns the map into a 3D scene you can move, turn and tilt all the way round:
+   the satellite photo on the ground (Esri World Imagery), the buildings standing on it as plain grey blocks
+   (OpenStreetMap outlines and heights, the same ones the flat map uses), the lines on top, and every train as a
+   little 3D train: the flat map's train picture as its front, on a short rounded body in the line's colour.
+   Drawn here with WebGL, no outside library. Drag to move; two fingers pinch to zoom, twist to turn and
+   slide up or down to tilt; with a mouse, right-drag (or Shift-drag) turns and tilts. The compass button
+   puts north back at the top. Lighting follows the time of day in Singapore. */
+const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0.75}, fov: 45 * Math.PI / 180};
+(() => {
+  const wrap = $("mapWrap"), cv = $("m3dCv"), ov = $("m3dOv"), octx = ov.getContext("2d");
+  let gl = null, W = 0, H = 0, DPR = 1;
+  const P = {};                  // shader programs
+  const B = {};                  // shared buffers
+  const tex = new Map();         // satellite tiles as textures
+  const chunks = new Map();      // building outlines, one set per 250 m cell
+  let hits = [], tags3 = [], last3 = [], lastT = 0, satBad = 0, satGood = 0;
+
+  /* ---- small maths ---- */
+  const persp = (f, a, n, fa) => { const t = 1 / Math.tan(f / 2), r = 1 / (n - fa); return [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, (fa + n) * r, -1, 0, 0, 2 * fa * n * r, 0]; };
+  const mul = (a, b) => { const o = new Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++){ let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; } return o; };
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  function lookAt(e, t){
+    const z = norm(sub(e, t)), x = norm(cross([0, 1, 0], z)), y = cross(z, x);
+    return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1];
+  }
+  const inv = m => {   // 4x4 inverse
+    const o = new Array(16), [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = m;
+    const b0 = a0 * a5 - a1 * a4, b1 = a0 * a6 - a2 * a4, b2 = a0 * a7 - a3 * a4, b3 = a1 * a6 - a2 * a5, b4 = a1 * a7 - a3 * a5, b5 = a2 * a7 - a3 * a6;
+    const b6 = a8 * a13 - a9 * a12, b7 = a8 * a14 - a10 * a12, b8 = a8 * a15 - a11 * a12, b9 = a9 * a14 - a10 * a13, b10 = a9 * a15 - a11 * a13, b11 = a10 * a15 - a11 * a14;
+    const d = 1 / (b0 * b11 - b1 * b10 + b2 * b9 + b3 * b8 - b4 * b7 + b5 * b6);
+    o[0] = (a5 * b11 - a6 * b10 + a7 * b9) * d; o[1] = (a2 * b10 - a1 * b11 - a3 * b9) * d; o[2] = (a13 * b5 - a14 * b4 + a15 * b3) * d; o[3] = (a10 * b4 - a9 * b5 - a11 * b3) * d;
+    o[4] = (a6 * b8 - a4 * b11 - a7 * b7) * d; o[5] = (a0 * b11 - a2 * b8 + a3 * b7) * d; o[6] = (a14 * b2 - a12 * b5 - a15 * b1) * d; o[7] = (a8 * b5 - a10 * b2 + a11 * b1) * d;
+    o[8] = (a4 * b10 - a5 * b8 + a7 * b6) * d; o[9] = (a1 * b8 - a0 * b10 - a3 * b6) * d; o[10] = (a12 * b4 - a13 * b2 + a15 * b0) * d; o[11] = (a9 * b2 - a8 * b4 - a11 * b0) * d;
+    o[12] = (a5 * b7 - a4 * b9 - a6 * b6) * d; o[13] = (a0 * b9 - a1 * b7 + a2 * b6) * d; o[14] = (a13 * b1 - a12 * b3 - a14 * b0) * d; o[15] = (a8 * b3 - a9 * b1 + a10 * b0) * d;
+    return o;
+  };
+  const xf = (m, p) => { const x = p[0], y = p[1], z = p[2], w = m[3] * x + m[7] * y + m[11] * z + m[15];
+    return [(m[0] * x + m[4] * y + m[8] * z + m[12]) / w, (m[1] * x + m[5] * y + m[9] * z + m[13]) / w, (m[2] * x + m[6] * y + m[10] * z + m[14]) / w, w]; };
+  const rgb = (() => { const c = document.createElement("canvas").getContext("2d"), memo = {};
+    return col => { if (memo[col]) return memo[col]; c.fillStyle = "#000"; c.fillStyle = col || "#888"; const h = c.fillStyle;
+      let r, g, b; if (h[0] === "#"){ r = parseInt(h.slice(1, 3), 16); g = parseInt(h.slice(3, 5), 16); b = parseInt(h.slice(5, 7), 16); }
+      else [r, g, b] = (h.match(/[\d.]+/g) || [128, 128, 128]).map(Number);
+      return (memo[col] = [r / 255, g / 255, b / 255]); }; })();
+
+  /* ---- the camera ---- */
+  let VIEW = null, PROJ = null, VP = null, IVP = null, EYE = [0, 0, 0];
+  function camera(){
+    const c = M3.cam, cp = Math.cos(c.pitch), sp = Math.sin(c.pitch), fx = Math.sin(c.yaw), fz = -Math.cos(c.yaw);
+    EYE = [c.x - fx * c.d * cp, c.d * sp, c.z - fz * c.d * cp];
+    VIEW = lookAt(EYE, [c.x, 0, c.z]);
+    PROJ = persp(M3.fov, W / H, Math.max(2, c.d * 0.02), c.d * 14);
+    VP = mul(PROJ, VIEW); IVP = inv(VP);
+  }
+  const toScreen = (x, y, z) => { const p = xf(VP, [x, y, z]); return p[3] <= 0 ? null : [(p[0] + 1) / 2 * W, (1 - p[1]) / 2 * H, p[3]]; };
+  // where a point on the screen meets the ground (or the farthest ground towards the horizon)
+  function ground(px, py, far){
+    const nx = px / W * 2 - 1, ny = 1 - py / H * 2, a = xf(IVP, [nx, ny, -1]), b = xf(IVP, [nx, ny, 1]);
+    const dy = b[1] - a[1];
+    let t = dy < -1e-9 ? -a[1] / dy : Infinity;
+    const p = [a[0] + (b[0] - a[0]) * (isFinite(t) ? t : 0), 0, a[2] + (b[2] - a[2]) * (isFinite(t) ? t : 0)];
+    const lim = far || M3.cam.d * 8, hx = p[0] - EYE[0], hz = p[2] - EYE[2], hd = Math.hypot(hx, hz);
+    if (!isFinite(t) || hd > lim){
+      const dx = b[0] - a[0], dz = b[2] - a[2], l = Math.hypot(dx, dz) || 1;
+      return [EYE[0] + dx / l * lim, EYE[2] + dz / l * lim, false];
+    }
+    return [p[0], p[2], true];
+  }
+
+  /* ---- WebGL set-up ---- */
+  function prog(vs, fs){
+    const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh);
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+    const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const o = {p, a: {}, u: {}};
+    for (let i = gl.getProgramParameter(p, gl.ACTIVE_ATTRIBUTES); i--;){ const n = gl.getActiveAttrib(p, i).name; o.a[n] = gl.getAttribLocation(p, n); }
+    for (let i = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i--;){ const n = gl.getActiveUniform(p, i).name; o.u[n] = gl.getUniformLocation(p, n); }
+    return o;
+  }
+  const FOG = `uniform vec3 uFog; uniform vec2 uFogR; varying float vD;
+    vec3 fog(vec3 c){ return mix(c, uFog, smoothstep(uFogR.x, uFogR.y, vD)); }`;
+  function init(){
+    try { gl = cv.getContext("webgl", {antialias: true, alpha: false, preserveDrawingBuffer: false}) || cv.getContext("experimental-webgl"); } catch(e){ gl = null; }
+    if (!gl) return false;
+    try {
+      P.sky = prog(`attribute vec2 aP; varying float vY; void main(){ vY = aP.y; gl_Position = vec4(aP, 0.999, 1.0); }`,
+        `precision mediump float; varying float vY; uniform vec3 uTop, uHor; uniform float uH;
+         void main(){ float k = smoothstep(uH - 0.05, 1.0, vY); gl_FragColor = vec4(mix(uHor, uTop, k), 1.0); }`);
+      P.gr = prog(`attribute vec2 aP; attribute vec2 aT; uniform mat4 uM; uniform vec3 uE; varying vec2 vT; varying float vD;
+         void main(){ vec3 p = vec3(aP.x, 0.0, aP.y); vT = aT; vD = distance(p, uE); gl_Position = uM * vec4(p, 1.0); }`,
+        `precision mediump float; varying vec2 vT; uniform sampler2D uS; uniform vec3 uTint; uniform float uTex; ${FOG}
+         void main(){ vec3 c = uTex > 0.5 ? texture2D(uS, vT).rgb : vec3(0.36, 0.42, 0.36); gl_FragColor = vec4(fog(c * uTint), 1.0); }`);
+      P.bl = prog(`attribute vec3 aP; uniform mat4 uM; uniform vec3 uE; varying float vD;
+         void main(){ vD = distance(aP, uE); gl_Position = uM * vec4(aP, 1.0); }`,
+        `precision mediump float; uniform vec3 uC; uniform float uA; ${FOG}
+         void main(){ gl_FragColor = vec4(fog(uC), uA); }`);
+      P.ln = prog(`attribute vec4 aP; uniform mat4 uM; uniform vec3 uE; uniform float uW, uY; varying float vD, vS;
+         void main(){ vec3 p = vec3(aP.x, uY, aP.y); p.x += aP.z * uW; p.z += aP.w * uW; vS = sign(aP.z * aP.z + aP.w * aP.w > 0.0 ? 1.0 : 0.0);
+           vD = distance(p, uE); gl_Position = uM * vec4(p, 1.0); }`,
+        `precision mediump float; uniform vec3 uC; uniform float uA; ${FOG} void main(){ gl_FragColor = vec4(fog(uC), uA); }`);
+      P.tr = prog(`attribute vec3 aP; attribute float aS; attribute vec2 aT; uniform mat4 uM, uO; uniform vec3 uE; varying float vS, vD; varying vec2 vT;
+         void main(){ vec4 w = uO * vec4(aP, 1.0); vS = aS; vT = aT; vD = distance(w.xyz, uE); gl_Position = uM * w; }`,
+        `precision mediump float; varying float vS; varying vec2 vT; uniform vec3 uC; uniform sampler2D uS; ${FOG}
+         void main(){
+           if (vT.x < -0.5){ gl_FragColor = vec4(fog(uC * vS), 1.0); return; }
+           vec4 t = texture2D(uS, vT); if (t.a < 0.5) discard;
+           gl_FragColor = vec4(fog(t.rgb), 1.0); }`);
+      P.bx = prog(`attribute vec3 aP; attribute float aS; uniform mat4 uM; uniform vec3 uE; varying float vS, vD;
+         void main(){ vS = aS; vD = distance(aP, uE); gl_Position = uM * vec4(aP, 1.0); }`,
+        `precision mediump float; varying float vS; uniform vec3 uC; ${FOG}
+         void main(){ gl_FragColor = vec4(fog(uC * vS), 1.0); }`);
+    } catch(e){ console.warn("3D map:", e.message); gl = null; return false; }
+    B.quad = buf(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]));
+    B.tile = gl.createBuffer();
+    buildLines();
+    cv.addEventListener("webglcontextlost", e => { e.preventDefault(); M3.ok = false; setOn(false); }, false);
+    return true;
+  }
+  function buf(data){ const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); return b; }
+  function attrib(p, name, size, stride, off){ const l = p.a[name]; if (l == null || l < 0) return; gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, stride * 4, off * 4); }
+  function fogU(p){ gl.uniform3fv(p.u.uFog, LIGHT.fog); gl.uniform2f(p.u.uFogR, M3.cam.d * 2.2, M3.cam.d * 9); gl.uniform3fv(p.u.uE, EYE); }
+
+  /* ---- light by the time of day in Singapore ---- */
+  let LIGHT = null;
+  function light(){
+    const n = sgNow(), h = n.mins / 60;
+    const day = Math.max(0, Math.min(1, Math.min((h - 6.6) / 1.0, (19.6 - h) / 1.0)));     // dawn 6:36-7:36, dusk 18:36-19:36
+    const mix3 = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+    LIGHT = {day, night: 1 - day,
+      top: mix3([0.03, 0.05, 0.10], [0.36, 0.56, 0.82], day), hor: mix3([0.10, 0.13, 0.20], [0.80, 0.86, 0.90], day),
+      fog: mix3([0.08, 0.10, 0.16], [0.76, 0.82, 0.87], day), tint: mix3([0.42, 0.46, 0.58], [1, 1, 1], day),
+      wall: mix3([0.36, 0.38, 0.45], [0.93, 0.91, 0.87], day), roof: mix3([0.30, 0.32, 0.38], [0.80, 0.80, 0.78], day),
+      glass: mix3([0.10, 0.12, 0.17], [0.38, 0.48, 0.58], day), lit: [1.0, 0.82, 0.52]};
+  }
+
+  /* ---- satellite photo on the ground ---- */
+  const lonOf = x => P_LON0 + x / P_KX, latOf = z => P_LAT0 - z / P_KY;
+  const tileX = (lon, n) => Math.floor((lon + 180) / 360 * n);
+  const tileY = (lat, n) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n); };
+  const tLon = (x, n) => x / n * 360 - 180, tLat = (y, n) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+  function tile(z, x, y){
+    const k = z + "/" + x + "/" + y; let t = tex.get(k);
+    if (t){ t.used = lastT; return t; }
+    t = {ok: false, used: lastT, tx: null};
+    tex.set(k, t);
+    const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async";
+    img.onload = () => {
+      if (!gl) return;
+      try {
+        const g = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, g);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        t.tx = g; t.ok = true; satGood++; mDirty = true;
+      } catch(e){ satBad++; }
+    };
+    img.onerror = () => { satBad++; setTimeout(() => tex.delete(k), 20000); };
+    img.src = SAT_URL(z, x, y);
+    if (tex.size > 260){      // forget the tiles not used for longest
+      const old = [...tex.entries()].sort((a, b) => a[1].used - b[1].used).slice(0, 60);
+      for (const [kk, tt] of old){ if (tt.tx) gl.deleteTexture(tt.tx); tex.delete(kk); }
+    }
+    return t;
+  }
+  function drawGround(){
+    const p = P.gr, c = M3.cam; gl.useProgram(p.p);
+    gl.uniformMatrix4fv(p.u.uM, false, VP); fogU(p); gl.uniform3fv(p.u.uTint, LIGHT.tint);
+    gl.bindBuffer(gl.ARRAY_BUFFER, B.tile); attrib(p, "aP", 2, 4, 0); attrib(p, "aT", 2, 4, 2);
+    // a plain ground first, then coarse photo far away, then sharp photo near the middle
+    const R = c.d * 12;
+    quad(c.x - R, c.z - R, c.x + R, c.z + R, 0, 0, 1, 1, null);
+    const res = c.d * 2 * Math.tan(M3.fov / 2) / (H * DPR) * 1.4;
+    const zNear = clampN(Math.round(Math.log2(156543 * Math.cos(P_LAT0 * Math.PI / 180) / res)), 8, 19);
+    const corners = [[0, 0], [W, 0], [W, H], [0, H], [W / 2, 0], [0, H / 2], [W, H / 2], [W / 2, H]].map(q => ground(q[0], q[1], c.d * 8));
+    let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
+    for (const q of corners){ x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); }
+    const levels = [[zNear - 4, 1e9, 40], [zNear - 2, c.d * 3.5, 60], [zNear, c.d * 1.4, 80]];
+    for (const [z, rad, cap] of levels){
+      if (z < 6) continue;
+      const n = 2 ** z;
+      const bx0 = Math.max(x0, c.x - rad), bx1 = Math.min(x1, c.x + rad), bz0 = Math.max(z0, c.z - rad), bz1 = Math.min(z1, c.z + rad);
+      if (bx0 >= bx1 || bz0 >= bz1) continue;
+      const tx0 = tileX(lonOf(bx0), n), tx1 = tileX(lonOf(bx1), n), ty0 = tileY(latOf(bz0), n), ty1 = tileY(latOf(bz1), n);
+      if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > cap) continue;
+      for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++){
+        const t = tile(z, x, y); if (!t.ok) continue;
+        const X0 = (tLon(x, n) - P_LON0) * P_KX, X1 = (tLon(x + 1, n) - P_LON0) * P_KX;
+        const Z0 = -(tLat(y, n) - P_LAT0) * P_KY, Z1 = -(tLat(y + 1, n) - P_LAT0) * P_KY;
+        quad(X0, Z0, X1, Z1, 0, 0, 1, 1, t.tx);
+      }
+    }
+  }
+  function quad(x0, z0, x1, z1, u0, v0, u1, v1, t){
+    const p = P.gr;
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x0, z0, u0, v0, x1, z0, u1, v0, x0, z1, u0, v1, x1, z1, u1, v1]), gl.STREAM_DRAW);
+    gl.uniform1f(p.u.uTex, t ? 1 : 0);
+    if (t){ gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, t); gl.uniform1i(p.u.uS, 0); }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  /* ---- buildings: plain grey blocks, one set per 250 m cell, made when first in view ----
+     Each building's outline is smoothed to its main shape (Douglas–Peucker, 2 m) and raised to its height: a flat
+     roof and straight walls, one grey, the walls a little darker the more they face away from the light. No
+     outlines, windows or textures. Sheds, shelters and covered walkways (under 4 m, or under 40 m²) are left out. */
+  const B3_MIN_H = 4, B3_MIN_AREA = 40, B3_SMOOTH = 2, B3_LIGHT = [0.45, 0.89];   // light from the south-east
+  function smooth3(xs, ys, tol){
+    const n = xs.length; if (n <= 4) return [Array.from(xs), Array.from(ys)];
+    let far = 0, fd = -1;
+    for (let i = 1; i < n; i++){ const d = (xs[i] - xs[0]) ** 2 + (ys[i] - ys[0]) ** 2; if (d > fd){ fd = d; far = i; } }
+    const keep = new Uint8Array(n); keep[0] = keep[far] = 1;
+    const t2 = tol * tol, st = [[0, far], [far, n]];
+    while (st.length){
+      const [i0, i1] = st.pop(), j1 = i1 % n, ax = xs[i0], ay = ys[i0], dx = xs[j1] - ax, dy = ys[j1] - ay, L = dx * dx + dy * dy || 1;
+      let best = -1, bd = t2;
+      for (let i = i0 + 1; i < i1; i++){ const c = (xs[i] - ax) * dy - (ys[i] - ay) * dx, d = c * c / L; if (d > bd){ bd = d; best = i; } }
+      if (best >= 0){ keep[best] = 1; st.push([i0, best], [best, i1]); }
+    }
+    const X = [], Y = [];
+    for (let i = 0; i < n; i++) if (keep[i]){ X.push(xs[i]); Y.push(ys[i]); }
+    return X.length >= 3 ? [X, Y] : [Array.from(xs), Array.from(ys)];
+  }
+  // the roof as triangles (ear clipping, the outline counter-clockwise); a fan if the outline is too tangled
+  function roofTris(X, Y){
+    const n = X.length, idx = [...Array(n).keys()], out = [];
+    const cr = (a, b, c) => (X[b] - X[a]) * (Y[c] - Y[a]) - (Y[b] - Y[a]) * (X[c] - X[a]);
+    const inside = (p, a, b, c) => cr(a, b, p) >= 0 && cr(b, c, p) >= 0 && cr(c, a, p) >= 0;
+    let guard = n * n + 10;
+    while (idx.length > 3 && guard-- > 0){
+      let cut = false;
+      for (let i = 0; i < idx.length; i++){
+        const a = idx[(i + idx.length - 1) % idx.length], b = idx[i], c = idx[(i + 1) % idx.length];
+        if (cr(a, b, c) <= 1e-9) continue;
+        let ear = true;
+        for (const p of idx) if (p !== a && p !== b && p !== c && inside(p, a, b, c)){ ear = false; break; }
+        if (!ear) continue;
+        out.push(a, b, c); idx.splice(i, 1); cut = true; break;
+      }
+      if (!cut) break;
+    }
+    if (idx.length === 3) out.push(idx[0], idx[1], idx[2]);
+    else if (idx.length > 3) for (let i = 1; i + 1 < idx.length; i++) out.push(idx[0], idx[i], idx[i + 1]);
+    return out;
+  }
+  function chunk(D, key, ids){
+    let c = chunks.get(key);
+    if (c){ c.used = lastT; return c; }
+    const v = [];   // x, y, z and shade of every corner of every triangle
+    for (const id of ids){
+      const b = D.list[id], h = Math.min(b.h || 0, 250); if (h < B3_MIN_H) continue;
+      let [X, Y] = smooth3(b.xs, b.ys, B3_SMOOTH), n = X.length, ar = 0;
+      for (let i = 0; i < n; i++){ const k = (i + 1) % n; ar += X[i] * Y[k] - X[k] * Y[i]; }
+      if (Math.abs(ar) / 2 < B3_MIN_AREA) continue;
+      if (ar < 0){ X.reverse(); Y.reverse(); }                 // counter-clockwise, so the walls' outward side is known
+      for (let i = 0; i < n; i++){
+        const k = (i + 1) % n, ex = X[k] - X[i], ey = Y[k] - Y[i], l = Math.hypot(ex, ey) || 1;
+        const nx = ey / l, ny = -ex / l, sh = 0.64 + 0.22 * (1 + nx * B3_LIGHT[0] + ny * B3_LIGHT[1]) / 2;
+        v.push(X[i], 0, Y[i], sh, X[k], 0, Y[k], sh, X[k], h, Y[k], sh,  X[i], 0, Y[i], sh, X[k], h, Y[k], sh, X[i], h, Y[i], sh);
+      }
+      for (const i of roofTris(X, Y)) v.push(X[i], h, Y[i], 1);
+    }
+    c = {b: buf(new Float32Array(v)), n: v.length / 4, used: lastT};
+    chunks.set(key, c);
+    if (chunks.size > 700){
+      const old = [...chunks.entries()].sort((a, b) => a[1].used - b[1].used).slice(0, 150);
+      for (const [k, o] of old){ gl.deleteBuffer(o.b); chunks.delete(k); }
+    }
+    return c;
+  }
+  let bldMade = 0, bldPending = false;
+  function drawBuildings(){
+    bldPending = false;
+    if (!bldHave() || M3.cam.d > 9000) return false;
+    const D = bldData(); if (!D || !D.list.length) return false;
+    const p = P.bx, c = M3.cam, R = clampN(c.d * 3, 700, 4200);
+    gl.useProgram(p.p); gl.uniformMatrix4fv(p.u.uM, false, VP); fogU(p);
+    // one plain grey: light by day, darker at night
+    gl.uniform3fv(p.u.uC, [0.92 - 0.52 * LIGHT.night, 0.93 - 0.51 * LIGHT.night, 0.94 - 0.46 * LIGHT.night]);
+    // look ahead of the target too, where the camera is facing
+    const fx = Math.sin(c.yaw), fz = -Math.cos(c.yaw), cx = c.x + fx * R * 0.35, cz = c.z + fz * R * 0.35;
+    const cells = [];
+    for (let gx = Math.floor((cx - R) / D.CELL); gx <= Math.floor((cx + R) / D.CELL); gx++)
+      for (let gz = Math.floor((cz - R) / D.CELL); gz <= Math.floor((cz + R) / D.CELL); gz++){
+        const mx = (gx + 0.5) * D.CELL - cx, mz = (gz + 0.5) * D.CELL - cz;
+        if (mx * mx + mz * mz > R * R) continue;
+        const key = D.cellKey(gx, gz); if (!D.grid.has(key)) continue;
+        // nearest the middle of the view first, so the blocks there are made first
+        const ox = (gx + 0.5) * D.CELL - c.x, oz = (gz + 0.5) * D.CELL - c.z;
+        cells.push([ox * ox + oz * oz, gx, gz, key]);
+      }
+    cells.sort((a, b) => a[0] - b[0]);
+    const t0 = performance.now();
+    let made = 0, drew = 0;
+    for (const [, gx, gz, key] of cells){
+      // only buildings whose first cell is this one, so none is drawn twice
+      let c2 = chunks.get(key);
+      if (!c2){
+        if (made && performance.now() - t0 > 8){ bldPending = true; continue; }   // a few new cells per frame, so it never stalls
+        made++;
+        c2 = chunk(D, key, D.grid.get(key).filter(id => { const b = D.list[id]; return Math.floor(b.x0 / D.CELL) === gx && Math.floor(b.y0 / D.CELL) === gz; }));
+      } else c2.used = lastT;
+      if (!c2.n) continue;
+      gl.bindBuffer(gl.ARRAY_BUFFER, c2.b);
+      attrib(p, "aP", 3, 4, 0); attrib(p, "aS", 1, 4, 3);
+      gl.drawArrays(gl.TRIANGLES, 0, c2.n); drew++;
+    }
+    bldMade += made;
+    return drew > 0;
+  }
+
+  /* ---- lines: flat ribbons just above the ground, the width set when drawn ---- */
+  const LN = {};
+  function buildLines(){
+    // Each stretch between two stations is one ribbon. Where the track turns sharply (the drawn track often hooks into the
+    // station's dot), a pointed corner would stick far out, so the ribbon turns square and a round joint fills the corner;
+    // gentle bends keep their mitred corners. Neighbouring stretches use the same corner, so they meet without gaps.
+    const SLICES = 14, SHARP = Math.cos(50 * Math.PI / 180);
+    const same = (p, q) => p && q && Math.abs(p[0] - q[0]) < 1 && Math.abs(p[1] - q[1]) < 1;
+    const unit = (p, q) => { const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz); return l > 1e-6 ? [dx / l, dz / l] : null; };
+    for (const c of MDRAW){
+      const S = MSEG[c], loop = !!LINES[c].loop;
+      LN[c] = S.map((s, j) => {
+        const pts = s.pts, v = [], disc = [];
+        const P0 = S[j - 1] || (loop ? S[S.length - 1] : null), N0 = S[j + 1] || (loop ? S[0] : null);
+        const before = P0 && P0.pts.length > 1 && same(P0.pts[P0.pts.length - 1], pts[0]) ? P0.pts[P0.pts.length - 2] : null;
+        const after = N0 && N0.pts.length > 1 && same(N0.pts[0], pts[pts.length - 1]) ? N0.pts[1] : null;
+        const pair = (p, nx, nz) => v.push(p[0], p[1], nx, nz, p[0], p[1], -nx, -nz);
+        for (let i = 0; i < pts.length; i++){
+          const p = pts[i], a = i > 0 ? pts[i - 1] : before, b = i < pts.length - 1 ? pts[i + 1] : after;
+          const din = a && unit(a, p), dout = b && unit(p, b);
+          if (din && dout && din[0] * dout[0] + din[1] * dout[1] < SHARP){
+            pair(p, -din[1], din[0]); pair(p, -dout[1], dout[0]);       // square on each side of a sharp corner …
+            if (i > 0)                                                      // … with a round joint (drawn once per point)
+              for (let k = 0; k < SLICES; k++){
+                const t0 = k / SLICES * Math.PI * 2, t1 = (k + 1) / SLICES * Math.PI * 2;
+                disc.push(p[0], p[1], 0, 0, p[0], p[1], Math.cos(t0), Math.sin(t0), p[0], p[1], Math.cos(t1), Math.sin(t1));
+              }
+            continue;
+          }
+          const d = din && dout ? unit([0, 0], [din[0] + dout[0], din[1] + dout[1]]) || dout : dout || din || [1, 0];
+          let nx = -d[1], nz = d[0], k = 1;
+          if (din && dout) k = 1 / Math.max(0.4, -din[1] * nx + din[0] * nz);   // mitre the gentle corners
+          pair(p, nx * k, nz * k);
+        }
+        const n = v.length / 4;
+        return {b: buf(new Float32Array(v.concat(disc))), n, dn: disc.length / 4};
+      });
+    }
+  }
+  function lineW(c){ const w = Math.max(22, M3.cam.d * 0.005); return LINES[c].lrt ? w * 0.65 : w; }
+  function drawLines(now){
+    const p = P.ln; gl.useProgram(p.p); gl.uniformMatrix4fv(p.u.uM, false, VP); fogU(p);
+    // the ribbons all lie flat at the same height, so testing depth between them makes them flicker into each other
+    // (saw-tooth stripes where lines meet or run side by side): draw them in order. They're drawn after the buildings
+    // and over them, so a line is never hidden behind a block (most of the city's lines run underground anyway).
+    gl.depthFunc(gl.ALWAYS);
+    for (const c of MDRAW){
+      const act = activeStations(LINES[c], now.iso).length, col = rgb(MC[c]);
+      gl.uniform1f(p.u.uW, lineW(c) / 2); gl.uniform1f(p.u.uY, LINES[c].lrt ? 3 : 4);
+      LN[c].forEach((s, i) => {
+        const live = i < act - 1;
+        gl.uniform3fv(p.u.uC, live ? col : col.map(v => v * 0.5 + 0.25)); gl.uniform1f(p.u.uA, live ? 1 : 0.55);
+        gl.bindBuffer(gl.ARRAY_BUFFER, s.b); attrib(p, "aP", 4, 4, 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, s.n);
+        if (s.dn) gl.drawArrays(gl.TRIANGLES, s.n, s.dn);
+      });
+    }
+    gl.depthFunc(gl.LEQUAL);
+  }
+
+  /* ---- trains: little 3D trains ----
+     Each train is its line's train front (the same picture as on the flat map) on a short rounded body in the line's
+     colour, lit from above, standing beside its line (keeping left, as on the flat map) and facing the way it's going.
+     They're bigger than life: about the size of the flat map's train at the same zoom in the middle of the view,
+     bigger nearer you and smaller further off. Special-bound trains get a dotted outline, as on the flat map. Like the
+     lines, they're never hidden behind a building. The farthest ones, crowded towards the horizon, are left out. */
+  const TR3_LEN = 1.8;                         // body length, in train heights
+  const trMesh = new Map(), trTex = new Map();
+  let sel3 = null, sb3 = [];
+  function model(x, y, z, ux, uz, s, sy){      // forward (ux, uz), size s, height sy
+    return [ux * s, 0, uz * s, 0, 0, sy, 0, 0, -uz * s, 0, ux * s, 0, x, y, z, 1];
+  }
+  // one body per train shape: 1 tall, as wide as the picture, TR3_LEN long, its front (with the picture) at +x
+  function trainMesh(key){
+    let m = trMesh.get(key); if (m) return m;
+    const sh = TRAIN_SHAPES[key] || TRAIN_SHAPES.r151, a = sh.a, hw = a / 2, L = TR3_LEN, X0 = -L / 2, X1 = L / 2;
+    const r1 = Math.min(a * (sh.r1 || 0.2), hw, 0.5), r2 = Math.min(a * (sh.r2 || 0.1), hw, 0.5), ring = [];
+    const arc = (cz, cy, r, t0, t1) => { for (let i = 0; i <= 5; i++){ const t = t0 + (t1 - t0) * i / 5; ring.push([cz + Math.cos(t) * r, cy + Math.sin(t) * r]); } };
+    // the outline across the body (z across, y up), counter-clockwise seen from the front: rounder at the roof
+    arc(hw - r1, 1 - r1, r1, 0, Math.PI / 2); arc(-hw + r1, 1 - r1, r1, Math.PI / 2, Math.PI);
+    arc(-hw + r2, r2, r2, Math.PI, Math.PI * 1.5); arc(hw - r2, r2, r2, Math.PI * 1.5, Math.PI * 2);
+    const v = [], n = ring.length;   // x, y, z, shade, u, v (u < 0: plain colour)
+    const P6 = (x, y, z, sh2, u = -1, w = -1) => v.push(x, y, z, sh2, u, w);
+    for (let i = 0; i < n; i++){
+      const [z0, y0] = ring[i], [z1, y1] = ring[(i + 1) % n], l = Math.hypot(z1 - z0, y1 - y0) || 1;
+      const nz = (y1 - y0) / l, ny = -(z1 - z0) / l, sd = clampN(0.6 + 0.32 * ny + 0.1 * nz, 0.45, 1);
+      P6(X0, y0, z0, sd); P6(X1, y0, z0, sd); P6(X1, y1, z1, sd); P6(X0, y0, z0, sd); P6(X1, y1, z1, sd); P6(X0, y1, z1, sd);
+    }
+    for (let i = 0; i < n; i++){                 // the two ends: plain, the back a little darker
+      const [z0, y0] = ring[i], [z1, y1] = ring[(i + 1) % n];
+      P6(X1, 0.5, 0, 0.86); P6(X1, y0, z0, 0.86); P6(X1, y1, z1, 0.86);
+      P6(X0, 0.5, 0, 0.55); P6(X0, y1, z1, 0.55); P6(X0, y0, z0, 0.55);
+    }
+    // the picture, just in front of the front end (u from the viewer's left to right, v from the top down)
+    const F = X1 + 0.004;
+    P6(F, 1, hw, 1, 0, 0); P6(F, 1, -hw, 1, 1, 0); P6(F, 0, -hw, 1, 1, 1);
+    P6(F, 1, hw, 1, 0, 0); P6(F, 0, -hw, 1, 1, 1); P6(F, 0, hw, 1, 0, 1);
+    m = {b: buf(new Float32Array(v)), n: v.length / 6, a, ring, X0, X1};
+    trMesh.set(key, m);
+    return m;
+  }
+  // the line's train picture, as on the flat map, drawn once per line and colour
+  function faceTex(code, col){
+    const k = code + "|" + col; let t = trTex.get(k); if (t) return t;
+    const sh = TRAIN_SHAPES[LINE_TRAIN[code]] || TRAIN_SHAPES.r151, h = 96, w = Math.max(8, Math.round(h * sh.a));
+    const c2 = document.createElement("canvas"); c2.width = w; c2.height = h;
+    // pointing down, so its pointer falls off the bottom of the picture; the rim in the body's own colour
+    try { drawTrainIcon(c2.getContext("2d"), w / 2, h / 2, 0, 1, h, col, "#fff", col, 0.01, LINE_TRAIN[code] ? code : "NSL", null); } catch(e){}
+    t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c2);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    trTex.set(k, t);
+    return t;
+  }
+  // the outline round points on the screen (the train's body is convex, so this is its outline)
+  function hull2(P0){
+    const P = P0.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const q of P){ while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = P.length - 1; i >= 0; i--){ const q = P[i]; while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  function drawTrains(now){
+    const c = M3.cam, f = H / (2 * Math.tan(M3.fov / 2));
+    // a train is about as tall on the screen as the flat map's at the same zoom, in the middle of the view
+    const zoom = f / c.d / fitScale, base = clampN(clampN(2.2 + zoom * 0.55, 2.6, 8) * 0.9, 3.4, 7) * 3, Hm = base * 0.7 * c.d / f;
+    hits = []; tags3 = []; last3 = []; sel3 = null; sb3 = []; let total = 0;
+    const p = P.tr; gl.useProgram(p.p); gl.uniformMatrix4fv(p.u.uM, false, VP); fogU(p);
+    gl.clear(gl.DEPTH_BUFFER_BIT);                // in front of the buildings, like the lines
+    gl.activeTexture(gl.TEXTURE0); gl.uniform1i(p.u.uS, 0);
+    let mesh = null, texNow = null;
+    for (const code of MDRAW){
+      const L = LINES[code], act = activeStations(L, now.iso), tr = mapTrains(code, now); total += tr.length;
+      const m = trainMesh(LINE_TRAIN[code] || "r151"), col = rgb(MC[code]);
+      for (const t of tr){
+        const [x, z, dx, dz] = posOn(code, t.idx), l = Math.hypot(dx, dz) || 1;
+        const ux = (t.dir ? -dx : dx) / l, uz = (t.dir ? -dz : dz) / l;
+        const q = toScreen(x, 6, z); if (!q || q[0] < -80 || q[0] > W + 80 || q[1] < -80 || q[1] > H + 80) continue;
+        const far = q[2] / c.d; if (far > 3.4) continue;
+        const sel = !!(mSel && mSel.type === "train" && mSel.line === code && (mSel.id === t.id || mSel.id === t.prev));
+        if (sel && mSel.id !== t.id) mSel.id = t.id;
+        const hm = Hm * (sel ? 1.4 : 1), side = lineW(code) * 0.5 + hm * (m.a * 0.5 + 0.12);
+        const px = x + uz * side, pz = z - ux * side, sb = isShortTo(L, t.dir, act, t.to);   // keep left, as in 2D
+        if (m !== mesh){ gl.bindBuffer(gl.ARRAY_BUFFER, m.b); attrib(p, "aP", 3, 6, 0); attrib(p, "aS", 1, 6, 3); attrib(p, "aT", 2, 6, 4); mesh = m; }
+        const tx = faceTex(code, MC[code]);
+        if (tx !== texNow){ gl.bindTexture(gl.TEXTURE_2D, tx); texNow = tx; }
+        gl.uniform3fv(p.u.uC, col);
+        gl.uniformMatrix4fv(p.u.uO, false, model(px, 4, pz, ux, uz, hm, hm));
+        gl.drawArrays(gl.TRIANGLES, 0, m.n);
+        const qc = toScreen(px, 4 + hm * 0.5, pz); if (!qc) continue;
+        const r = Math.max(16, hm * 1.3 / qc[2] * f);
+        hits.push({line: code, id: t.id, x: qc[0], y: qc[1], r});
+        if (sel) sel3 = {x: qc[0], y: qc[1], r: r * 0.9};
+        if (sb){                                              // special-bound: its outline on the screen, dotted in the overlay
+          const pts = [];
+          for (const lx of [m.X0, m.X1]) for (const [lz, ly] of m.ring){
+            const w = toScreen(px + (ux * lx - uz * lz) * hm, 4 + ly * hm, pz + (uz * lx + ux * lz) * hm); if (w) pts.push([w[0], w[1]]);
+          }
+          if (pts.length > 2) sb3.push({pts: hull2(pts), h: hm / qc[2] * f});
+        }
+        if (isLastTrain(code, t, now)){                       // the last train: a bar across its front, in the overlay
+          const n1 = toScreen(px + ux * hm * (TR3_LEN / 2 + 0.3), 4 + hm * 0.5, pz + uz * hm * (TR3_LEN / 2 + 0.3));
+          if (n1){ const ddx = n1[0] - qc[0], ddy = n1[1] - qc[1], dl = Math.hypot(ddx, ddy) || 1; last3.push({x: n1[0], y: n1[1], ux: ddx / dl, uy: ddy / dl, r: clampN(hm * 0.45 / qc[2] * f, 3.5, 12), c: code}); }
+        }
+        const tag = window.spotTag ? spotTag(code, t, now.iso) : null;   // you logged this train: its tag goes in the overlay
+        if (tag && (c.d <= 6000 || sel)) tags3.push({x: qc[0], y: qc[1], r: Math.min(26, r * 0.7), tag});
+      }
+    }
+    return total;
+  }
+
+  /* ---- stations and names, drawn flat on top ---- */
+  function drawOverlay(now){
+    octx.setTransform(DPR, 0, 0, DPR, 0, 0); octx.clearRect(0, 0, W, H);
+    if (M3.under) try { M3.under(octx, toScreen, W, H, now); } catch(e){}       // e.g. a planned trip, drawn under the stations
+    // special-bound trains: a dotted outline, the flat map's dashes over a rim in the map's own colour
+    octx.lineJoin = "round";
+    for (const o of sb3){
+      octx.beginPath(); o.pts.forEach(([x, y], i) => i ? octx.lineTo(x, y) : octx.moveTo(x, y)); octx.closePath();
+      octx.lineWidth = 2; octx.strokeStyle = MC.bg; octx.setLineDash([]); octx.stroke();
+      octx.setLineDash([Math.max(1.6, o.h * 0.13), Math.max(1.3, o.h * 0.1)]); octx.strokeStyle = MC.fg; octx.stroke(); octx.setLineDash([]);
+    }
+    const c = M3.cam, placed = [], shown = [];
+    stationLabelHits3 = [];
+    for (const e of MSTN){
+      const q = toScreen(e.x, 6, e.z !== undefined ? e.z : e.y); if (!q || q[0] < -40 || q[0] > W + 40 || q[1] < -40 || q[1] > H + 40) continue;
+      const far = q[2] / c.d; if (far > 6) continue;
+      shown.push({e, q, far});
+    }
+    shown.sort((a, b) => a.q[2] - b.q[2]);
+    const r0 = clampN(9 - Math.log2(c.d / 1500) * 1.6, 4, 10);
+    for (const s of shown){
+      const {e, q} = s, r = clampN(r0 / Math.max(0.7, s.far), 3.5, 10) * (e.ix ? 1.2 : 1);
+      const future = e.codes.every(x => x.idx >= activeStations(LINES[x.line], now.iso).length);
+      const lv = crowdLayer && !future ? crowdAt(e) : null;
+      octx.beginPath(); octx.arc(q[0], q[1], r, 0, Math.PI * 2);
+      octx.fillStyle = lv ? MC["cw" + lv] : "#fff"; octx.fill();
+      octx.lineWidth = Math.max(2, r * 0.45); octx.strokeStyle = future ? "#8a929c" : e.ix ? "#11161c" : MC[e.codes[0].line]; octx.stroke();
+      if (mSel && mSel.type === "station" && mSel.name === e.name){ octx.beginPath(); octx.arc(q[0], q[1], r + 6, 0, Math.PI * 2); octx.lineWidth = 2.5; octx.strokeStyle = "#fff"; octx.stroke(); }
+      s.r = r;
+    }
+    if (sel3){ octx.beginPath(); octx.arc(sel3.x, sel3.y, sel3.r, 0, Math.PI * 2); octx.lineWidth = 2.5; octx.strokeStyle = "#fff"; octx.stroke(); }   // the train you picked
+    // names: nearest and most important first, never on top of each other
+    const fs = clampN(15 - Math.log2(c.d / 1500) * 1.5, 11, 16);
+    octx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`; octx.textBaseline = "middle";
+    const order = shown.slice().sort((a, b) => (b.e.ix * 2 + b.e.term) - (a.e.ix * 2 + a.e.term) || a.q[2] - b.q[2]);
+    for (const s of order){
+      const {e, q} = s;
+      if (typeof RT !== "undefined" && RT.view && RT.marks && RT.route && RT.marks.some(m => m.name === e.name)) continue;   // a planned trip names these itself
+      if (s.far > (e.ix || e.term ? 4 : 2.2) || (c.d > 9000 && !e.ix && !e.term) || (c.d > 20000 && !e.ix)) continue;
+      // code pills inside the label for the selected station, and for interchanges when close
+      let codes = (mSel && mSel.type === "station" && mSel.name === e.name) || (e.ix && c.d <= 2500 && s.far < 2.5) ? e.codes.map(x => [x.line, x.code]) : null;
+      const pfs = fs - 3, tw = octx.measureText(e.name).width, h = fs + 9, x = q[0] + s.r + 6, y = q[1];
+      const pw = codes ? canvasPills(octx, codes, 0, 0, pfs, false) : 0, ph = pfs + 10;      // pills sit just under the name
+      octx.font = `700 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`;
+      const fits = (w, hh) => !(x + w > W - 62 || x < 4) && !placed.some(b => x < b[2] && x + w > b[0] && y - h / 2 < b[3] && y - h / 2 + hh > b[1]);
+      if (codes && !fits(Math.max(tw + 14, pw + 4), h + ph)) codes = null;    // no room for the pills: just the name, as before
+      const w = tw + 14;
+      if (x + w > W - 62 || x < 4) continue;      // keep clear of the map's buttons and the edge
+      const box = [x, y - h / 2, x + Math.max(w, codes ? pw + 4 : 0), y + h / 2 + (codes ? ph : 0)];
+      if (placed.some(b => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) continue;
+      placed.push(box);
+      stationLabelHits3.push({name: e.name, box});
+      octx.fillStyle = "rgba(10,14,20,.62)"; octx.beginPath();
+      if (octx.roundRect) octx.roundRect(box[0], box[1], w, h, h / 2); else octx.rect(box[0], box[1], w, h);
+      octx.fill();
+      octx.fillStyle = "#fff"; octx.textAlign = "left"; octx.fillText(e.name, x + 7, y + 0.5);
+      if (codes) canvasPills(octx, codes, x + 3, y + h / 2 + ph / 2 + 1, pfs);
+    }
+    for (const b of last3) if (b.x > -40 && b.x < W + 40 && b.y > -40 && b.y < H + 40) drawLastBar(octx, b.x, b.y, b.ux, b.uy, b.r, MC[b.c], "#0b0e12");   // last trains
+    for (const g of tags3) if (g.x > -40 && g.x < W + 40 && g.y > -40 && g.y < H + 40) drawSpotTag(octx, g.x, g.y, Math.max(8, g.r), g.tag, 11, placed);
+  }
+
+  /* ---- one frame ---- */
+  function size(){
+    const r = wrap.getBoundingClientRect(); if (!r.width || !r.height) return false;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    if (W !== r.width || H !== r.height || cv.width !== Math.round(r.width * DPR)){
+      W = r.width; H = r.height;
+      cv.width = ov.width = Math.round(W * DPR); cv.height = ov.height = Math.round(H * DPR);
+    }
+    return true;
+  }
+  M3.frame = () => {
+    if (!gl || !size()) return;
+    lastT = performance.now();
+    if (spin) spin(lastT);
+    light(); camera();
+    const now = sgNow();
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE);
+    const sp = P.sky; gl.useProgram(sp.p);
+    const hy = toScreen(EYE[0] + Math.sin(M3.cam.yaw) * M3.cam.d * 14, 0, EYE[2] - Math.cos(M3.cam.yaw) * M3.cam.d * 14);
+    gl.uniform3fv(sp.u.uTop, LIGHT.top); gl.uniform3fv(sp.u.uHor, LIGHT.hor); gl.uniform1f(sp.u.uH, hy ? 1 - hy[1] / H * 2 : -1);
+    gl.bindBuffer(gl.ARRAY_BUFFER, B.quad); attrib(sp, "aP", 2, 2, 0); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    drawGround();
+    gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT); gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    const b = drawBuildings();
+    if (b !== bldShown){ bldShown = b; syncMapAttr(); }
+    drawLines(now);
+    const total = drawTrains(now);
+    gl.disable(gl.BLEND);
+    drawOverlay(now);
+    $("map3dN").style.setProperty("--yaw", (-M3.cam.yaw) + "rad");
+    $("mapCount").textContent = total ? `${total} trains running · ${TT && !SIM.est ? "LTA timetable" : "estimated"} · ${dayText(now).split(" · ")[0]}` : "No trains running right now";
+    mDirty = !!(spin || drag.size || bldPending);       // keep going while blocks in view are still being made
+    if (!mDirty){ clearTimeout(M3.tick); M3.tick = setTimeout(() => { mDirty = true; }, M3.anim ? 62 : 120); }   // trains glide at about 8 frames a second when idle; a trip animates at about 16
+  };
+
+  /* ---- moving the camera ---- */
+  let spin = null;
+  function fly(to, ms){
+    const from = {...M3.cam}, t0 = performance.now(), reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let dy = (to.yaw ?? from.yaw) - from.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    spin = t => {
+      const k = reduce ? 1 : Math.min(1, (t - t0) / (ms || 600)), e = 1 - Math.pow(1 - k, 3), m = (a, b) => a + ((b ?? a) - a) * e;
+      M3.cam = {x: m(from.x, to.x), z: m(from.z, to.z), d: Math.exp(m(Math.log(from.d), to.d && Math.log(to.d))), yaw: from.yaw + dy * e, pitch: m(from.pitch, to.pitch)};
+      if (k >= 1) spin = null;
+    };
+    mDirty = true;
+  }
+  const clampCam = () => { const c = M3.cam; c.d = clampN(c.d, 120, 60000); c.pitch = clampN(c.pitch, 0.12, 1.5); };
+  M3.zoom = k => { fly({d: clampN(M3.cam.d * k, 120, 60000)}, 300); };
+  M3.reset = () => {
+    let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9; for (const e of MSTN){ x0 = Math.min(x0, e.x); x1 = Math.max(x1, e.x); z0 = Math.min(z0, e.y); z1 = Math.max(z1, e.y); }
+    fly({x: (x0 + x1) / 2, z: (z0 + z1) / 2, d: Math.max(x1 - x0, z1 - z0) * 1.15, yaw: 0, pitch: 0.95}, 700);
+  };
+  M3.focus = (x, z) => fly({x, z, d: Math.min(M3.cam.d, 2600)}, 650);
+  const drag = new Map(); let g0 = null, tapAt = null;
+  // Hit boxes for the station-name labels drawn on the 3D overlay. These must be
+  // checked before the station-dot hit test so tapping the actual station name
+  // opens the same station info card as tapping the dot.
+  let stationLabelHits3 = [];
+  const pt = e => { const r = ov.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; };
+  function startGesture(){
+    const ps = [...drag.values()];
+    g0 = {cam: {...M3.cam}, ps: ps.map(p => ({...p})), moved: g0 ? g0.moved : false};
+    if (ps.length === 1){ camera(); g0.ground = ground(ps[0].x, ps[0].y); }
+  }
+  ov.addEventListener("pointerdown", e => {
+    ov.setPointerCapture(e.pointerId); spin = null;
+    drag.set(e.pointerId, {...pt(e), rot: e.button === 2 || e.shiftKey || e.ctrlKey});
+    if (drag.size === 1){ tapAt = {...pt(e), t: performance.now()}; g0 = null; }
+    startGesture();
+  });
+  ov.addEventListener("pointermove", e => {
+    if (!drag.has(e.pointerId) || !g0) return;
+    const d0 = drag.get(e.pointerId); drag.set(e.pointerId, {...pt(e), rot: d0.rot});
+    const ps = [...drag.values()];
+    if (tapAt && Math.hypot(ps[0].x - tapAt.x, ps[0].y - tapAt.y) > 6) g0.moved = true;
+    if (!g0.moved) return;
+    const c = M3.cam;
+    if (ps.length === 1 && !ps[0].rot){
+      // keep the ground point under the finger: move the target by how far that point has slid
+      M3.cam = {...g0.cam}; camera();
+      const a = g0.ground, b = ground(ps[0].x, ps[0].y);
+      if (a[2] && b[2]){ M3.cam.x = g0.cam.x + a[0] - b[0]; M3.cam.z = g0.cam.z + a[1] - b[1]; }
+    } else if (ps.length === 1){
+      const q = g0.ps[0];
+      c.yaw = g0.cam.yaw + (ps[0].x - q.x) * 0.006; c.pitch = g0.cam.pitch + (ps[0].y - q.y) * 0.005;
+    } else if (ps.length >= 2){
+      const [a, b] = ps, [a0, b0] = g0.ps;
+      const d1 = Math.hypot(b.x - a.x, b.y - a.y), d0 = Math.hypot(b0.x - a0.x, b0.y - a0.y) || 1;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x) - Math.atan2(b0.y - a0.y, b0.x - a0.x);
+      const my = ((a.y - a0.y) + (b.y - b0.y)) / 2;
+      c.d = g0.cam.d * d0 / Math.max(10, d1);
+      c.yaw = g0.cam.yaw - ang;
+      c.pitch = g0.cam.pitch + my * 0.006;
+    }
+    clampCam(); mDirty = true;
+  });
+  const end = e => {
+    if (!drag.has(e.pointerId)) return;
+    drag.delete(e.pointerId);
+    if (drag.size === 0){
+      if (tapAt && g0 && !g0.moved && performance.now() - tapAt.t < 450) tap(tapAt.x, tapAt.y);
+      g0 = null; tapAt = null;
+    } else startGesture();
+    mDirty = true;
+  };
+  ov.addEventListener("pointerup", end); ov.addEventListener("pointercancel", end);
+  ov.addEventListener("contextmenu", e => e.preventDefault());
+  ov.addEventListener("wheel", e => { e.preventDefault(); spin = null; M3.cam.d *= Math.exp(e.deltaY * 0.0015); clampCam(); mDirty = true; }, {passive: false});
+  ov.addEventListener("dblclick", e => { const p = pt(e); camera(); const g = ground(p.x, p.y); if (g[2]) fly({x: g[0], z: g[1], d: M3.cam.d / 2}, 450); });
+  function tap(x, y){
+    // Station-name labels take priority over train arrows and station dots.
+    // The labels are drawn in the overlay canvas, so their hit boxes are
+    // recorded during drawOverlay() and reused here in the same coordinate space.
+    for (const h of stationLabelHits3){
+      const b = h.box;
+      if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]){
+        mSel = {type: "station", name: h.name}; mapInfo(); mDirty = true; return;
+      }
+    }
+    let best = null, bd = 1e9;
+    for (const h of hits){ const d = Math.hypot(h.x - x, h.y - y); if (d < h.r && d < bd){ bd = d; best = h; } }
+    if (best){ mSel = {type: "train", line: best.line, id: best.id}; mapInfo(); mDirty = true; return; }
+    camera();
+    let bs = null, bsd = 22;
+    for (const e of MSTN){ const q = toScreen(e.x, 6, e.y); if (!q) continue; const d = Math.hypot(q[0] - x, q[1] - y); if (d < bsd){ bsd = d; bs = e; } }
+    mSel = bs ? {type: "station", name: bs.name} : null; mapInfo(); mDirty = true;
+  }
+
+  /* ---- switching between the flat map and 3D ---- */
+  function setOn(on){
+    if (on && M3.ok === null) M3.ok = init();
+    if (on && !M3.ok){
+      $("map3d").title = "3D needs WebGL, which isn't available here";
+      $("mapCount").textContent = "3D isn't available on this device"; on = false;
+    }
+    if (on && !M3.on && view && mW){
+      // start from what the flat map shows (position, zoom and heading)
+      const [cx, cz] = wPt(mW / 2, mH / 2), startYaw = -(view.a || 0);
+      M3.cam = {x: cx, z: cz, d: clampN(mH / view.s / (2 * Math.tan(M3.fov / 2)) * 1.25, 300, 60000), yaw: startYaw, pitch: 1.45};
+      fly({pitch: 0.78, yaw: Math.abs(startYaw) > 0.01 ? startYaw : -0.35}, 900);
+    }
+    if (!on && M3.on){
+      const c = M3.cam, s = clampN(mH / (c.d * 2 * Math.tan(M3.fov / 2)), fitScale * 0.8, fitScale * 64);
+      view = viewAt(c.x, c.z, s, normAngle(-c.yaw));
+    }
+    M3.on = on;
+    wrap.classList.toggle("m3d-on", on);
+    cv.hidden = ov.hidden = !on; $("map3dN").hidden = false;
+    $("map3d").setAttribute("aria-pressed", on);
+    store.set("mrt.m3d", on); mDirty = true; syncMapAttr();
+  }
+  M3.set = setOn;
+  M3.toScreen = (x, y, z) => { camera(); return toScreen(x, y, z); };
+  M3.focusBox = (x0, z0, x1, z1) => fly({x: (x0 + x1) / 2, z: (z0 + z1) / 2, d: clampN(Math.max(x1 - x0, (z1 - z0) * W / H) * 1.25 + 1500, 900, 60000), yaw: 0, pitch: 1.0}, 800);
+  // the flat map's own buttons work the 3D camera while it's on
+  const was = {i: $("mapIn").onclick, o: $("mapOut").onclick, r: $("mapReset").onclick, n: $("map3dN").onclick};
+  $("mapIn").onclick = () => M3.on ? M3.zoom(1 / 1.7) : was.i();
+  $("mapOut").onclick = () => M3.on ? M3.zoom(1.7) : was.o();
+  $("mapReset").onclick = () => M3.on ? M3.reset() : was.r();
+  $("map3d").hidden = false; $("map3d").title = "3D map"; $("map3d").setAttribute("aria-label", "3D map"); $("map3d").setAttribute("aria-pressed", false);
+  $("map3d").onclick = () => setOn(!M3.on);
+  $("map3dN").onclick = () => M3.on ? fly({yaw: 0, pitch: 0.95}, 600) : (was.n && was.n());
+  const fm = window.mapFocus;
+  window.mapFocus = name => { fm(name); const e = MSTN.find(x => x.name === name); if (M3.on && e) M3.focus(e.x, e.y); };
+  const draw2d = mapDraw;
+  mapDraw = function(){ if (M3.on) { try { M3.frame(); } catch(e){ console.warn("3D map:", e); setOn(false); } return; } return draw2d(); };
+  if (store.get("mrt.m3d", false) === true) setTimeout(() => setOn(true), 400);
+})();
 /* ---------- Trip planner ----------
    From one station to another: the fastest way by train (the same route search as Ask), with the real next
    trains for every ride from the timetable, the changes, how long it takes, when you'd arrive and the card fare.
-   The trip is drawn on the map: the rest of the map dims, the route draws itself in, then a light
+   The trip is drawn on the map (flat or 3D): the rest of the map dims, the route draws itself in, then a light
    runs along it the way you'd travel.
    Fares: LTA's distance fares from 27 December 2025 (as listed by SBS Transit), for an adult, student,
    senior / person with disabilities, or Workfare card, 50 cents less when you tap in before 7.45am on a weekday
@@ -9584,6 +10317,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   }
   function fit(){
     const [x0, y0, x1, y1] = RT.box;
+    if (typeof M3 !== "undefined" && M3.on){ M3.focusBox(x0, y0, x1, y1); return; }
     const s = clampN(Math.min(mW / ((x1 - x0) * 1.15 + 900), mH / ((y1 - y0) * 1.2 + 900)), fitScale, fitScale * 40);
     flyTo((x0 + x1) / 2, (y0 + y1) / 2, s);
   }
@@ -9594,7 +10328,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, b[0] - a[0], b[1] - a[1]];
   };
 
-  /* drawn with a projection: P(x, y) → [screenX, screenY] or null */
+  /* drawn with any projection: P(x, y) → [screenX, screenY] or null (behind the 3D camera) */
   function paint(ctx, P, W, H, lw){
     const t = performance.now() - RT.t0, reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const grow = reduce ? 1 : 1 - Math.pow(1 - clampN(t / 1600, 0, 1), 3), upto = grow * RT.len;
@@ -9682,7 +10416,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     return t < 12000;       // keep moving for 12 seconds, then rest (Replay starts it again)
   }
 
-  /* ---- hooks into the map and the card ---- */
+  /* ---- hooks into the flat map, the 3D map and the card ---- */
   const draw2d = mapDraw;
   /* While the trip animates, most frames only move the trip's own light and dashes, so the full map (every train,
      building and label) is drawn about 3 times a second and kept as a picture; the frames in between copy that
@@ -9690,7 +10424,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
   const sig = () => [view && view.s, view && view.tx, view && view.ty, view && (view.a || 0), mW, mH, mDpr, document.documentElement.dataset.theme || ""].join("|");
   const onScreen = () => { const r = mwrap.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && !document.hidden; };
   mapDraw = function(){
-    const trip = RT.route && RT.view, now = performance.now();
+    const trip = RT.route && RT.view && !(typeof M3 !== "undefined" && M3.on), now = performance.now();
     let out;
     if (trip && RT.pic && RT.picSig === sig() && now - RT.picAt < 320 && RT.pic.width === mcv.width && RT.pic.height === mcv.height){
       mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.drawImage(RT.pic, 0, 0); mDirty = false;
@@ -9711,6 +10445,10 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       if (paint(mctx, (x, y) => mPt(x, y), mW, mH, lw) && !RT.tick && onScreen()) RT.tick = setTimeout(() => { RT.tick = 0; mDirty = true; }, 62);   // about 16 frames a second, only while you can see it
     }
     return out;
+  };
+  if (typeof M3 !== "undefined") M3.under = (ctx, toScreen, W, H) => {
+    if (!(RT.route && RT.view)){ M3.anim = false; return; }
+    M3.anim = paint(ctx, (x, y) => { const q = toScreen(x, 7, y); return q ? [q[0], q[1]] : null; }, W, H, 4.2);
   };
   const baseHTML = mapInfoHTML;
   mapInfoHTML = function(){
@@ -9792,6 +10530,8 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       return;
     }
   });
+  // switching between flat and 3D keeps the trip in view
+  { const b3 = $("map3d"), was3 = b3.onclick; b3.onclick = e => { was3 && was3(e); if (RT.route && RT.view) setTimeout(fit, 950); }; }
   // the button on the map
   $("mapRoute").hidden = false;
   $("mapRoute").onclick = () => {
@@ -10151,7 +10891,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     const f = (FLEET[x.line] || []).filter(m => m[5] !== "soon");
     const list = f.map(([m, mk, cars, n, yr]) => `<button type="button" data-hx="model" data-m="${esc(m)}"><b>${esc(m)}</b><span>${esc(mk)} · ${typeof cars === "number" ? `${cars} cars` : `${esc(cars)} cars`}${n ? ` · ${n} in service` : ""}${yr ? ` · since ${yr}` : ""}${H_MODEL[m] ? " · history ›" : ""}</span></button>`).join("");
     return `${list ? `<div><p class="hsub">Train model</p><div class="hx-models">${list}</div><p class="hint">${f.length > 1 ? "Any of these can be running this train; operators don't publish which set is which." : ""}</p></div>` : ""}
-      <div class="mi-act"><button class="btn" type="button" data-hx="follow">Follow train</button><button class="btn ghost" type="button" data-sp="open" data-x="${esc(JSON.stringify({type: "train", line: x.line, id: x.id}))}">Spot this train</button><button class="btn ghost" type="button" data-hx="line">Open on Line Board</button></div>
+      <div class="mi-act">${!$("mapWrap").classList.contains("m3d-on") ? '<button class="btn" type="button" data-hx="follow">Follow train</button>' : ""}<button class="btn ghost" type="button" data-sp="open" data-x="${esc(JSON.stringify({type: "train", line: x.line, id: x.id}))}">Spot this train</button><button class="btn ghost" type="button" data-hx="line">Open on Line Board</button></div>
       <div class="sp-box" id="hxLog" hidden></div>`;
   }
   function head(x){
@@ -10185,8 +10925,8 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
     hxRender();
     if (!HX) return;
     $("hxSheet").hidden = false; $("hxBg").hidden = false;
-    // keep what you tapped in sight above the sheet
-    if (fromMap && !same && view){
+    // keep what you tapped in sight above the sheet (flat map; the 3D map has its own camera)
+    if (fromMap && !same && view && !(typeof M3 !== "undefined" && M3.on)){
       let p = null;
       if (x.type === "train"){ const T = trainNow(x); if (T) p = posOn(x.line, T.t.idx); }
       else { const e = aByName(x.name); if (e) p = [e.x, e.y]; }
