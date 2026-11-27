@@ -2594,8 +2594,13 @@ jobs:
           $buildTools = Join-Path $sdk 'build-tools\34.0.0'
           $platTools = Join-Path $sdk 'platform-tools'
           if (!(Test-Path $platJar) -or !(Test-Path $buildTools) -or !(Test-Path $platTools)) {
+            # Accept the SDK licences by writing sdkmanager's licence files (piping 'y' into sdkmanager.bat doesn't reach it on Windows)
+            $lic = Join-Path $sdk 'licenses'
+            New-Item -ItemType Directory -Force -Path $lic | Out-Null
+            $utf8 = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText((Join-Path $lic 'android-sdk-license'), "`n24333f8a63b6825ea9c5514f83c2829b004d1fee`nd56f5187479451eabf01fb78af6dfcb131a6481e`n8933bad161af4178b1185d1a37fbf41ea5269c55", $utf8)
+            [System.IO.File]::WriteAllText((Join-Path $lic 'android-sdk-preview-license'), "`n84831b9409646a918e30573bab4c9c91346d8abd", $utf8)
             $ErrorActionPreference = 'Continue'
-            1..50 | ForEach-Object { 'y' } | & $sdkmgr --sdk_root="$sdk" --licenses | Out-Null
             1..50 | ForEach-Object { 'y' } | & $sdkmgr --sdk_root="$sdk" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
             $code = $LASTEXITCODE
             $ErrorActionPreference = 'Stop'
