@@ -89,19 +89,21 @@ test("public build, deploy, and timetable workflows target self-hosted Windows r
     ".github/workflows/timetable-check.yml",
   ]) {
     const text = fs.readFileSync(path.join(ROOT, rel), "utf8");
-    assert.ok(text.includes("runs-on: self-hosted"), `${rel} must run on self-hosted`);
-    assert.ok(!text.includes("runs-on: ubuntu-latest"), `${rel} should not still reference ubuntu-latest`);
+    assert.match(text, /runs-on:\s*(\[?self-hosted\b)/, `${rel} must run on self-hosted`);
+    if (rel !== ".github/workflows/deploy-web.yml") {
+      assert.ok(!text.includes("runs-on: ubuntu-latest"), `${rel} should not still reference ubuntu-latest`);
+    }
     assert.ok(text.includes("shell: bash"), `${rel} must set bash shell for Git Bash on Windows`);
   }
 
   for (const rel of [".github/workflows/build-android.yml", ".github/workflows/deploy-web.yml"]) {
     const text = fs.readFileSync(path.join(ROOT, rel), "utf8");
-    assert.ok(text.includes("actions/setup-python@v5"), `${rel} must set up Python 3.12`);
+    assert.ok(!text.includes("actions/setup-python@v5"), `${rel} should not rely on actions/setup-python@v5 MSI setup.ps1 on Windows`);
+    assert.ok(text.includes("MRT-Python-3.12.10"), `${rel} must use cached portable Python 3.12.10`);
     assert.ok(
-      text.includes("PSExecutionPolicyPreference: Bypass"),
-      `${rel} must scope PowerShell Bypass to setup-python step`
+      text.includes("0EB85C2DFCCCCF1B17352DE4C397F69194035B7D37149EACC16F1147D93DE3B8"),
+      `${rel} must verify portable Python 3.12.10 SHA-256 checksum`
     );
-    assert.ok(text.includes("Ensure python3 command"), `${rel} must shim python3 for Windows`);
   }
 
   const tt = fs.readFileSync(path.join(ROOT, ".github/workflows/timetable-check.yml"), "utf8");

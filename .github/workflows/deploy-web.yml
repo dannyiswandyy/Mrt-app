@@ -70,22 +70,31 @@ jobs:
           persist-credentials: false
           fetch-depth: 0    # What's new is made from the whole history
 
-      - uses: actions/setup-python@v5
-        env:
-          PSExecutionPolicyPreference: Bypass
-        with:
-          python-version: '3.12'
-
-      - name: Ensure python3 command
+      - name: Set up portable Python 3.12 (no MSI installer)
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}
         run: |
-          if ! python3 -c "import sys" >/dev/null 2>&1; then
-            PY_BIN="$(command -v python || true)"
-            if [ -z "$PY_BIN" ]; then echo "::error::Python 3.12 not found in PATH"; exit 1; fi
-            mkdir -p "$RUNNER_TEMP/shims"
-            printf '#!/usr/bin/env bash\nexec "%s" "$@"\n' "$PY_BIN" > "$RUNNER_TEMP/shims/python3"
-            chmod +x "$RUNNER_TEMP/shims/python3"
-            echo "$RUNNER_TEMP/shims" >> "$GITHUB_PATH"
-          fi
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'MRT-Python-3.12.10'
+          $py = Join-Path $root 'tools\python.exe'
+          if (!(Test-Path $py)) {
+            $zip = Join-Path $env:RUNNER_TEMP 'python.3.12.10.zip'
+            Invoke-WebRequest -UseBasicParsing 'https://api.nuget.org/v3-flatcontainer/python/3.12.10/python.3.12.10.nupkg' -OutFile $zip
+            $expected = '0EB85C2DFCCCCF1B17352DE4C397F69194035B7D37149EACC16F1147D93DE3B8'
+            if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $expected) { throw 'Python 3.12.10 checksum mismatch' }
+            $stage = Join-Path $env:RUNNER_TEMP 'python-3.12.10-stage'
+            if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+            Expand-Archive -Path $zip -DestinationPath $stage -Force
+            if (Test-Path $root) { Remove-Item -Recurse -Force $root }
+            Move-Item -Path $stage -Destination $root
+            Remove-Item -Force $zip
+          }
+          if (!(Test-Path $py)) { throw 'Portable Python 3.12.10 missing after extraction' }
+          $py3 = Join-Path $root 'tools\python3.exe'
+          if (!(Test-Path $py3)) { Copy-Item -Path $py -Destination $py3 -Force }
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          [System.IO.File]::AppendAllLines($env:GITHUB_PATH, [string[]]@((Join-Path $root 'tools'), (Join-Path $root 'tools\Scripts')), $utf8NoBom)
+          & $py3 --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the site
         env:
