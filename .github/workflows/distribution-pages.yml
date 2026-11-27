@@ -1,0 +1,57 @@
+name: Deploy packaged MRT Spotter website
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_sha:
+        description: Commit of packaged website-runtime branch
+        required: true
+        type: string
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check requested commit
+        env:
+          RUNTIME_SHA: ${{ inputs.runtime_sha }}
+        run: |
+          [[ "$RUNTIME_SHA" =~ ^[a-f0-9]{40}$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.runtime_sha }}
+          persist-credentials: false
+      - name: Extract website deployment package
+        run: |
+          set -euo pipefail
+          test -f website.zip
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile("website.zip") as z:
+              for item in z.infolist():
+                  p = Path(item.filename)
+                  if p.is_absolute() or ".." in p.parts or (item.external_attr >> 16) & 0o170000 == 0o120000:
+                      raise SystemExit("Unsafe archive path")
+              z.extractall("_site")
+          PY
+          test -s _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
