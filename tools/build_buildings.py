@@ -28,8 +28,8 @@ ENDPOINTS = [u for u in os.environ.get("OVERPASS_URLS", "").split() if u] or [
 RADIUS = 400          # metres around each station
 Q = 0.5               # metres per stored unit
 BATCH = 8             # stations per Overpass request (smaller parts answer faster and fail less)
-TRY_SECONDS = 90      # longest wait for one server, so one stuck server can't use up the whole time
-PART_SECONDS = 150    # longest time spent on one part before moving on to the next
+TRY_SECONDS = int(os.environ.get("OVERPASS_TRY_SECONDS", 90))     # longest wait for one server, so one stuck server can't use up the whole time
+PART_SECONDS = int(os.environ.get("BUILDINGS_PART_SECONDS", 150))  # longest time spent on one part before moving on to the next
 MAX_AGE_DAYS = 30
 DEADLINE = time.time() + float(os.environ.get("BUILDINGS_MAX_SECONDS", 8 * 60))   # stop asking after 8 minutes, so a slow day can't hold up the build
 LEVEL_M = 3.2
@@ -274,8 +274,25 @@ def main():
         if time.time() > DEADLINE - 5:      # out of time: skip the download, but still use any saved parts
             failed += 1
             continue
+        got, err = None, None
         try:                                # one part failing doesn't stop the others
             got = pack(overpass(chunk), rows=True)
+        except Exception as e:
+            err = e
+        if got is None and len(chunk) > 1 and time.time() < DEADLINE - 30:
+            # busy areas (the city centre) can be too big for the servers to answer in time: ask one station at a time
+            try:
+                got = []
+                for pt in chunk:
+                    got += pack(overpass([pt]), rows=True)
+                    time.sleep(1)
+                say(f"↪️ Part {n + 1} of {parts} downloaded one station at a time.")
+            except Exception as e:
+                got, err = None, e
+        if got is None:
+            failed += 1
+            say(f"⚠️ Part {n + 1} of {parts} didn't download ({err}).")
+        else:
             for r in got:
                 rows[r[0]] = r
             fetched += 1
@@ -283,9 +300,6 @@ def main():
                 os.makedirs(os.path.dirname(pf), exist_ok=True)
                 with open(pf, "w") as f:
                     json.dump({"at": time.strftime("%Y-%m-%d"), "rows": got}, f, separators=(",", ":"))
-        except Exception as e:
-            failed += 1
-            say(f"⚠️ Part {n + 1} of {parts} didn't download ({e}).")
         time.sleep(1)
     if reused:
         say(f"♻️ {reused} of {parts} parts came from the copy saved by an earlier build.")

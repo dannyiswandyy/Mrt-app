@@ -23,6 +23,8 @@ env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: utf-8
   BUILDINGS_MAX_SECONDS: "3000"
+  OVERPASS_TRY_SECONDS: "180"       # a refresh can wait longer for busy areas than a build can
+  BUILDINGS_PART_SECONDS: "400"
 
 defaults:
   run:
