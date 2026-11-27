@@ -301,6 +301,7 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .train.last .tic .lastbar{display:block;fill:var(--fg)}
 .ltc{font:700 9.5px var(--display);font-style:normal;color:var(--panel);background:var(--fg);border-radius:3px;padding:0 3px;margin-left:4px;letter-spacing:.04em;vertical-align:1px}
 .sb.last{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.sb.shuttle{background:#11161c;color:#fff;border-color:color-mix(in srgb,var(--c,var(--fg)) 75%,transparent);font-weight:700;letter-spacing:.02em}
 
 .row.open{background:var(--soft)}
 
@@ -369,7 +370,7 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .set{display:grid;gap:10px}
 .set label{font-weight:600;font-size:14px}
 .set .rowi{display:flex;gap:8px}
-.set input[type=password],.set input[type=text]{flex:1;min-width:0;font:500 15px var(--mono);padding:9px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--fg)}
+.set input[type=password],.set input[type=text],.set input[type=url]{flex:1;min-width:0;font:500 15px var(--mono);padding:9px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--fg)}
 .btn{border:0;border-radius:8px;padding:9px 14px;font:600 14px var(--body);background:var(--fg);color:var(--bg);cursor:pointer}
 .btn.ghost{background:var(--soft);color:var(--fg)}
 .toggle{display:flex;align-items:center;gap:10px;font-size:14px}
@@ -1260,11 +1261,11 @@ header.app-header{padding-top:max(10px,env(safe-area-inset-top));}
 .cdt-current>span{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .cdt-current>b{font-size:14px}
 .cdt-current>small{font-size:11px;color:var(--muted)}
-.casual-daytrip details{border-top:1px solid var(--soft)}
-.casual-daytrip summary{padding:9px 12px;cursor:pointer;color:var(--fg);font-size:12px;font-weight:600}
-.casual-daytrip ol{list-style:none;margin:0;padding:0 12px 8px}
-.casual-daytrip li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--soft);font-size:12px}
-.casual-daytrip li.is-now{font-weight:700}
+.casual-daytrip>details{border-top:1px solid var(--soft)}
+.casual-daytrip>details>summary{padding:9px 12px;cursor:pointer;color:var(--fg);font-size:12px;font-weight:600}
+.casual-daytrip>details>ol:not(.td-list){list-style:none;margin:0;padding:0 12px 8px}
+.casual-daytrip>details>ol:not(.td-list)>li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--soft);font-size:12px}
+.casual-daytrip>details>ol:not(.td-list)>li.is-now{font-weight:700}
 .cdt-time{font:600 11px var(--mono);color:var(--muted)}
 .cdt-route{display:flex;gap:5px;min-width:0;align-items:center;flex-wrap:wrap}
 .cdt-route span{color:var(--muted)}
@@ -2264,7 +2265,12 @@ function shuttleTrains(L, t){
   for (const [from, c] of L.shuttle.trains) if (t >= from) n = c;
   return n;
 }
-const shuttleCycle = L => 2 * ((L.stations.length - 1) * leg(L) + L.shuttle.turn);
+const shuttleCycle = (L, code) => {
+  const n = L.stations.length;
+  const t0 = code ? legsOf(code, 0, n).off[n - 1] : (n - 1) * leg(L);
+  const t1 = code ? legsOf(code, 1, n).off[n - 1] : (n - 1) * leg(L);
+  return t0 + t1 + 2 * L.shuttle.turn;
+};
 /* Which day's train counts apply: "wd", "sat", "sun" or "ph" (public holidays). Extended-service days
    are "ext:<date>:" plus the usual day, so first trains still follow that day and last trains its date. */
 function dayOf(now){
@@ -2297,7 +2303,7 @@ function dayText(now){
   return `${date} · ${kind}`;
 }
 function headway(L, t, weekend, code, dir = 0, day){
-  if (L.shuttle) return shuttleCycle(L) / shuttleTrains(L, t, weekend);
+  if (L.shuttle) return shuttleCycle(L, code) / shuttleTrains(L, t, weekend);
   const R = code && L.trains && countsFor(L, day || (weekend ? "sun" : "wd"));
   if (R){
     // Spread that many trains along the line: a train leaving at t is counted for the middle of its trip.
@@ -2357,7 +2363,7 @@ function departures(code, day, dir = 0){
   const L = LINES[code], weekend = dayBase(day) !== "wd", k = code + day + dir + activeStations(L, sgNow().iso).length; if (depCache[k]) return depCache[k];
   // On a shuttle, each train leaves the far end once it has arrived there and turned around.
   if (L.shuttle && dir === 1){
-    const trip = (L.stations.length - 1) * leg(L);
+    const trip = legsOf(code, 0, L.stations.length).off[L.stations.length - 1];
     return depCache[k] = departures(code, day, 0).map(d => d + trip + L.shuttle.turn);
   }
   const out = [], end = L.hours ? L.hours[1] : (lastDepFor(code, day, dir) ?? LAST); let t = L.hours ? L.hours[0] : FIRST + (weekend ? 15 : 0);
@@ -2383,55 +2389,87 @@ function slowPerStop(code, dir){                 // extra minutes per stop trave
   return slowCache[k] = stops > 0 ? S.add[dir] / stops : 0;
 }
 const runOf = (code, dir) => LINES[code].run + slowPerStop(code, dir);
-/* How long trains take between stations: minutes from leaving one station to leaving the next (running time
-   plus the stop), [towards the line's last station, towards its first]. Worked out from the operators' own
-   station-by-station train timings: SMRT (North-South and East-West lines, 2020), SBS Transit (North East and
-   Downtown lines, 2024–25) and Land Transport Guru (Thomson-East Coast Line 2026, Downtown Line 2026, Circle Line
-   2026), fitting every train in them at once. Stretches not listed (new stations, the Circle Line's newest part,
-   LRTs) use the line's usual run + dwell. Lines with real times here don't add SLOW on top: on the North-South
-   Line they already have trains to Jurong East reaching Canberra 43 minutes after leaving Marina South Pier,
-   the 3 minutes more than before that SLOW was added for. */
+/* How long trains take between stations: median minutes from arriving at one station to arriving at the next,
+   [towards the line's last station, towards its first], derived from LTA's official GTFS Schedule (Train) timetable
+   for all 12 MRT/LRT lines. When LTA's live timetable (TT) is loaded, legsOf() derives these dynamically from TT so
+   any updated LTA feed is reflected automatically; SEG is the offline/fallback copy built from data/lta-timetable.json. */
 const SEG = {
-  NSL: {"NS1-NS2":[3.05,3],"NS2-NS3":[2.05,1.95],"NS3-NS4":[4.75,4.45],"NS4-NS5":[2.3,3],"NS5-NS7":[4.95,5.05],"NS7-NS8":[2.85,2.8],"NS8-NS9":[2.25,2.85],
-    "NS9-NS10":[2.85,2.75],"NS10-NS11":[3.1,3.25],"NS11-NS12":[2.9,2.75],"NS12-NS13":[3,3],"NS13-NS14":[2.1,2.25],"NS14-NS15":[5.95,5.7],
-    "NS15-NS16":[2.75,2.45],"NS16-NS17":[3.25,3.6],"NS17-NS18":[2.1,2.3],"NS18-NS19":[2.8,2.75],"NS19-NS20":[2.15,2.3],"NS20-NS21":[2.8,2.75],
-    "NS21-NS22":[2.1,2.3],"NS22-NS23":[2.3,2.55],"NS23-NS24":[2.6,2.15],"NS24-NS25":[2.05,2],"NS25-NS26":[2.15,2.3],"NS26-NS27":[2.85,2.7],
-    "NS27-NS28":[2,2]},
-  EWL: {"EW1-EW2":[3.15,3.15],"EW2-EW3":[2.75,2.25],"EW3-EW4":[4.1,3.9],"EW4-EW5":[2.95,2.85],"EW5-EW6":[3,3],"EW6-EW7":[2.2,2.4],"EW7-EW8":[2.8,2.6],
-    "EW8-EW9":[1.95,2],"EW9-EW10":[2.5,2.9],"EW10-EW11":[2.5,2.5],"EW11-EW12":[2.4,2.1],"EW12-EW13":[2.55,2.45],"EW13-EW14":[2.35,2.15],
-    "EW14-EW15":[2.25,2.75],"EW15-EW16":[2.35,2.15],"EW16-EW17":[3,3],"EW17-EW18":[2.5,2.5],"EW18-EW19":[2.45,2.55],"EW19-EW20":[2.1,2.4],
-    "EW20-EW21":[2.85,2.6],"EW21-EW22":[2.2,2.45],"EW22-EW23":[2.85,2.65],"EW23-EW24":[4.5,4.5],"EW24-EW25":[2.55,2.95],"EW25-EW26":[2.1,2.4],
-    "EW26-EW27":[2.75,2.55],"EW27-EW28":[2.9,2.55],"EW28-EW29":[3.05,2.95],"EW29-EW30":[3,3],"EW30-EW31":[3,3],"EW31-EW32":[2,2],"EW32-EW33":[2.5,2.5]},
-  NEL: {"NE1-NE3":[4.2,4.2],"NE3-NE4":[1.6,1.9],"NE4-NE5":[1.45,1.55],"NE5-NE6":[2.5,2.5],"NE6-NE7":[2.35,2.1],"NE7-NE8":[1.65,1.85],"NE8-NE9":[2,2],
-    "NE9-NE10":[2.4,2.1],"NE10-NE11":[2.05,1.95],"NE11-NE12":[2,2],"NE12-NE13":[2.65,2.85],"NE13-NE14":[2.7,2.3],"NE14-NE15":[2.25,2.75],
-    "NE15-NE16":[2.2,2.05],"NE16-NE17":[2.8,2.2],"NE17-NE18":[2.9,2.9]},
-  DTL: {"DT1-DT2":[2,2],"DT2-DT3":[1.55,1.55],"DT3-DT4":[1.5,1.75],"DT4-DT5":[2.1,2.7],"DT5-DT6":[2,2.05],"DT6-DT7":[2.5,2.25],"DT7-DT8":[2,1.75],
-    "DT8-DT9":[2.1,2],"DT9-DT10":[2.3,2.3],"DT10-DT11":[2.5,2.05],"DT11-DT12":[2.5,2.25],"DT12-DT13":[1.7,1.35],"DT13-DT14":[2.05,1.95],
-    "DT14-DT15":[2.4,1.9],"DT15-DT16":[2.05,2],"DT16-DT17":[2.1,2],"DT17-DT18":[1.75,1.5],"DT18-DT19":[1.7,1.2],"DT19-DT20":[2.2,2.25],
-    "DT20-DT21":[1.3,1.7],"DT21-DT22":[1.75,1.95],"DT22-DT23":[1.85,2.05],"DT23-DT24":[1.45,1.9],"DT24-DT25":[2.2,2.1],"DT25-DT26":[1.8,1.95],
-    "DT26-DT27":[2,2.15],"DT27-DT28":[1.85,1.8],"DT28-DT29":[2,2],"DT29-DT30":[2.05,2.35],"DT30-DT31":[2.45,2.7],"DT31-DT32":[2.4,2.05],"DT32-DT33":[2.1,2],
-    "DT33-DT34":[3.05,3.15],"DT34-DT35":[2,2]},
-  TEL: {"TE1-TE2":[2,2],"TE2-TE3":[2,2],"TE3-TE4":[4.5,4.5],"TE4-TE5":[3,3],"TE5-TE6":[2.45,2.5],"TE6-TE7":[1.55,1.55],"TE7-TE8":[2.05,2.4],"TE8-TE9":[2.95,3],
-    "TE9-TE11":[4,3.95],"TE11-TE12":[2.9,2.45],"TE12-TE13":[1.5,1.85],"TE13-TE14":[2.05,1.75],"TE14-TE15":[2,1.6],"TE15-TE16":[1.55,1.3],
-    "TE16-TE17":[1.5,1.9],"TE17-TE18":[1.75,1.9],"TE18-TE19":[1.65,1.35],"TE19-TE20":[1.55,1.7],"TE20-TE22":[2.6,2.95],"TE22-TE23":[3.85,3.7],
-    "TE23-TE24":[2.1,2.55],"TE24-TE25":[1.95,2],"TE25-TE26":[1.9,1.85],"TE26-TE27":[1.45,1.9],"TE27-TE28":[2.3,2.05],"TE28-TE29":[2,2]},
-  CCL: {"CC1-CC2":[2,2],"CC2-CC3":[2,2],"CC3-CC4":[3,2.95],"CC4-CC5":[2.1,1.95],"CC5-CC6":[2.7,2.25],"CC6-CC7":[1.95,1.95],"CC7-CC8":[1.35,1.65],
-    "CC8-CC9":[2.7,2.3],"CC9-CC10":[3.05,2.95],"CC10-CC11":[2,2],"CC11-CC12":[2.8,2.8],"CC12-CC13":[2.7,2.3],"CC13-CC14":[2.05,1.95],
-    "CC14-CC15":[2.95,3.05],"CC15-CC16":[2.35,2.65],"CC16-CC17":[2.65,2.35],"CC17-CC19":[5,4.95],"CC19-CC20":[1.95,2.05],"CC20-CC21":[2.3,2.7],
-    "CC21-CC22":[2.6,2.4],"CC22-CC23":[1.35,1.7],"CC23-CC24":[2.15,2.15],"CC24-CC25":[3,3],"CC25-CC26":[2,2],"CC26-CC27":[2,2],"CC27-CC28":[2,2],
-    "CC28-CC29":[3,3],"CC33-CC34":[3,3],"CC34-CC4":[2.5,2.5]}
+  NSL: {"NS1-NS2":[2.45,3.05],"NS2-NS3":[2.4,2.45],"NS3-NS4":[4,4.1],"NS4-NS5":[2.55,2.5],"NS5-NS7":[4.65,4.9],"NS7-NS8":[2.9,2.65],"NS8-NS9":[2.6,2.6],
+    "NS9-NS10":[2.85,2.85],"NS10-NS11":[3.3,3.25],"NS11-NS12":[2.6,2.5],"NS12-NS13":[2.65,2.85],"NS13-NS14":[2.7,2.55],"NS14-NS15":[5.4,5.35],
+    "NS15-NS16":[2.45,2.6],"NS16-NS17":[3.35,3.5],"NS17-NS18":[2.4,2.35],"NS18-NS19":[2,2.2],"NS19-NS20":[2.6,2.75],"NS20-NS21":[2.35,2.45],
+    "NS21-NS22":[2.4,2.6],"NS22-NS23":[2.4,2.25],"NS23-NS24":[1.95,2.1],"NS24-NS25":[2.15,2.3],"NS25-NS26":[2.35,2.3],"NS26-NS27":[2.35,2.05],
+    "NS27-NS28":[2.6,1.9]},
+  EWL: {"EW1-EW2":[2.3,3.3],"EW2-EW3":[2.8,2.65],"EW3-EW4":[3.25,3.5],"EW4-EW5":[3.15,2.9],"EW5-EW6":[3.15,3.05],"EW6-EW7":[2.25,2.25],"EW7-EW8":[2.35,2.5],
+    "EW8-EW9":[2.55,2.35],"EW9-EW10":[2.55,2.65],"EW10-EW11":[2.3,2.35],"EW11-EW12":[2.25,2.4],"EW12-EW13":[2.45,2.35],"EW13-EW14":[2.4,2.5],
+    "EW14-EW15":[2.55,2.4],"EW15-EW16":[2.2,2.35],"EW16-EW17":[3.05,2.8],"EW17-EW18":[2.45,2.25],"EW18-EW19":[2.55,2.5],"EW19-EW20":[2.35,2.3],
+    "EW20-EW21":[2.25,2.5],"EW21-EW22":[2.8,2.5],"EW22-EW23":[2.8,3],"EW23-EW24":[4.45,4.5],"EW24-EW25":[2.85,2.55],"EW25-EW26":[2.35,2.6],
+    "EW26-EW27":[2.9,2.95],"EW27-EW28":[2.35,2],"EW28-EW29":[3.5,3.3],"EW29-EW30":[3.35,3.15],"EW30-EW31":[2.6,2.6],"EW31-EW32":[2.4,2.4],"EW32-EW33":[2.15,1.8]},
+  NEL: {"NE1-NE3":[2.95,3.8],"NE3-NE4":[2,2],"NE4-NE5":[1.85,1.65],"NE5-NE6":[2.3,2.5],"NE6-NE7":[2.2,2.15],"NE7-NE8":[1.9,1.95],"NE8-NE9":[2.2,2.15],
+    "NE9-NE10":[2.45,2.45],"NE10-NE11":[1.95,1.9],"NE11-NE12":[2.15,2.5],"NE12-NE13":[2.9,2.7],"NE13-NE14":[2.45,2.4],"NE14-NE15":[2.25,2.2],
+    "NE15-NE16":[2,2.15],"NE16-NE17":[2.95,2.85],"NE17-NE18":[2.65,2]},
+  DTL: {"DT1-DT2":[1.4,2.1],"DT2-DT3":[1.65,1.65],"DT3-DT4":[1.75,1.8],"DT4-DT5":[2.5,2.45],"DT5-DT6":[1.9,1.95],"DT6-DT7":[2.2,2.2],"DT7-DT8":[1.95,1.95],
+    "DT8-DT9":[1.75,2.1],"DT9-DT10":[2.15,2.2],"DT10-DT11":[2.55,2.5],"DT11-DT12":[2.45,2.45],"DT12-DT13":[1.65,1.35],"DT13-DT14":[1.55,1.85],
+    "DT14-DT15":[1.95,1.95],"DT15-DT16":[2.2,2.15],"DT16-DT17":[1.95,1.7],"DT17-DT18":[1.4,1.45],"DT18-DT19":[1.35,1.65],"DT19-DT20":[2.15,1.9],
+    "DT20-DT21":[1.75,1.8],"DT21-DT22":[1.7,1.6],"DT22-DT23":[2,1.9],"DT23-DT24":[2.1,2.1],"DT24-DT25":[2.5,2.35],"DT25-DT26":[1.7,2.15],
+    "DT26-DT27":[2.05,1.8],"DT27-DT28":[1.9,1.9],"DT28-DT29":[1.85,1.9],"DT29-DT30":[2.3,2.35],"DT30-DT31":[2.45,2.45],"DT31-DT32":[2.05,2.3],
+    "DT32-DT33":[2.4,2.1],"DT33-DT34":[3.15,3.15],"DT34-DT35":[1.75,1.25]},
+  TEL: {"TE1-TE2":[1.75,2.65],"TE2-TE3":[2.4,2.2],"TE3-TE4":[4.6,4.65],"TE4-TE5":[3.1,3.1],"TE5-TE6":[2.45,2.45],"TE6-TE7":[1.95,2],"TE7-TE8":[2.2,2.2],
+    "TE8-TE9":[2.85,3.1],"TE9-TE11":[4.2,4.25],"TE11-TE12":[2.75,2.5],"TE12-TE13":[1.8,1.8],"TE13-TE14":[1.95,2.15],"TE14-TE15":[2.3,2.05],
+    "TE15-TE16":[1.6,1.65],"TE16-TE17":[1.85,2.1],"TE17-TE18":[1.75,1.55],"TE18-TE19":[1.8,1.75],"TE19-TE20":[1.6,1.8],"TE20-TE22":[3.15,3.2],
+    "TE22-TE23":[3.9,3.7],"TE23-TE24":[2.3,2.4],"TE24-TE25":[2.15,2.1],"TE25-TE26":[1.95,1.95],"TE26-TE27":[2.05,2.05],"TE27-TE28":[2.25,2.3],"TE28-TE29":[2.15,1.65]},
+  CCL: {"CC1-CC2":[1.3,2.25],"CC2-CC3":[1.85,2.2],"CC3-CC4":[2.75,2.7],"CC4-CC5":[1.55,2.05],"CC5-CC6":[2.4,2.25],"CC6-CC7":[2.15,2],"CC7-CC8":[1.8,1.85],
+    "CC8-CC9":[2.45,2.95],"CC9-CC10":[2.55,2.65],"CC10-CC11":[2.65,2.55],"CC11-CC12":[2.6,2.4],"CC12-CC13":[2.7,3.05],"CC13-CC14":[2.55,2.1],
+    "CC14-CC15":[2.8,3.25],"CC15-CC16":[3.05,2.7],"CC16-CC17":[2.3,2.75],"CC17-CC19":[5.35,5.05],"CC19-CC20":[2.6,2.2],"CC20-CC21":[2.65,2.6],
+    "CC21-CC22":[2.05,2.55],"CC22-CC23":[2.45,2.15],"CC23-CC24":[2.55,2.25],"CC24-CC25":[2.9,2.65],"CC25-CC26":[2.35,2.35],"CC26-CC27":[2.5,2.45],
+    "CC27-CC28":[1.95,1.9],"CC28-CC29":[2.7,3.15],"CC29-CC30":[2.75,2.45],"CC30-CC31":[1.95,2],"CC31-CC32":[2.45,1.75],"CC32-CC33":[2.7,2.7],
+    "CC33-CC34":[2.5,2.45],"CC34-CC4":[2.75,1.85]},
+  CG: {"CG-CG1":[2.2,3.2],"CG1-CG2":[5,4.9]},
+  BP: {"BP1-BP2":[1,1.65],"BP2-BP3":[1.65,1.65],"BP3-BP4":[1.65,1.65],"BP4-BP5":[1.65,1.65],"BP5-BP6":[1.65,1.35],"BP6-BP7":[1.65,1.65],
+    "BP7-BP8":[1.65,1.65],"BP8-BP9":[1.65,1.65],"BP9-BP10":[1.65,1.65],"BP10-BP11":[1.65,1.65],"BP11-BP12":[1.65,1.65],"BP12-BP13":[1.65,1.65],"BP13-BP6":[1.65,1]},
+  SE: {"STC-SE1":[2,2.65],"SE1-SE2":[1.65,1.65],"SE2-SE3":[1.65,1.65],"SE3-SE4":[1.65,1.65],"SE4-SE5":[2.65,2.65],"SE5-STC":[3.65,3]},
+  SW: {"STC-SW1":[2,2.65],"SW1-SW2":[1.65,1.65],"SW2-SW3":[1.65,1.65],"SW3-SW4":[1.65,1.65],"SW4-SW5":[1.65,1.65],"SW5-SW6":[1.65,1.65],
+    "SW6-SW7":[1.65,1.65],"SW7-SW8":[1.65,1.65],"SW8-STC":[3.65,3]},
+  PE: {"PTC-PE1":[3,3.65],"PE1-PE2":[1.65,1.65],"PE2-PE3":[1.65,1.65],"PE3-PE4":[1.65,1.65],"PE4-PE5":[1.65,1.65],"PE5-PE6":[1.65,1.65],
+    "PE6-PE7":[1.65,1.65],"PE7-PTC":[2.65,2]},
+  PW: {"PTC-PW1":[2,2.65],"PW1-PW2":[1.65,1.65],"PW2-PW3":[1.65,1.65],"PW3-PW4":[1.65,1.65],"PW4-PW5":[1.65,1.65],"PW5-PW6":[1.65,1.65],
+    "PW6-PW7":[1.65,1.65],"PW7-PTC":[3.65,3]}
 };
-const legCache = {};
+const legCache = {}, ttSegCache = {};
+function ttSegFor(code){
+  if (SIM.est || typeof TT === "undefined" || !TT || !TT.lines || !TT.lines[code]) return null;
+  if (ttSegCache[code]) return ttSegCache[code];
+  const L = LINES[code], ln = TT.lines[code];
+  if (!L || !ln || !ln.P || !ln.trips || !ln.trips.length) return null;
+  const st = L.stations, buckets = {};
+  for (const t of ln.trips){
+    const p = ln.P[t[1]]; if (!p) continue;
+    for (let k = 0; k < p.arr.length - 1; k++){
+      const i0 = p.f + p.d * k, i1 = p.f + p.d * (k + 1);
+      const lo = Math.min(i0, i1), hi = Math.max(i0, i1);
+      if (!st[lo] || !st[hi]) continue;
+      const key = st[lo][0] + "-" + st[hi][0];
+      (buckets[key] ||= [[], []])[p.d > 0 ? 0 : 1].push((p.arr[k + 1] - p.arr[k]) / 60);
+    }
+  }
+  const med = a => { if (!a.length) return null; a.sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+  const out = {};
+  for (const key in buckets){
+    const m0 = med(buckets[key][0]), m1 = med(buckets[key][1]);
+    if (m0 != null || m1 != null) out[key] = [m0 != null ? m0 : m1, m1 != null ? m1 : m0];
+  }
+  return ttSegCache[code] = out;
+}
 /* For trains in one direction: off[k] = minutes after leaving the first stop that they leave stop k, and
    run[k] = minutes running from stop k to stop k+1 (stops counted from where trains in that direction start). */
 function legsOf(code, dir, n){
-  const k = code + dir + n; if (legCache[k]) return legCache[k];
-  const L = LINES[code], S = SEG[code];
+  const useTT = !SIM.est && typeof TT !== "undefined" && TT && TT.lines && TT.lines[code];
+  const k = code + dir + n + (useTT ? "t" : "e"); if (legCache[k]) return legCache[k];
+  const L = LINES[code], S = (useTT && ttSegFor(code)) || SEG[code];
   let act = activeStations(L, sgNow().iso); if (act.length !== n) act = L.stations.slice(0, n);
   const off = [0], run = [];
   for (let i = 0; i < n - 1; i++){
     const a = act[dir ? n - 1 - i : i][0], b = act[dir ? n - 2 - i : i + 1][0];
-    const x = S && (S[a + "-" + b] || S[b + "-" + a]);
+    const x = (S && (S[a + "-" + b] || S[b + "-" + a])) || (SEG[code] && (SEG[code][a + "-" + b] || SEG[code][b + "-" + a]));
     const g = x ? x[dir] ?? x[1 - dir] : S ? L.run + L.dwell : runOf(code, dir) + L.dwell;
     run.push(Math.max(0.2, g - L.dwell)); off.push(off[i] + g);
   }
@@ -2497,6 +2535,39 @@ const isShortTo = (L, dir, act, to) => Number.isInteger(to) && to >= 0 && to < a
   !!act[to] && !!act[dir ? 0 : act.length - 1] &&
   act[to][1] !== act[dir ? 0 : act.length - 1][1];
 const destOf = (L, dir, act, to) => isShortTo(L, dir, act, to) ? endsName(L, dir, act, to) : dest(L, dir, act);
+/* Shuttle / service designation for lines and trips that operate under a shuttle or service letter
+   (Bukit Panjang LRT Shuttle A / Shuttle B, Changi Airport Shuttle, Circle Line Dhoby Ghaut–Stadium Shuttle, etc.). */
+function trainShuttleInfo(code, tr){
+  const L = LINES[code];
+  if (!L) return null;
+  const tid = tr && tr.ref && tr.ref.tid ? String(tr.ref.tid) : "";
+  if (code === "BP"){
+    let svc = "";
+    if (/^BPLRT_A_/i.test(tid)) svc = "A";
+    else if (/^BPLRT_B_/i.test(tid)) svc = "B";
+    else if (tr && tr.ref && tr.ref.p){
+      const p = tr.ref.p;
+      svc = (p.d > 0 && p.arr.length <= 6) || (p.d < 0 && p.arr.length > 6) ? "A" : "B";
+    } else if (tr && tr.dir != null){
+      svc = tr.dir ? "A" : "B";
+    }
+    if (svc === "A") return {code: "A", label: "Shuttle A", detail: "Service A · via Senja"};
+    if (svc === "B") return {code: "B", label: "Shuttle B", detail: "Service B · via Petir"};
+  }
+  if (code === "CG" || L.shuttle || code === "RTS"){
+    return {code: "SH", label: "Shuttle", detail: code === "CG" ? "Changi Airport Shuttle" : `${L.name} Shuttle`};
+  }
+  if (code === "CCL" && tr && tr.ref && tr.ref.p){
+    const p = tr.ref.p;
+    if ((p.f === 0 && p.d === 1 && p.arr.length === 6) || (p.f === 5 && p.d === -1 && p.arr.length === 6)){
+      return {code: "SH", label: "Shuttle", detail: "Dhoby Ghaut–Stadium Shuttle"};
+    }
+  }
+  if (tr && tr.shuttle){
+    return {code: "SH", label: "Shuttle", detail: "Shuttle service"};
+  }
+  return null;
+}
 /* Minutes NSL trains are running behind (+) or ahead (-) of the schedule, as seen on the Live cam
    (train spotting; 0 when it's off). Set up by the spotting module further down. */
 const camAdj = (code, dir) => { try { return code === "NSL" && window.spotOffset ? window.spotOffset(dir) : 0; } catch(e){ return 0; } };
@@ -2716,8 +2787,8 @@ function nextArrivalsRaw(code, s, dir, now, count, reach){
   const base = nextArrivalsBase(code, s, dir, now, count, reach);
   const rep = window.repArrivals ? repArrivals(code, s, dir, now) : [];
   if (!rep.length) return base;
-  const all = base.map((m, k) => ({m, to: base.to[k], phase: base.phase && base.phase[k]})).concat(rep).sort((a, b) => a.m - b.m).slice(0, count);
-  const out = all.map(x => x.m); out.to = all.map(x => x.to); out.phase = all.map(x => x.phase || null);
+  const all = base.map((m, k) => ({m, to: base.to[k], phase: base.phase && base.phase[k], ride: base.ride && base.ride[k]})).concat(rep).sort((a, b) => a.m - b.m).slice(0, count);
+  const out = all.map(x => x.m); out.to = all.map(x => x.to); out.phase = all.map(x => x.phase || null); out.ride = all.map(x => x.ride || null);
   return out;
 }
 function nextArrivalsBase(code, s, dir, now, count, reach){
@@ -2729,19 +2800,26 @@ function nextArrivalsBase(code, s, dir, now, count, reach){
       const iso = simAddDays(now.iso, adjacent), other = ttTrips(code, iso);
       if (other) {
         const sec = (now.mins - adjacent * 1440) * 60;
-        const combined = primary ? primary.map((m, i) => ({m, to: primary.to[i]})) : [];
+        const combined = primary ? primary.map((m, i) => ({m, to: primary.to[i], phase: primary.phase && primary.phase[i], ride: primary.ride && primary.ride[i]})) : [];
         const have = ttl && ttRunKeys(ttl);
         for (const r of ttBoardRuns(other, s, dir)) {
           if (have && have.has(r.tid + "|" + (r.s + adjacent * 86400))) continue;   // already in today's runs (moved over a day: the marathon bridge)
-          const p = r.p, k = (s - p.f) * p.d;
-          if (reach != null && (reach - p.f) * p.d > p.arr.length - 1) continue;
-          const minutes = (r.s + p.arr[k] - sec) / 60;
+          const p = r.p, k = ttStopK(code, s, dir, p); if (k < 0) continue;
+          const rk = reach != null ? (reach - p.f) * p.d : -1;
+          if (reach != null && (rk <= k || rk > p.arr.length - 1)) continue;
+          const arrT = r.s + p.arr[k], dwell = Math.max(0, (p.dep[k] ?? p.arr[k]) - p.arr[k]), leaving = arrT + dwell;
+          const minutes = (arrT - sec) / 60;
+          const phase = sec >= leaving - 10 && sec <= leaving + 15 ? "DEPARTING"
+            : sec >= arrT && sec < leaving - 10 ? "ARRIVED"
+            : arrT - sec <= 45 && arrT >= sec ? "ARRIVING" : null;
           // Adjacent-date rows use only their own published schedule.
-          if (minutes >= -1 / 6 && minutes <= 180) combined.push({m: minutes, to: p.to});
+          if ((minutes >= -1 / 6 || phase === "ARRIVED" || phase === "DEPARTING") && minutes <= 180) {
+            combined.push({m: Math.max(0, minutes), to: p.to, phase, ride: reach != null ? Math.max(0, (p.arr[rk] - p.arr[k]) / 60) : null});
+          }
         }
         if (combined.length) {
           const top = combined.sort((a, b) => a.m - b.m).slice(0, count);
-          const result = top.map(x => x.m); result.to = top.map(x => x.to);
+          const result = top.map(x => x.m); result.to = top.map(x => x.to); result.phase = top.map(x => x.phase || null); result.ride = top.map(x => x.ride || null);
           return result;
         }
       }
@@ -3735,17 +3813,24 @@ function mapTrains(code, now){
    run's time here (300-700 runs a line, asked dozens of times a second), runs that passed here over an hour ago are
    skipped (unless LTA's live feed lists them or they're known to be running late), and once `count` trains are
    found, the search stops at the first run starting 15 min after the latest of them (no train runs that early). */
+/* Stop index along pattern p for departures from station s in direction dir, or -1 if it doesn't depart here.
+   On the Circle Line at Promenade (CC4, index 3) heading clockwise (dir 1), trains depart either from index 3
+   toward Esplanade/Dhoby Ghaut or from index 33 (loop wrap) toward Bayfront/Marina Bay/Prince Edward Road;
+   not counting terminal arrivals at index 30/3 avoids double-counting clockwise loop trains at Prince Edward Road. */
+function ttStopK(code, s, dir, p){
+  if ((p.d > 0 ? 0 : 1) !== dir) return -1;
+  const L = LINES[code];
+  if (L && L.bound && dir === 1 && s === 3 && p.f === L.stations.length - 1 && L.stations[p.f] && L.stations[s] && L.stations[p.f][0] === L.stations[s][0]) return 0;
+  const k = (s - p.f) * p.d;
+  return k >= 0 && k < p.arr.length - 1 ? k : -1;
+}
 const boardRunsByDay = new WeakMap();
 function ttBoardRuns(list, station, dir){
   let boards = boardRunsByDay.get(list);
   if (!boards) { boards = new Map(); boardRunsByDay.set(list, boards); }
   const key = station * 2 + dir;
   if (!boards.has(key)) {
-    const runs = list.filter(r => {
-      const p = r.p, k = (station - p.f) * p.d;
-      return (p.d > 0 ? 0 : 1) === dir && k >= 0 && k < p.arr.length &&
-        (k < p.arr.length - 1 || (LINES[list.code].bound && p.to === -1));
-    });
+    const runs = list.filter(r => ttStopK(list.code, station, dir, r.p) >= 0);
     if (boards.size >= 96) boards.clear();
     boards.set(key, runs);
   }
@@ -3763,14 +3848,15 @@ function ttNext(list, s, dir, now, count, reach){
     const inList = n < regular.length, r = inList ? regular[n] : extra[n - regular.length];
     const p = r.p; if ((p.d > 0 ? 0 : 1) !== dir) continue;
     if (inList && tops.length >= count && r.s - 900 > tops[tops.length - 1]){ n = regular.length - 1; continue; }   // none sooner in the timetable from here on
-    const k = (s - p.f) * p.d;
-    if (k < 0 || k > p.arr.length - 1 || (k === p.arr.length - 1 && !(LINES[list.code].bound && p.to === -1))) continue;   // a Circle Line loop run goes on round from its last stop here
-    if (reach != null && (reach - p.f) * p.d > p.arr.length - 1) continue;
+    const k = ttStopK(list.code, s, dir, p);
+    if (k < 0) continue;
+    const rk = reach != null ? (reach - p.f) * p.d : -1;
+    if (reach != null && (rk <= k || rk > p.arr.length - 1)) continue;
     const m0 = mv && mv.get(`${list.code}t${r.s}p${r.pi}`);
     if (inList && r.s + p.arr[k] + (r.tl || 0) < sec - 3600 && !m0 && !(live && r.tid && live[r.tid])) continue;   // long gone
     const pr = rtProfileFor(list.code, r, m0);
     if (pr && pr.skip.has(k)) continue;                    // LTA says this train doesn't stop here
-    if (pr && pr.endK != null && (k >= pr.endK || (reach != null && (reach - p.f) * p.d > pr.endK))) continue;    // LTA ends it before here (or here)
+    if (pr && pr.endK != null && (k >= pr.endK || (reach != null && rk > pr.endK))) continue;    // LTA ends it before here (or here)
     const t = ttAt(list.code, r, k, mv);
     // Use the stop's scheduled dwell, not an arbitrary global "Now" threshold.
     // ttAt applies the same timetable/live corrections to the arrival.
@@ -3781,7 +3867,8 @@ function ttNext(list, s, dir, now, count, reach){
       : sec >= t && sec < leaving - 10 ? "ARRIVED"
       : t - sec <= 45 && t >= sec ? "ARRIVING" : null;
     if (t >= sec - 10 || (!terminal && phase === "ARRIVED") || (!terminal && phase === "DEPARTING")){
-      res.push({m: Math.max(0, (t - sec) / 60), to: pr && pr.endK != null ? p.f + p.d * pr.endK : p.to, phase});
+      const ride = reach != null && rk > k && rk < p.arr.length ? Math.max(0, (ttAt(list.code, r, rk, mv) - t) / 60) : null;
+      res.push({m: Math.max(0, (t - sec) / 60), to: pr && pr.endK != null ? p.f + p.d * pr.endK : p.to, phase, ride});
       keep(Math.max(t, sec));
     }
   }
@@ -3789,6 +3876,7 @@ function ttNext(list, s, dir, now, count, reach){
   const top = res.slice(0, count), out = top.map(x => x.m);
   out.to = top.map(x => x.to);
   out.phase = top.map(x => x.phase);
+  out.ride = top.map(x => x.ride || null);
   return out;
 }
 /* The real gap between trains around now, measured at a station in the middle of the line. */
@@ -3907,7 +3995,29 @@ const LINE_TRAIN = {NSL: "r151", EWL: "r151", CG: "r151", CCL: "c830", NEL: "c75
 // Draws line's train h px tall centred on X, Y with its pointer towards ux, uy; returns how far the pointer's tip is
 // from X, Y. dots: a colour for a dotted outline over the rim (special-bound trains), or nothing for a plain rim.
 // ps: how big the pointer is (1: the small tip the Line Board uses; the map's is bigger, with rounded corners).
-function drawTrainIcon(ctx, X, Y, ux, uy, h, body, detail, rim, rimW, line, dots, ps = 1){
+function drawShuttleBadge(ctx, cx, cy, h, text){
+  if (!text) return;
+  ctx.save();
+  const fs = Math.max(8, Math.min(12.5, Math.round(h * 0.44)));
+  ctx.font = `800 ${fs}px "LTA Identity", Inter, system-ui, sans-serif`;
+  const tw = ctx.measureText(text).width;
+  const bh = Math.max(10.5, fs + 3.5);
+  const bw = Math.max(bh, Math.ceil(tw) + (text.length > 1 ? 6 : 4));
+  const bx = cx - bw / 2, by = cy - bh / 2;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, bh / 2); else ctx.rect(bx, by, bw, bh);
+  ctx.fillStyle = "rgba(17,22,28,.92)";
+  ctx.fill();
+  ctx.lineWidth = Math.max(1, Math.min(1.5, h * 0.06));
+  ctx.strokeStyle = "#fff";
+  ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, cx, cy + 0.5);
+  ctx.restore();
+}
+function drawTrainIcon(ctx, X, Y, ux, uy, h, body, detail, rim, rimW, line, dots, ps = 1, badge = null){
   const sh = TRAIN_SHAPES[LINE_TRAIN[line]] || TRAIN_SHAPES.r151;
   const w = h * sh.a, x0 = X - w / 2, y0 = Y - h / 2, big = h >= 15, shade = "rgba(0,0,0,0.36)";
   const px = f => x0 + w * f, py = f => y0 + h * f;
@@ -4001,6 +4111,7 @@ function drawTrainIcon(ctx, X, Y, ux, uy, h, body, detail, rim, rimW, line, dots
     ctx.setLineDash([Math.max(1.6, h * 0.13), Math.max(1.3, h * 0.1)]); ctx.strokeStyle = dots; ctx.stroke(outline); ctx.setLineDash([]);
   }
   ctx.lineJoin = "miter";
+  if (badge) drawShuttleBadge(ctx, X, Y, h, badge);
   return tip;
 }
 /* "First 5:31am · Last 11:48pm", then the special-bound trains: every time when there are a few, else the range. */
@@ -4143,9 +4254,8 @@ function dayCalls(code, i, dir, now){
   const L = LINES[code], out = [], ttl = ttTrips(code, now.iso);
   if (ttl){
     for (const r of ttl){
-      const p = r.p; if ((p.d > 0 ? 0 : 1) !== dir) continue;
-      const kk = (i - p.f) * p.d;
-      if (kk < 0 || kk > p.arr.length - 1 || (kk === p.arr.length - 1 && !(L.bound && p.to === -1))) continue;
+      const p = r.p, kk = ttStopK(code, i, dir, p);
+      if (kk < 0) continue;
       out.push({m: (r.s + p.arr[kk]) / 60, to: p.to});
     }
   } else {
@@ -4216,7 +4326,7 @@ function drawLastBar(ctx, X, Y, ux, uy, r, col, rim){
 }
 
 /* Front view of a train. Operational variants are visual semantics only. */
-function trainSVG(dir, kind){
+function trainSVG(dir, kind, badge){
   const up = !!dir;
   const normal = up ? '<path class="arrow" d="M11 0 L15 3.5 H7 Z"/>' : '<path class="arrow" d="M11 26 L15 22.5 H7 Z"/>';
   const glyph = kind === "testing"
@@ -4231,10 +4341,11 @@ function trainSVG(dir, kind){
     ? '<path class="oparrow reverse" d="M17 17 H5 M9 13 L5 17 L9 21"/>'
     : normal;
   const bar = up ? '<rect class="lastbar" x="4" y="-3.2" width="14" height="2.4" rx="1.2"/>' : '<rect class="lastbar" x="4" y="26.8" width="14" height="2.4" rx="1.2"/>';
+  const badgeSvg = badge ? `<rect x="${badge.length > 1 ? 2.5 : 5}" y="8" width="${badge.length > 1 ? 17 : 12}" height="10" rx="5" fill="#11161c" stroke="#fff" stroke-width="1"/><text x="11" y="13.5" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="${badge.length > 1 ? 7 : 8}" font-weight="800" font-family="sans-serif">${esc(badge)}</text>` : "";
   return '<svg class="tic ' + (kind ? 'kind-' + kind : '') + '" viewBox="0 0 22 26" aria-hidden="true">' + glyph + bar +
     '<rect class="body" x="2.5" y="4" width="17" height="18" rx="5"/>' +
     '<rect class="win" x="5.5" y="7" width="11" height="6" rx="1.5"/>' +
-    '<circle class="lamp" cx="7" cy="17.5" r="1.5"/><circle class="lamp" cx="15" cy="17.5" r="1.5"/></svg>';
+    '<circle class="lamp" cx="7" cy="17.5" r="1.5"/><circle class="lamp" cx="15" cy="17.5" r="1.5"/>' + badgeSvg + '</svg>';
 }
 /* The same train drawings in the train cards (the train sheet and the Line Board's train card) and on the Line Board
    itself: a small picture of the line's train with its pointer above (going up the line) or below, in MRT Dev only;
@@ -4243,36 +4354,36 @@ function trainSVG(dir, kind){
 const trainFaceCache = new Map();
 function trainFaceHTML(line, dir, o = {}){
   try {
-    if (!trainIcons() || !LINE_TRAIN[line]) return trainSVG(dir);
+    if (!trainIcons() || !LINE_TRAIN[line]) return trainSVG(dir, "", o.badge);
     const col = MC[line] || getComputedStyle(document.documentElement).getPropertyValue("--" + line).trim();
-    if (!col) return trainSVG(dir);
-    const lane = !!o.lane, W = lane ? 22 : 40, H = lane ? 26 : 48, h = lane ? 17 : 34;
-    const key = [line, dir ? 1 : 0, col, lane ? 1 : 0, o.short ? 1 : 0, o.last ? 1 : 0, MC.bg, MC.fg].join("|");
+    if (!col) return trainSVG(dir, "", o.badge);
+    const lane = !!o.lane, W = lane ? 22 : 40, H = lane ? 26 : 48, h = lane ? 17 : 34, badge = o.badge || "";
+    const key = [line, dir ? 1 : 0, col, lane ? 1 : 0, o.short ? 1 : 0, o.last ? 1 : 0, badge, MC.bg, MC.fg].join("|");
     let url = trainFaceCache.get(key);
     if (!url){
       const k = 3, cv = document.createElement("canvas"); cv.width = W * k; cv.height = H * k;
       const g = cv.getContext("2d"); g.scale(k, k);
       const cy = dir ? H - h / 2 - 1 : h / 2 + 1, uy = dir ? -1 : 1, dotted = lane && !!o.short;
       const tip = drawTrainIcon(g, W / 2, cy, 0, uy, h, col, "#fff", dotted ? (MC.bg || "#fff") : col, dotted ? 1.6 : 0.01,
-                                line, dotted ? (MC.fg || "#000") : null);
+                                line, dotted ? (MC.fg || "#000") : null, 1, badge || null);
       if (lane && o.last && MC.fg) drawLastBar(g, W / 2, cy + uy * (tip - h * 0.25), 0, uy, h * 0.17, MC.fg, MC.bg || "#fff");
       url = cv.toDataURL("image/png");
-      if (trainFaceCache.size > 96) trainFaceCache.clear();
+      if (trainFaceCache.size > 128) trainFaceCache.clear();
       trainFaceCache.set(key, url);
     }
     return `<img class="${lane ? "tic " : ""}tface" src="${url}" alt="" width="${W}" height="${H}">`;
-  } catch(e){ return trainSVG(dir); }
+  } catch(e){ return trainSVG(dir, "", o.badge); }
 }
 // The Line Board's train: the line's train drawing (dotted outline when it ends short of the line's end), except testing and
 // reverse movements, which keep their special arrows; lines without a drawing keep trainSVG's train.
 function laneTrainHTML(dir, kind, face){
   const drawn = (!kind || kind === "turnback" || kind === "extra" || kind === "shuttle") && trainIcons() && LINE_TRAIN[current];
-  return drawn ? trainFaceHTML(current, dir, {lane: true, short: !!face.short || kind === "turnback", last: !!face.last}) : trainSVG(dir, kind);
+  return drawn ? trainFaceHTML(current, dir, {lane: true, short: !!face.short || kind === "turnback", last: !!face.last, badge: face.badge || ""}) : trainSVG(dir, kind, face.badge || "");
 }
-function trainVisualKind(L, tr, now){
+function trainVisualKind(L, tr, now, code){
   if (tr && tr.testing) return "testing";
   if (tr && tr.reverse) return "reverse";
-  if (L && L.shuttle) return "shuttle";
+  if ((L && L.shuttle) || trainShuttleInfo(code || current, tr)) return "shuttle";
   const n = activeStations(L, now.iso).length;
   const end = tr && tr.dir ? 0 : n - 1;              // dir 1 runs up the board to the first station, dir 0 down to the last
   if (tr && tr.to != null && tr.to !== end) return "turnback";
@@ -4348,16 +4459,18 @@ function trainVisualKind(L, tr, now){
   const seen = new Set();
   for (const tr of running){
     seen.add(tr.id);
+    const sh = trainShuttleInfo(current, tr);
+    const face = {lane: true, short: isShortTo(L, tr.dir, act, tr.to), last: isLastTrain(current, tr, now), badge: sh ? sh.code : ""};
     let el = trainEls[tr.id];
     if (!el){
       el = document.createElement("button"); el.className = "train d" + tr.dir; el.type = "button";
-      el._kind = trainVisualKind(L, tr, now);
-      el._face = {lane: true, short: isShortTo(L, tr.dir, act, tr.to), last: isLastTrain(current, tr, now)};
+      el._kind = trainVisualKind(L, tr, now, current);
+      el._face = face;
       el._html = laneTrainHTML(tr.dir, el._kind, el._face); el.innerHTML = el._html;
       el.onclick = ev => { ev.stopPropagation(); selTrain = selTrain === tr.id ? null : tr.id; tick(); };
       el._dep = tr.dep; el._dir = tr.dir; el._ref = tr.ref || null; el._a = tr.a || 0; el._b = tr.b;
-      el.classList.toggle("short", isShortTo(L, tr.dir, act, tr.to));
-      el.classList.toggle("last", isLastTrain(current, tr, now));
+      el.classList.toggle("short", face.short);
+      el.classList.toggle("last", face.last);
       el._rep = !!tr.rep; el.classList.toggle("rep", !!tr.rep);
       el.style.setProperty("--d", (-(tr.dep * 7.3) % 2).toFixed(2) + "s");   // stagger the pulses
       $("lanes").appendChild(el); trainEls[tr.id] = el;
@@ -4365,8 +4478,8 @@ function trainVisualKind(L, tr, now){
     }
     // redrawn whenever its picture changes: a new kind of movement, a theme change, or the first trains drawn while the
     // page was still starting (before the line's train pictures could be drawn), which had trainSVG's train until now
-    const vk = trainVisualKind(L, tr, now); el._kind = vk;
-    const html = laneTrainHTML(tr.dir, vk, el._face || {});
+    const vk = trainVisualKind(L, tr, now, current); el._kind = vk; el._face = face;
+    const html = laneTrainHTML(tr.dir, vk, face);
     if (el._html !== html){ el._html = html; el.innerHTML = html; }
     el.classList.toggle("moving", !tr.atStation);
     el.classList.toggle("dwell", tr.atStation);
@@ -4408,8 +4521,9 @@ function trainVisualKind(L, tr, now){
   const terminus = tr => destOf(L, tr.dir, act, tr.to);
   for (const tr of running){
     const el = trainEls[tr.id], stop = act[tr.next][1];
-    const vk = trainVisualKind(L, tr, now);
-    const vl = vk === "testing" ? "TESTING · NO PASSENGERS" : vk === "shuttle" ? "shuttle" : vk === "turnback" ? "turnback" : vk === "extra" ? "extra/reported" : vk === "reverse" ? "reverse-direction" : "";
+    const sh = trainShuttleInfo(current, tr);
+    const vk = trainVisualKind(L, tr, now, current);
+    const vl = vk === "testing" ? "TESTING · NO PASSENGERS" : sh ? sh.label : vk === "shuttle" ? "shuttle" : vk === "turnback" ? "turnback" : vk === "extra" ? "extra/reported" : vk === "reverse" ? "reverse-direction" : "";
     el.setAttribute("aria-label", `${isLastTrain(current, tr, now) ? "Last train · " : ""}${vl ? vl + " · " : ""}${trainToW(terminus(tr))}${isShortTo(L, tr.dir, act, tr.to) && !L.bound ? " (special-bound)" : ""}, ${tr.atStation ? "at" : "next stop"} ${stop}`);
     el.classList.toggle("sel", tr.id === selTrain);
     el.classList.toggle("seen", !!(window.repSeen && repSeen(tr.id)));
@@ -4421,8 +4535,11 @@ function trainVisualKind(L, tr, now){
     setHTML($("trainInfo"), `<p class="hint">${running.length ? "Tap a train to see where it's heading." : "No trains running right now."}</p>`);
   } else {
     const stop = act[s.next][1];
+    const sh = trainShuttleInfo(current, s);
     const where = s.atStation ? `Now at <b>${stop}</b>` : `Next stop <b>${stop}</b>`;
     const testHTML = s.testing ? `<span class="sb">TESTING · NO PASSENGERS</span>` : "";
+    const shuttleHTML = sh ? `<span class="sb shuttle">${esc(sh.label)}</span>` : "";
+    const shuttleNote = sh && sh.detail ? `<small class="posnote">${esc(sh.detail)}</small>` : "";
     const pos = window.mrtTrainPosition ? mrtTrainPosition(current, s) : null;
     const posHTML = pos ? `<small class="posnote">📍 ${esc(pos.text)} · <b>${esc(pos.live ? "live-assisted estimate" : "scheduled estimate")}</b></small>` : "";
     const vehicle = window.mrtVehicleInfo ? mrtVehicleInfo(s) : null;
@@ -4432,8 +4549,8 @@ function trainVisualKind(L, tr, now){
     const heldHTML = s.held ? `<small class="posnote">⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(s.held / 60))} min · POSSIBLE</small>` : "";
     const slowHTML = slowSegs.length ? `<small class="posnote">⚠️ <b>Possible slow running</b> · delay increasing ${esc(slowSegs[0].from)} → ${esc(slowSegs[0].to)} (${Math.round(slowSegs[0].gain)}s)</small>` : "";
     setHTML($("trainInfo"), `<div class="tinfo">
-      <div>${trainFaceHTML(current, s.dir)}</div>
-      <div><b>${esc(trainToW(terminus(s)))}</b>${testHTML}${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${posHTML}${vehicleHTML}${wetHTML}${heldHTML}${slowHTML}${journeyHTML(s)}${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(current, s, now) : ""}${window.mrtTrainsetExplain && s.ref && s.ref.tid && /_\d+_\d+$/.test(String(s.ref.tid)) ? '<small class="posnote">Trainset evidence · '+esc(mrtTrainsetExplain(current, String(s.ref.tid).split("_").at(-2), now.iso))+'</small>' : ""}${window.mrtDisruptionHTML ? mrtDisruptionHTML(current) : ""}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.mrtRunNote ? mrtRunNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
+      <div>${trainFaceHTML(current, s.dir, {badge: sh ? sh.code : ""})}</div>
+      <div><b>${esc(trainToW(terminus(s)))}</b>${shuttleHTML}${testHTML}${isLastTrain(current, s, now) ? `<span class="sb last">last train</span>` : ""}${isShortTo(L, s.dir, act, s.to) && !L.bound ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(s) : ""}<br>${where}${shuttleNote}${posHTML}${vehicleHTML}${wetHTML}${heldHTML}${slowHTML}${journeyHTML(s)}${window.mrtTimetableIntelligence ? mrtTimetableIntelligence.trainSummary(current, s, now) : ""}${window.mrtTrainsetExplain && s.ref && s.ref.tid && /_\d+_\d+$/.test(String(s.ref.tid)) ? '<small class="posnote">Trainset evidence · '+esc(mrtTrainsetExplain(current, String(s.ref.tid).split("_").at(-2), now.iso))+'</small>' : ""}${window.mrtDisruptionHTML ? mrtDisruptionHTML(current) : ""}${window.smartTrainNote ? smartTrainNote(current, s) : ""}${window.mrtRunNote ? mrtRunNote(current, s) : ""}${window.repWhen && repWhen(s) ? `<br><small class="muted">${repWhen(s)}</small>` : ""}</div>
       <span class="eta">${(window.unifiedTrainPhase && window.unifiedTrainPhase(current,s,now) || {}).phase || (s.atStation ? (s.doors ? "Doors closing" : "Boarding") : s.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(s.eta)) + " min")}</span>
       <button type="button" aria-label="Close" id="tclose">×</button></div>`);
     $("tclose").onclick = () => { selTrain = null; tick(); };
@@ -5166,25 +5283,42 @@ function rtHTML(){
 }
 
 /* ---------- In-app updates ----------
-   The app checks GitHub for a newer version when it opens; these show the banner and progress. */
-let updState = null;   // {version, pct, error, needPerm}
+   The app checks the configured HTTPS update URL (or GitHub Releases) when it opens; these show APK and instant OTA web update banners. */
+let updState = null;   // {version, pct, error, needPerm, kind: "apk" | "ota"}
 function renderUpd(){
   const b = $("updBanner");
   if (!updState){ b.hidden = true; return; }
   b.hidden = false;
-  const u = updState, busy = u.pct !== null && u.pct !== undefined && !u.error;
-  const label = u.error ? "Try again" : busy ? (u.pct >= 100 ? "Installing…" : `${u.pct}%`) : "Update";
-  b.innerHTML = `<div><b>New version available</b><br><span class="sub">${u.error ? esc(u.error)
+  const u = updState, isOta = u.kind === "ota", busy = u.pct !== null && u.pct !== undefined && !u.error;
+  const label = u.error ? "Try again" : busy ? (u.pct >= 100 ? (isOta ? "Reloading…" : "Installing…") : `${u.pct}%`) : (isOta ? "Apply now" : "Update");
+  b.innerHTML = `<div><b>${isOta ? "Instant app update available" : "New version available"}</b><br><span class="sub">${u.error ? esc(u.error)
       : u.needPerm ? "Allow MRT Spotter to install updates, then come back and tap Update."
-      : busy ? (u.pct >= 100 ? "Confirm the update on the next screen." : "Downloading…") : `Version ${esc(u.version)}`}</span></div>
+      : busy ? (u.pct >= 100 ? (isOta ? "Applying update and reloading…" : "Confirm the update on the next screen.") : "Downloading…")
+      : (isOta ? `Web update ${esc(u.version)} · applies instantly` : `Version ${esc(u.version)}`)}</span></div>
     <button class="ubtn" type="button" id="updGo"${busy ? " disabled" : ""}>${label}</button>
     ${busy ? `<div class="ubar"><i style="width:${Math.min(100, u.pct)}%"></i></div>` : ""}`;
-  $("updGo").onclick = () => { updState = {version: u.version, pct: 0}; renderUpd(); APP.installUpdate(); };
+  $("updGo").onclick = () => {
+    if (isOta && APP && APP.installWebUpdate){
+      updState = {version: u.version, pct: 0, kind: "ota"}; renderUpd();
+      const id = "w" + (++reqId);
+      pending[id] = (code, body) => {
+        let r = {}; try { r = JSON.parse(body); } catch(e){}
+        if (code !== 200 || r.ok === false){
+          updState = {version: u.version, pct: null, error: r.error || "The web update couldn't be applied.", kind: "ota"};
+          renderUpd();
+        }
+      };
+      APP.installWebUpdate(id);
+      return;
+    }
+    updState = {version: u.version, pct: 0, kind: "apk"}; renderUpd(); APP.installUpdate();
+  };
 }
-window.updateAvailable = v => { if (!updState || updState.error || updState.needPerm) updState = {version: v || (updState && updState.version) || "", pct: null}; renderUpd(); };
-window.updateProgress = p => { if (!updState) updState = {version: ""}; updState.pct = p; updState.error = null; renderUpd(); };
-window.updateError = m => { updState = {...(updState || {version: ""}), pct: null, error: m || "The update couldn't be installed."}; renderUpd(); };
-window.updateNeedsPermission = () => { updState = {...(updState || {version: ""}), pct: null, needPerm: true}; renderUpd(); };
+window.updateAvailable = v => { if (!updState || updState.error || updState.needPerm || updState.kind === "ota") updState = {version: v || (updState && updState.version) || "", pct: null, kind: "apk"}; renderUpd(); };
+window.webUpdateAvailable = v => { if (!updState || updState.error || updState.needPerm || updState.kind === "ota") updState = {version: v || (updState && updState.version) || "", pct: null, kind: "ota"}; renderUpd(); };
+window.updateProgress = p => { if (!updState) updState = {version: "", kind: "apk"}; updState.pct = p; updState.error = null; renderUpd(); };
+window.updateError = m => { updState = {...(updState || {version: "", kind: "apk"}), pct: null, error: m || "The update couldn't be installed."}; renderUpd(); };
+window.updateNeedsPermission = () => { updState = {...(updState || {version: "", kind: "apk"}), pct: null, needPerm: true}; renderUpd(); };
 setInterval(() => { if (APP && autoRefresh && !document.hidden) refreshAll(); }, 60000);
 
 /* --- rendering --- */
@@ -5340,6 +5474,8 @@ function renderSettings(){
   const el = $("settingsCard");
   if (!APP){ el.hidden = true; return; }
   const k = hasKey();
+  const otaVer = APP.getOtaVersion ? String(APP.getOtaVersion() || "") : "";
+  const updUrl = APP.getUpdateUrl ? String(APP.getUpdateUrl() || "") : "";
   el.innerHTML = `<h2>Settings</h2><div class="set">
     <label>Live disruption alerts</label>
     <p class="muted">${k ? `<b style="color:var(--good)">✓ Included.</b> Alerts come straight from LTA.` : ((window.MRT_WEB && !MRT_WEB.live) ? "Unavailable on this website right now." : "Not included in this version of the app.")}</p>
@@ -5348,13 +5484,32 @@ function renderSettings(){
     <label>Train times</label>
     <p class="muted">${TT ? `<b style="color:var(--good)">✓ LTA official timetable</b>, downloaded ${esc(TT.feed.built)}. ${TT.feed.lines.length < ORDER.length ? `Estimated on: ${ORDER.filter(c => !TT.lines[c]).map(c => c === "CG" ? "CGL" : c).join(", ")}.` : "Covers every line."}` : "Estimated from typical frequencies. This version of the app doesn't include LTA's timetable."}</p>
     ${APP.getVersion ? `<label>App version</label>
-    <p class="muted"><b>${esc(APP.getVersion())}</b> · ${"MRT Spotter (beta)"}</p>` : ""}
+    <p class="muted"><b>${esc(APP.getVersion())}</b> · ${"MRT Spotter (beta)"}${otaVer ? ` · Web update <b>${esc(otaVer)}</b>` : ""}</p>` : ""}
+    ${otaVer && APP.resetWebUpdate ? `<div><button class="btn ghost" type="button" id="updReset">Reset to bundled version</button></div>` : ""}
     ${APP.checkUpdateNow ? `<div><button class="btn ghost" type="button" id="updCheck">Check for updates</button></div><p class="muted" id="updMsg"></p>` : ""}
+    ${APP.setUpdateUrl ? `<label for="updUrlIn">Direct update URL (no GitHub)</label>
+    <p class="muted">Optional HTTPS folder (such as Cloudflare Pages) hosting <code>web-update.json</code> for instant updates or <code>version.json</code> + APK. Leave blank to use GitHub Releases.</p>
+    <div class="rowi"><input type="url" id="updUrlIn" value="${esc(updUrl)}" placeholder="https://your-site.pages.dev/" autocomplete="off" spellcheck="false"><button class="btn ghost" type="button" id="updUrlSave">Save</button></div>
+    <p class="muted" id="updUrlMsg">${updUrl ? `Checking direct HTTPS: ${esc(updUrl)}` : "Currently using default GitHub Releases."}</p>` : ""}
     <label>What's new</label>
     <div><button class="btn ghost" type="button" id="wnOpen">What's new in every version</button></div></div>`;
 
   const wo = $("wnOpen");
   if (wo) wo.onclick = () => histOpen("wn", "all");
+  const ur = $("updReset");
+  if (ur && APP.resetWebUpdate) ur.onclick = () => { ur.disabled = true; APP.resetWebUpdate(); };
+  const us = $("updUrlSave"), ui = $("updUrlIn"), um = $("updUrlMsg");
+  if (us && ui) us.onclick = () => {
+    const raw = ui.value.trim();
+    const ok = APP.setUpdateUrl(raw);
+    if (!ok){
+      if (um) um.textContent = "Enter a valid https:// URL (or leave blank to use GitHub Releases).";
+      return;
+    }
+    const saved = APP.getUpdateUrl ? String(APP.getUpdateUrl() || "") : raw;
+    ui.value = saved;
+    if (um) um.textContent = saved ? `Saved — updates will check ${saved} directly.` : "Cleared — using default GitHub Releases.";
+  };
   const uc = $("updCheck");
   if (uc) uc.onclick = () => {
     uc.disabled = true; $("updMsg").textContent = "Checking…";
@@ -5362,9 +5517,11 @@ function renderSettings(){
     pending[id] = (code, body) => {
       uc.disabled = false;
       let r = {}; try { r = JSON.parse(body); } catch(e){}
+      const srcNote = r.source === "custom" ? " (direct HTTPS)" : "";
       if (r.enabled === false) $("updMsg").textContent = "Automatic updates aren't set up for this version of the app.";
-      else if (r.available){ $("updMsg").textContent = `Version ${r.version} is available.`; updateAvailable(r.version); }
-      else $("updMsg").textContent = "You have the latest version.";
+      else if (r.available){ $("updMsg").textContent = `APK version ${r.version} is available${srcNote}.`; updateAvailable(r.version); }
+      else if (r.otaAvailable){ $("updMsg").textContent = `Instant web update ${r.otaVersion} is available${srcNote}.`; webUpdateAvailable(r.otaVersion); }
+      else $("updMsg").textContent = `You have the latest version${r.source === "custom" ? " (checked direct HTTPS URL)" : ""}.`;
     };
     APP.checkUpdateNow(id);
   };
@@ -6164,11 +6321,12 @@ function mapDraw(){
       if (X < -20 || X > mW + 20 || Y < -20 || Y > mH + 20) continue;
       const sel = mSel && mSel.type === "train" && mSel.line === c && (mSel.id === t.id || mSel.id === t.prev), k = sel ? 1.5 : 1;
       if (sel && mSel.id !== t.id) mSel.id = t.id;               // it turned round at the end of the line: keep it selected
+      const sh = trainShuttleInfo(c, t);
       let tipAt = tr * 1.5 * k;                                       // how far the arrow's (or pointer's) tip is from X, Y
       if (icons){
         // special-bound trains keep the line's train with a dotted outline (dashes over the rim)
         tipAt = drawTrainIcon(ctx, X, Y, ux, uy, tr * 3 * k, MC[c], "#fff", sel && !sb ? MC.fg : MC.bg,
-                              sel ? 2.5 : sb ? 2 : 1.3, c, sb ? MC.fg : null, TIP_BIG);
+                              sel ? 2.5 : sb ? 2 : 1.3, c, sb ? MC.fg : null, TIP_BIG, sh ? sh.code : null);
       } else {
         ctx.beginPath();
         ctx.moveTo(X + ux * tr * 1.5 * k, Y + uy * tr * 1.5 * k);
@@ -6177,6 +6335,7 @@ function mapDraw(){
         ctx.closePath();
         ctx.fillStyle = sb ? MC.bg : MC[c]; ctx.fill();
         ctx.lineWidth = sel ? 2.5 : sb ? 2 : 1.3; ctx.strokeStyle = sel ? MC.fg : sb ? MC[c] : MC.bg; ctx.stroke();
+        if (sh) drawShuttleBadge(ctx, X, Y, tr * 2.6 * k, sh.code);
       }
 
       // Disruption warning marker for MRT, LRT, Changi Skytrain and Sentosa Express.
@@ -6375,8 +6534,9 @@ function mapInfoHTML(){
     const parts = tid.split("_"), run = parts.length >= 2 && /^\d+$/.test(parts[parts.length - 2]) ? parts[parts.length - 2] : "";
     const slot = typeof ttSlotOf === "function" ? ttSlotOf(tid) : "";
     const trainMeta = slot || run ? `<div class="mi-trainmeta"><span><b>Train slot ${esc(slot || "—")}</b>${run ? ` · run ${esc(run)}` : ""}</span><span class="mi-source">LTA timetable identifier</span></div>` : "";
-    return `<div class="mi-h"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
-      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? (t.doors ? "Doors closing" : "Boarding") : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
+    const sh = trainShuttleInfo(mSel.line, t);
+    return `<div class="mi-h" style="--c:var(--${mSel.line})"><span class="code" style="background:var(--${mSel.line})">${mSel.line === "CG" ? "CGL" : mSel.line}</span><b>${esc(trainToW(destOf(L, t.dir, act, t.to)))}</b>${sh ? `<span class="sb shuttle">${esc(sh.label)}</span>` : ""}${isLastTrain(mSel.line, t, now) ? `<span class="sb last">last train</span>` : ""}${!L.bound && isShortTo(L, t.dir, act, t.to) ? `<span class="sb">special-bound</span>` : ""}${window.repTag ? repTag(t) : ""}<button class="mi-x" type="button" data-act="close" aria-label="Close">×</button></div>
+      <div class="mi-row"><span>${t.atStation ? `Now at <b>${esc(stop)}</b>` : `Next stop <b>${esc(stop)}</b>`}</span><span class="mi-t">${t.atStation ? (t.doors ? "Doors closing" : "Boarding") : t.eta < 0.5 ? "Arriving" : "~" + Math.max(1, Math.round(t.eta)) + " min"}</span></div>${sh && sh.detail ? `<div class="mi-row"><small>${esc(sh.detail)}</small></div>` : ""}${window.repWhen && repWhen(t) ? `<div class="mi-row"><span>${repWhen(t)}</span></div>` : ""}${trainMeta}${mapDutyHTML(mSel.line, tid, now.iso)}
       ${wetNote(mSel.line, t) ? `<div class="mi-row"><small>${wetNote(mSel.line, t)}</small></div>` : ""}
       ${window.rtTrainNote ? `<div class="mi-row">${rtTrainNote(mSel.line, t)}</div>`.replace(/^<div class="mi-row"><\/div>$/, "") : ""}
       ${t.held ? `<div class="mi-row"><small>⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(t.held / 60))} min late because of it · <b>POSSIBLE</b>: the app keeps trains at least ${BUNCH_GAP} s apart when one runs late</small></div>` : ""}
@@ -7948,23 +8108,8 @@ function aNextDay(now){
 /* ---- lookups shared by built-in answers and Claude's tools ---- */
 /* Today's first and last train calling at stop i of a line, heading in direction dir (minutes of the service day). */
 function aFirstLast(c, i, dir, now){
-  const L = LINES[c], ttl = ttTrips(c, now.iso);
-  let first = Infinity, last = -Infinity;
-  if (ttl){
-    for (const r of ttl){
-      const p = r.p; if ((p.d > 0 ? 0 : 1) !== dir) continue;
-      const k = (i - p.f) * p.d; if (k < 0 || k >= p.arr.length - 1) continue;
-      const m = (r.s + p.arr[k]) / 60; if (m < first) first = m; if (m > last) last = m;
-    }
-  } else {
-    const n = activeStations(L, now.iso).length; if (!n) return null;
-    const k = dir ? (n - 1 - i) : i, off = legsOf(c, dir, n).off[k];
-    for (const r of runsFor(c, dayOf(now), dir)){
-      if (k < r.a || k >= r.b) continue;
-      const m = r.t + off; if (m < first) first = m; if (m > last) last = m;
-    }
-  }
-  return isFinite(first) ? {first, last} : null;
+  const all = dayCalls(c, i, dir, now);
+  return all.length ? {first: all[0].m, last: all[all.length - 1].m} : null;
 }
 /* Every way out of a station: line, direction, the next few trains, and today's first and last. */
 function aStationTrains(e, now, count = 3){
@@ -9256,7 +9401,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
   const B = {};                  // shared buffers
   const tex = new Map();         // satellite tiles as textures
   const chunks = new Map();      // building outlines, one set per 250 m cell
-  let hits = [], tags3 = [], last3 = [], lastT = 0, satBad = 0, satGood = 0;
+  let hits = [], tags3 = [], last3 = [], shuttles3 = [], lastT = 0, satBad = 0, satGood = 0;
 
   /* ---- small maths ---- */
   const persp = (f, a, n, fa) => { const t = 1 / Math.tan(f / 2), r = 1 / (n - fa); return [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, (fa + n) * r, -1, 0, 0, 2 * fa * n * r, 0]; };
@@ -9680,7 +9825,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
     const c = M3.cam, f = H / (2 * Math.tan(M3.fov / 2));
     // a train is about as tall on the screen as the flat map's at the same zoom, in the middle of the view
     const zoom = f / c.d / fitScale, base = clampN(clampN(2.2 + zoom * 0.55, 2.6, 8) * 0.9, 3.4, 7) * 3, Hm = base * 0.7 * c.d / f;
-    hits = []; tags3 = []; last3 = []; sel3 = null; sb3 = []; let total = 0;
+    hits = []; tags3 = []; last3 = []; shuttles3 = []; sel3 = null; sb3 = []; let total = 0;
     const p = P.tr; gl.useProgram(p.p); gl.uniformMatrix4fv(p.u.uM, false, VP); fogU(p);
     gl.clear(gl.DEPTH_BUFFER_BIT);                // in front of the buildings, like the lines
     gl.activeTexture(gl.TEXTURE0); gl.uniform1i(p.u.uS, 0);
@@ -9718,6 +9863,8 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
           const n1 = toScreen(px + ux * hm * (TR3_LEN / 2 + 0.3), 4 + hm * 0.5, pz + uz * hm * (TR3_LEN / 2 + 0.3));
           if (n1){ const ddx = n1[0] - qc[0], ddy = n1[1] - qc[1], dl = Math.hypot(ddx, ddy) || 1; last3.push({x: n1[0], y: n1[1], ux: ddx / dl, uy: ddy / dl, r: clampN(hm * 0.45 / qc[2] * f, 3.5, 12), c: code}); }
         }
+        const sh = trainShuttleInfo(code, t);
+        if (sh) shuttles3.push({x: qc[0], y: qc[1], code: sh.code, h: clampN(hm / qc[2] * f, 12, 26)});
         const tag = window.spotTag ? spotTag(code, t, now.iso) : null;   // you logged this train: its tag goes in the overlay
         if (tag && (c.d <= 6000 || sel)) tags3.push({x: qc[0], y: qc[1], r: Math.min(26, r * 0.7), tag});
       }
@@ -9784,6 +9931,7 @@ const M3 = {on: false, ok: null, cam: {x: 0, z: 0, d: 6000, yaw: -0.35, pitch: 0
       if (codes) canvasPills(octx, codes, x + 3, y + h / 2 + ph / 2 + 1, pfs);
     }
     for (const b of last3) if (b.x > -40 && b.x < W + 40 && b.y > -40 && b.y < H + 40) drawLastBar(octx, b.x, b.y, b.ux, b.uy, b.r, MC[b.c], "#0b0e12");   // last trains
+    for (const s of shuttles3) if (s.x > -40 && s.x < W + 40 && s.y > -40 && s.y < H + 40) drawShuttleBadge(octx, s.x, s.y, s.h, s.code);
     for (const g of tags3) if (g.x > -40 && g.x < W + 40 && g.y > -40 && g.y < H + 40) drawSpotTag(octx, g.x, g.y, Math.max(8, g.r), g.tag, 11, placed);
   }
 
@@ -10088,7 +10236,13 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
         continue;
       }
       const L = LINES[lg.line], n = activeStations(L, now.iso).length;
-      const i = idxOf(L, lg.fromCode, lg.dir, n), j = i < 0 ? -1 : idxOf(L, lg.toCode, lg.dir, n, i);
+      let i = idxOf(L, lg.fromCode, lg.dir, n), j = i < 0 ? -1 : idxOf(L, lg.toCode, lg.dir, n, i);
+      if (i >= 0 && j < 0){
+        for (let alt = i + 1; alt < n; alt++) if (L.stations[alt][0] === lg.fromCode){
+          const j2 = idxOf(L, lg.toCode, lg.dir, n, alt);
+          if (j2 >= 0){ i = alt; j = j2; break; }
+        }
+      }
       const xfer = legs.length && !legs[legs.length - 1].walk ? WALK : 0;
       t += xfer;
       const at = {...now, mins: now.mins + t};
@@ -10097,7 +10251,8 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       if (firstWait === null && !legs.some(x => x.line)) firstWait = wait;
       t += (wait ?? 0);
       const board = now.mins + t;
-      t += lg.mins; stops += lg.stops;
+      const ride = nx.ride && nx.ride[0] > 0 ? nx.ride[0] : lg.mins;
+      t += ride; stops += lg.stops;
       // distance and shape along the line
       let d = 0; const pts = [];
       if (i >= 0 && j >= 0){
@@ -10111,7 +10266,7 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
         lg.ids = ids;
       }
       if (lg.line === "SEN"){ if (lg.fromCode === "S1") sentosa = true; } else km += d / 1000;
-      legs.push({line: lg.line, from: lg.from, fromCode: lg.fromCode, to: lg.to, toCode: lg.toCode, toward: lg.toward, stops: lg.stops, ride: lg.mins, wait, xfer, board, arrive: now.mins + t, km: d / 1000, dir: lg.dir, ids: lg.ids || []});
+      legs.push({line: lg.line, from: lg.from, fromCode: lg.fromCode, to: lg.to, toCode: lg.toCode, toward: lg.toward, stops: lg.stops, ride, wait, xfer, board, arrive: now.mins + t, km: d / 1000, dir: lg.dir, ids: lg.ids || []});
     }
     const early = !now.weekend && now.mins + (firstWait ?? 0) < 465;
     return {from: r.from, to: r.to, legs, geo, mins: t, arrive: now.mins + t, km, stops, changes: r.changes, sentosa, early, firstWait, at: Date.now(), a: a.name, b: b.name};
@@ -10789,9 +10944,11 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       const idx = Math.max(0, trips.indexOf(cur));
       const dutyText = dutyLabel(cur.run, T.now.iso);
       const estimatedDuty = api.classifyDuty(cur.run);
-      const rows = trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now" style="background:var(--${x.line});color:#fff;font-weight:800;letter-spacing:.04em">THIS TRIP</span>` : ""}</li>`).join("");
+      const detailed = !T.t.added && window.mrtRunDayBodyHTML ? window.mrtRunDayBodyHTML(x.line, tid, T.now && T.now.mins != null ? T.now.mins * 60 : 0) : "";
+      const restOpen = !!document.getElementById("cdtRestDetails")?.open;
+      const body = detailed || `<ol>${trips.map((t, i) => `<li class="${i === idx ? "is-now" : ""}"><span class="cdt-time">${esc(api.clock(t.dep))}</span><span class="cdt-route"><b>${esc(t.origin)}</b><span>→</span><b>${esc(t.dest)}</b></span>${i === idx ? `<span class="cdt-now" style="background:var(--${x.line});color:#fff;font-weight:800;letter-spacing:.04em">THIS TRIP</span>` : ""}</li>`).join("")}</ol><p class="hint">FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm); OP LN = Off-Peak start with scheduled passenger service beyond 11pm. These are estimated from LTA passenger-trip times, not an official duty roster or the train's live operating status. ${idx === trips.length - 1 ? "This is the last scheduled passenger trip in the run, but a depot withdrawal is not confirmed." : "The end of this individual trip does not mean the entire duty has ended."} LTA's timetable groups scheduled trips; it does not identify the physical trainset.</p>`;
       const current = `<div class="cdt-current"><span>Today’s journey · ${esc(dutyText)}</span><b>${esc(cur.origin)} → ${esc(cur.dest)}</b><small>${esc(api.clock(cur.dep))} departure · ${trips.length} scheduled trips today${idx === trips.length - 1 ? " · Last listed trip of this run" : ""}</small><small>LTA timetable evidence: ${estimatedDuty.start == null ? "Timing unavailable" : esc(api.hm(estimatedDuty.start)) + "–" + esc(api.hm(estimatedDuty.end))} scheduled run</small></div>`;
-      return `<div class="casual-daytrip">${current}<details><summary>Show the rest of today</summary><ol>${rows}</ol><p class="hint">FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm); OP LN = Off-Peak start with scheduled passenger service beyond 11pm. These are estimated from LTA passenger-trip times, not an official duty roster or the train's live operating status. ${idx === trips.length - 1 ? "This is the last scheduled passenger trip in the run, but a depot withdrawal is not confirmed." : "The end of this individual trip does not mean the entire duty has ended."} LTA's timetable groups scheduled trips; it does not identify the physical trainset.</p></details></div>`;
+      return `<div class="casual-daytrip" style="--c:var(--${x.line})">${current}<details id="cdtRestDetails"${restOpen ? " open" : ""}><summary>Show the rest of today</summary>${body}</details></div>`;
     }catch(e){ return ""; }
   }
   /* Shared stop-state intelligence. GTFS-RT stop times take precedence over the timetable.
@@ -10866,8 +11023,9 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       const ex = window.mrtTrainsetExplain(x.line, slot, T.now.iso);
       if (ex && !/^No independent/i.test(ex)) trainsetHTML = `<div class="mi-intel"><p class="hsub">Trainset intelligence</p><p class="hint" style="margin:0">${esc(ex)}</p></div>`;
     }
+    const sh = trainShuttleInfo(x.line, t);
     const disruptionHTML = window.mrtDisruptionHTML ? mrtDisruptionHTML(x.line) : "";
-    return `<div class="tsum" style="--c:var(--${x.line})">${trainFaceHTML(x.line, t.dir)}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}${pf ? ` · platform ${esc(pf)}` : ""}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span><br><span class="src">${esc(src.label)}</span></div></div>
+    return `<div class="tsum" style="--c:var(--${x.line})">${trainFaceHTML(x.line, t.dir, {badge: sh ? sh.code : ""})}<div><b>${t.atStation ? "Now at" : "Next stop"} ${esc(stop)}${pf ? ` · platform ${esc(pf)}` : ""}</b><br><span class="sub">${eta}${window.repWhen && repWhen(t) ? ` · ${repWhen(t)}` : ""}</span><br><span class="src">${esc(src.label)}</span></div></div>
       ${t.added ? `<p class="hint" style="margin:0"><span class="sb">extra train</span> <b>Added by LTA today</b>, not in the timetable${t.added === 6 ? " (a timetabled trip run again at another time)" : ""}. From LTA's live train feed.</p>` : ""}
       ${t.held ? `<p class="hint" style="margin:0">⏸ <b>Held behind the train ahead</b> · about ${Math.max(1, Math.round(t.held / 60))} min late because of it · <b>POSSIBLE</b>: the app keeps trains at least ${BUNCH_GAP} s apart when one runs late</p>` : ""}
       ${window.MRT_DEV_FEATURES === true && t.ref && t.ref.p && !t.layover ? testHoldHTML(x.line, t, stop) : ""}
@@ -10878,10 +11036,10 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       ${trainsetHTML}
       ${slot && window.mrtOperatingHistoryHTML ? mrtOperatingHistoryHTML(x.line,slot,T.now.iso) : ""}
       ${depot ? `<p class="hint" style="margin:0"><span class="sb">${esc(depot.kind)}</span> at ${esc(depot.station)}${depot.gapSec ? ` · next published trip there ${Math.round(depot.gapSec/60)} min later` : ""} · ${esc(depot.label || "")}</p>` : ""}
-      ${slot && !t.added && window.mrtRunDayHTML ? mrtRunDayHTML(x.line, tid, T.now && T.now.mins != null ? T.now.mins * 60 : 0) : ""}
       ${disruptionHTML}
-      ${casualDayTripHTML(x, T)}
+      ${casualDayTripHTML(x, T) || (slot && !t.added && window.mrtRunDayHTML ? mrtRunDayHTML(x.line, tid, T.now && T.now.mins != null ? T.now.mins * 60 : 0) : "")}
       <div class="hfacts">
+        ${sh ? `<div><span>Service</span><b>${esc(sh.label)}</b><small>${esc(sh.detail)}</small></div>` : ""}
         <div><span>Bound</span><b>${esc(full)}</b><small>direction of travel</small></div>
         <div><span>Ends at</span><b>${esc(BOUND_RE.test(to) ? (sb ? String(to).split(" ends at ")[1] : "Keeps going") : to)}</b><small>${BOUND_RE.test(to) ? (sb ? "ends early" : "round the loop") : sb ? "special-bound" : "runs the whole way"}</small></div>
       </div>
@@ -10902,8 +11060,9 @@ const RT = {f: {from: "", to: "", fare: "adult"}, route: null, view: false, t0: 
       return [`${codePills(byName[x.name] || [])} Station`, x.name];
     }
     const T = trainNow(x); if (!T) return null;
+    const sh = trainShuttleInfo(x.line, T.t);
     const depot = window.mrtDepotTransferFor ? mrtDepotTransferFor(x.line, T.t) : null;
-    return [`${lineChip(x.line, x.line === "CG" ? "CGL" : x.line)} ${esc(T.L.name)}${isLastTrain(x.line, T.t, T.now) ? `<span class="sb last">last train</span>` : ""}${T.sb ? `<span class="sb">special-bound</span>` : ""}${depot ? `<span class="sb">${esc(depot.type === "depot_return" ? "leaves service" : "enters service")}</span>` : ""}${window.repTag ? repTag(T.t) : ""}`, trainToW(T.to)];
+    return [`${lineChip(x.line, x.line === "CG" ? "CGL" : x.line)} ${esc(T.L.name)}${sh ? `<span class="sb shuttle">${esc(sh.label)}</span>` : ""}${isLastTrain(x.line, T.t, T.now) ? `<span class="sb last">last train</span>` : ""}${T.sb ? `<span class="sb">special-bound</span>` : ""}${depot ? `<span class="sb">${esc(depot.type === "depot_return" ? "leaves service" : "enters service")}</span>` : ""}${window.repTag ? repTag(T.t) : ""}`, trainToW(T.to)];
   }
   function hxRender(){
     if (!HX) return;

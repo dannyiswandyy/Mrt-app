@@ -8,9 +8,15 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Never execute untrusted fork pull requests on a self-hosted runner.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -21,4 +27,4 @@ jobs:
       - name: Check trains in service and headways
         run: |
           node tests/timetable-check.js
-          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/overnight-trains.test.mjs tests/extension-opening.test.mjs tests/changelog.test.mjs tests/bunching.test.mjs tests/lta-delays.test.mjs
+          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/overnight-trains.test.mjs tests/extension-opening.test.mjs tests/changelog.test.mjs tests/bunching.test.mjs tests/lta-delays.test.mjs tests/lta-all-lines-match.test.mjs tests/direct-updater.test.mjs

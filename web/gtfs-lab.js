@@ -71,35 +71,48 @@
       inference: "LTA timetable duty estimate: " + estimate.code, evidence: estimate.evidence};
   }
 
+  function runDayParts(code, tid, nowSec) {
+    css(); dayCss();
+    const g = lineGraph(code); if (!g) return null;
+    const t = g.trips.find(x => x.tid === tid); if (!t || !t.run) return null;
+    const r = t.run, i = t.index, rows = [];
+    const duty = journeyDuty(r), proof = [duty];
+    const finalScheduledTrip = i === r.trips.length - 1;
+    r.trips.forEach((x, k) => {
+      if (k) {
+        const lk = r.links[k - 1], it = lk.items[0], past = k <= i ? " past" : "";
+        proof.push(...lk.items);
+        const text = lk.type === "turnaround" ? `↺ Turns round at ${esc(lk.station)} · ${mins(lk.gap)}`
+          : lk.type === "continues" ? `Carries on from ${esc(lk.station)} after ${mins(lk.gap)}`
+          : lk.type === "missing" ? (lk.gap > 0 ? `${it.label === L.STRONG ? "Likely moves" : "May move"} from ${esc(lk.from.dest)} to ${esc(lk.to.origin)} without passengers`
+            : `Timetable gap: the next trip starts at ${esc(lk.to.origin)} before this one gets in`)
+          : `Leaves ${esc(lk.station)} straight away`;
+        rows.push(`<li class="td-gap${past}">${text}</li>`);
+      }
+      const cls = k < i ? " past" : k === i ? " cur" : "";
+      rows.push(`<li class="td-trip${cls}"><span class="t">${esc(RG.clock(x.dep))}</span><span>${esc(x.origin)} → ${esc(x.dest)}${k === i ? `<span class="td-now">This trip</span>` : ""}</span><span class="a">arr ${esc(RG.clock(x.arr))}</span></li>`);
+    });
+    proof.push(r.leaves, ...(r.notes || []));
+    rows.push(`<li class="td-end">Finishes at ${esc(r.last.dest)} · ${esc(RG.clock(r.last.arr))}${finalScheduledTrip ? " · Last scheduled trip in this run" : ""}</li>`);
+    const proofOpen = !!(typeof document !== "undefined" && document.getElementById("cdtProofDetails")?.open);
+    const bodyHTML = `<ol class="td-list">${rows.join("")}</ol>
+      <div class="td-foot"><p><b>LTA-timed duty estimate ≠ official roster or live operating status.</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm); OP LN = Off-Peak start with scheduled passenger service beyond 11pm. ${finalScheduledTrip ? "This is the final listed passenger trip in the scheduled run; a depot withdrawal is not confirmed." : "A train can finish its current trip while its rostered duty continues."}</p>Inferred from scheduled LTA passenger-trip times for run ${esc(r.run)}. LTA doesn't say which physical train runs it.
+        <details id="cdtProofDetails"${proofOpen ? " open" : ""}><summary>How we know</summary>${proof.filter(Boolean).map(x => evHTML(x)).join("")}</details></div>`;
+    return {r, duty, n: r.trips.length, bodyHTML};
+  }
+
+  function runDayBodyHTML(code, tid, nowSec) {
+    try {
+      const p = runDayParts(code, tid, nowSec);
+      return p ? p.bodyHTML : "";
+    } catch (e) { diag("warn", "Today's journey body failed: " + (e && e.message || e)); return ""; }
+  }
+
   function runDayHTML(code, tid, nowSec) {
     try {
-      css(); dayCss();
-      const g = lineGraph(code); if (!g) return "";
-      const t = g.trips.find(x => x.tid === tid); if (!t || !t.run) return "";
-      const r = t.run, i = t.index, rows = [];
-      const duty = journeyDuty(r), proof = [duty];
-      const finalScheduledTrip = i === r.trips.length - 1;
-      r.trips.forEach((x, k) => {
-        if (k) {
-          const lk = r.links[k - 1], it = lk.items[0], past = k <= i ? " past" : "";
-          proof.push(...lk.items);
-          const text = lk.type === "turnaround" ? `↺ Turns round at ${esc(lk.station)} · ${mins(lk.gap)}`
-            : lk.type === "continues" ? `Carries on from ${esc(lk.station)} after ${mins(lk.gap)}`
-            : lk.type === "missing" ? (lk.gap > 0 ? `${it.label === L.STRONG ? "Likely moves" : "May move"} from ${esc(lk.from.dest)} to ${esc(lk.to.origin)} without passengers`
-              : `Timetable gap: the next trip starts at ${esc(lk.to.origin)} before this one gets in`)
-            : `Leaves ${esc(lk.station)} straight away`;
-          rows.push(`<li class="td-gap${past}">${text}</li>`);
-        }
-        const cls = k < i ? " past" : k === i ? " cur" : "";
-        rows.push(`<li class="td-trip${cls}"><span class="t">${esc(RG.clock(x.dep))}</span><span>${esc(x.origin)} → ${esc(x.dest)}${k === i ? `<span class="td-now">This trip</span>` : ""}</span><span class="a">arr ${esc(RG.clock(x.arr))}</span></li>`);
-      });
-      proof.push(r.leaves, ...(r.notes || []));
-      rows.push(`<li class="td-end">Finishes at ${esc(r.last.dest)} · ${esc(RG.clock(r.last.arr))}${finalScheduledTrip ? " · Last scheduled trip in this run" : ""}</li>`);
-      const n = r.trips.length;
-      return `<details class="td"><summary><b>Today's journey</b><small>${esc(r.run)} ${esc(duty.code)} · ${n} trip${n === 1 ? "" : "s"} · LTA estimate</small><i>⌄</i></summary>
-        <ol class="td-list">${rows.join("")}</ol>
-        <div class="td-foot"><p><b>LTA-timed duty estimate ≠ official roster or live operating status.</b> FD = Full Day; LN = Late Night; (AM) = Morning Peak; (PM) = Afternoon Peak; HD = Half Day; (OP) = Off-Peak (roughly 11am–3pm); OP LN = Off-Peak start with scheduled passenger service beyond 11pm. ${finalScheduledTrip ? "This is the final listed passenger trip in the scheduled run; a depot withdrawal is not confirmed." : "A train can finish its current trip while its rostered duty continues."}</p>Inferred from scheduled LTA passenger-trip times for run ${esc(r.run)}. LTA doesn't say which physical train runs it.
-          <details><summary>How we know</summary>${proof.filter(Boolean).map(x => evHTML(x)).join("")}</details></div></details>`;
+      const p = runDayParts(code, tid, nowSec); if (!p) return "";
+      return `<details class="td"><summary><b>Today's journey</b><small>${esc(p.r.run)} ${esc(p.duty.code)} · ${p.n} trip${p.n === 1 ? "" : "s"} · LTA estimate</small><i>⌄</i></summary>
+        ${p.bodyHTML}</details>`;
     } catch (e) { diag("warn", "Today's journey failed: " + (e && e.message || e)); return ""; }
   }
 
@@ -235,6 +248,7 @@
 
   /* ---------- wiring ---------- */
   window.mrtRunDayHTML = runDayHTML;
+  window.mrtRunDayBodyHTML = runDayBodyHTML;
   window.mrtGtfsLab = {open, close, lineGraph, graph, checkFeed};
   document.addEventListener("DOMContentLoaded", () => {
     const prev = window.appBack;
