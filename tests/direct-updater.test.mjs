@@ -106,6 +106,10 @@ test("public build, deploy, and timetable workflows target self-hosted Windows r
     );
   }
 
+  const ba = fs.readFileSync(path.join(ROOT, ".github/workflows/build-android.yml"), "utf8");
+  assert.ok(!ba.includes("android-actions/setup-android"), "build-android.yml should not rely on android-actions/setup-android on Windows");
+  assert.ok(ba.includes("MRT-AndroidSDK"), "build-android.yml must use cached MRT-AndroidSDK");
+
   const tt = fs.readFileSync(path.join(ROOT, ".github/workflows/timetable-check.yml"), "utf8");
   assert.ok(
     tt.includes("github.event.pull_request.head.repo.full_name == github.repository"),

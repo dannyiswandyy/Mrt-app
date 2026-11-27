@@ -2877,7 +2877,51 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - uses: android-actions/setup-android@v3
+      - name: Set up Android SDK (API 34, cached)
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $sdk = Join-Path $env:RUNNER_TOOL_CACHE 'MRT-AndroidSDK'
+          $sdkmgr = Join-Path $sdk 'cmdline-tools\latest\bin\sdkmanager.bat'
+          if (!(Test-Path $sdkmgr)) {
+            $zip = Join-Path $env:RUNNER_TEMP 'cmdline-tools-win.zip'
+            Invoke-WebRequest -UseBasicParsing 'https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip' -OutFile $zip
+            $expected = '3D2917302740F476999A091BC5558837C7A863C5'
+            if ((Get-FileHash $zip -Algorithm SHA1).Hash -ne $expected) { throw 'Android commandlinetools checksum mismatch' }
+            $stage = Join-Path $env:RUNNER_TEMP 'android-cmdline-stage'
+            if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+            Expand-Archive -Path $zip -DestinationPath $stage -Force
+            $destParent = Join-Path $sdk 'cmdline-tools'
+            New-Item -ItemType Directory -Force -Path $destParent | Out-Null
+            $destLatest = Join-Path $destParent 'latest'
+            if (Test-Path $destLatest) { Remove-Item -Recurse -Force $destLatest }
+            Move-Item -Path (Join-Path $stage 'cmdline-tools') -Destination $destLatest
+            Remove-Item -Recurse -Force $stage
+            Remove-Item -Force $zip
+          }
+          if (!(Test-Path $sdkmgr)) { throw 'sdkmanager.bat missing after extraction' }
+          $androidHomeCfg = Join-Path $sdk '.android'
+          New-Item -ItemType Directory -Force -Path $androidHomeCfg | Out-Null
+          $env:ANDROID_USER_HOME = $androidHomeCfg
+          $env:ANDROID_HOME = $sdk
+          $env:ANDROID_SDK_ROOT = $sdk
+          $platJar = Join-Path $sdk 'platforms\android-34\android.jar'
+          $buildTools = Join-Path $sdk 'build-tools\34.0.0'
+          $platTools = Join-Path $sdk 'platform-tools'
+          if (!(Test-Path $platJar) -or !(Test-Path $buildTools) -or !(Test-Path $platTools)) {
+            $ErrorActionPreference = 'Continue'
+            1..50 | ForEach-Object { 'y' } | & $sdkmgr --sdk_root="$sdk" --licenses | Out-Null
+            1..50 | ForEach-Object { 'y' } | & $sdkmgr --sdk_root="$sdk" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+            $code = $LASTEXITCODE
+            $ErrorActionPreference = 'Stop'
+            if ($code -ne 0) { throw "sdkmanager install failed with exit code $code" }
+          }
+          if (!(Test-Path $platJar)) { throw 'Android platform 34 missing after install' }
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          [System.IO.File]::AppendAllLines($env:GITHUB_ENV, [string[]]@("ANDROID_HOME=$sdk", "ANDROID_SDK_ROOT=$sdk", "ANDROID_USER_HOME=$androidHomeCfg"), $utf8NoBom)
+          [System.IO.File]::AppendAllLines($env:GITHUB_PATH, [string[]]@($platTools, (Join-Path $sdk 'cmdline-tools\latest\bin')), $utf8NoBom)
+          Write-Host "Android SDK ready at $sdk"
 
       - name: Create a signing key on the first run
         run: |
