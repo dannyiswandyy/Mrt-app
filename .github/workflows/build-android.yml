@@ -29,6 +29,10 @@ concurrency:
 
 env:
   CHANNEL: beta
+  # The build machine is Windows: make Python read, write and print UTF-8 (emoji in reports, station names)
+  # instead of the Windows code page, which stops the build tools with UnicodeEncodeError.
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
 defaults:
   run:
     shell: bash
