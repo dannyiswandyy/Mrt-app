@@ -56,4 +56,4 @@ jobs:
       - name: Check trains in service and headways
         run: |
           node tests/timetable-check.js
-          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/overnight-trains.test.mjs tests/extension-opening.test.mjs tests/changelog.test.mjs tests/bunching.test.mjs tests/lta-delays.test.mjs tests/lta-all-lines-match.test.mjs tests/direct-updater.test.mjs
+          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/overnight-trains.test.mjs tests/extension-opening.test.mjs tests/changelog.test.mjs tests/bunching.test.mjs tests/lta-delays.test.mjs tests/lta-all-lines-match.test.mjs

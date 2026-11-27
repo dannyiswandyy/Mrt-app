@@ -179,8 +179,6 @@ jobs:
                   // or found by searching the app's contents.
                   // Public GitHub repo whose "latest" release the app checks for updates (empty = off).
                   buildConfigField 'String', 'UPDATE_REPO', '"' + (project.findProperty('updateRepo') ?: '').toString().replaceAll('[^A-Za-z0-9._/-]', '') + '"'
-                  // Optional non-GitHub HTTPS base URL for direct APK and over-the-air web updates (empty = use GitHub or user-configured URL).
-                  buildConfigField 'String', 'UPDATE_URL', '"' + (project.findProperty('updateUrl') ?: '').toString().replaceAll('[^A-Za-z0-9.:_/?&=-]', '') + '"'
                   buildConfigField 'String', 'LTA_KEY_X', '"ac482e340c45fb8ce3d416f40eeba0afa7c59acac8579667"'
                   // Claude API key for the Ask tab, from the ANTHROPIC_API_KEY GitHub secret (none = built-in answers only).
                   buildConfigField 'String', 'AI_KEY_X', '"' + scrambleKey((project.findProperty('aiKey') ?: '').toString()) + '"'
@@ -931,17 +929,6 @@ jobs:
                               } catch (Exception ignored) {
                               }
                           }
-                          String p = uri.getPath();
-                          if (p != null && p.startsWith("/assets/")) {
-                              String rel = p.substring("/assets/".length());
-                              java.io.File ota = Updater.otaFile(MainActivity.this, rel);
-                              if (ota != null) {
-                                  try {
-                                      return new WebResourceResponse(Updater.mimeFor(rel), "utf-8", 200, "OK", h, new java.io.FileInputStream(ota));
-                                  } catch (Exception ignored) {
-                                  }
-                              }
-                          }
                           WebResourceResponse local = assetLoader.shouldInterceptRequest(uri);
                           if (local != null) return local;
                           return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", h,
@@ -986,21 +973,14 @@ jobs:
                   checkForUpdate();
               }
 
-              /** Checks for a newer APK or over-the-air web update; if found, the page shows the update banner. */
+              /** Asks GitHub whether a newer version exists; if so, the page shows the update banner. */
               private void checkForUpdate() {
-                  if (!Updater.enabled(getApplicationContext()) || updating) return;
+                  if (!Updater.enabled() || updating) return;
                   io.execute(() -> {
                       org.json.JSONObject j = Updater.newer(getApplicationContext());
-                      if (j != null) {
-                          final String js = "window.updateAvailable && window.updateAvailable(" + JSONObject.quote(j.optString("versionName", "")) + ")";
-                          runOnUiThread(() -> { if (pageLoaded) web.evaluateJavascript(js, null); });
-                          return;
-                      }
-                      org.json.JSONObject ota = Updater.otaNewer(getApplicationContext());
-                      if (ota != null) {
-                          final String js = "window.webUpdateAvailable && window.webUpdateAvailable(" + JSONObject.quote(ota.optString("version", "")) + ")";
-                          runOnUiThread(() -> { if (pageLoaded) web.evaluateJavascript(js, null); });
-                      }
+                      if (j == null) return;
+                      final String js = "window.updateAvailable && window.updateAvailable(" + JSONObject.quote(j.optString("versionName", "")) + ")";
+                      runOnUiThread(() -> { if (pageLoaded) web.evaluateJavascript(js, null); });
                   });
               }
 
@@ -1248,7 +1228,7 @@ jobs:
                   /** Downloads and installs the new version. Progress and errors go back to the page. */
                   @JavascriptInterface
                   public void installUpdate() {
-                      if (updating || !Updater.enabled(getApplicationContext())) return;
+                      if (updating || !Updater.enabled()) return;
                       // Android asks once for permission to install updates from this app.
                       if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
                           runOnUiThread(() -> {
@@ -1409,82 +1389,16 @@ jobs:
                   }
                   // DEV:END
 
-                  /** Checks for a new APK or over-the-air web bundle now (the Settings button). */
+                  /** Checks GitHub for a new version now (the Settings button). */
                   @JavascriptInterface
                   public void checkUpdateNow(final String id) {
                       io.execute(() -> {
-                          android.content.Context ctx = getApplicationContext();
-                          org.json.JSONObject j = Updater.newer(ctx);
-                          org.json.JSONObject ota = Updater.otaNewer(ctx);
-                          String src = Updater.customBase(ctx).isEmpty() ? "github" : "custom";
-                          String body = "{\"available\":" + (j != null)
-                                  + ",\"version\":" + JSONObject.quote(j == null ? "" : j.optString("versionName", ""))
-                                  + ",\"otaAvailable\":" + (ota != null)
-                                  + ",\"otaVersion\":" + JSONObject.quote(ota == null ? "" : ota.optString("version", ""))
-                                  + ",\"enabled\":" + Updater.enabled(ctx)
-                                  + ",\"source\":" + JSONObject.quote(src) + "}";
+                          org.json.JSONObject j = Updater.newer(getApplicationContext());
+                          String body = "{\"available\":" + (j != null) + ",\"version\":" + JSONObject.quote(j == null ? "" : j.optString("versionName", ""))
+                                  + ",\"enabled\":" + Updater.enabled() + "}";
                           final String js = "window.__native(" + JSONObject.quote(id) + ",200," + JSONObject.quote(body) + ")";
                           runOnUiThread(() -> web.evaluateJavascript(js, null));
                       });
-                  }
-
-                  /** Downloads and applies an over-the-air web bundle update from the configured HTTPS update URL, then reloads. */
-                  @JavascriptInterface
-                  public void installWebUpdate(final String id) {
-                      if (updating || !Updater.enabled(getApplicationContext())) return;
-                      updating = true;
-                      io.execute(() -> {
-                          try {
-                              String ver = Updater.otaDownload(getApplicationContext(), pct -> runOnUiThread(() ->
-                                      web.evaluateJavascript("window.updateProgress && window.updateProgress(" + pct + ")", null)));
-                              final String body = "{\"ok\":true,\"version\":" + JSONObject.quote(ver == null ? "" : ver) + "}";
-                              runOnUiThread(() -> {
-                                  if (id != null && !id.isEmpty()) {
-                                      web.evaluateJavascript("window.__native(" + JSONObject.quote(id) + ",200," + JSONObject.quote(body) + ")", null);
-                                  }
-                                  web.reload();
-                              });
-                          } catch (Exception e) {
-                              String msg = e.getMessage();
-                              if (msg == null || msg.trim().isEmpty()) msg = e.getClass().getSimpleName();
-                              if (msg.length() > 180) msg = msg.substring(0, 180);
-                              final String detail = "Web update failed: " + msg;
-                              reportUpdateError(detail);
-                              if (id != null && !id.isEmpty()) {
-                                  final String errBody = "{\"ok\":false,\"error\":" + JSONObject.quote(detail) + "}";
-                                  runOnUiThread(() -> web.evaluateJavascript("window.__native(" + JSONObject.quote(id) + ",500," + JSONObject.quote(errBody) + ")", null));
-                              }
-                          } finally {
-                              updating = false;
-                          }
-                      });
-                  }
-
-                  /** Returns the configured non-GitHub HTTPS update base URL (empty = default GitHub Releases). */
-                  @JavascriptInterface
-                  public String getUpdateUrl() {
-                      return Updater.customBase(getApplicationContext());
-                  }
-
-                  /** Sets or clears the direct HTTPS update base URL (e.g. Cloudflare Pages). Returns false if invalid. */
-                  @JavascriptInterface
-                  public boolean setUpdateUrl(final String url) {
-                      boolean ok = Updater.setCustomUrl(getApplicationContext(), url);
-                      if (ok) Updater.schedule(getApplicationContext());
-                      return ok;
-                  }
-
-                  /** Active over-the-air web bundle version, or empty string when using the APK's bundled assets. */
-                  @JavascriptInterface
-                  public String getOtaVersion() {
-                      return Updater.otaVersion(getApplicationContext());
-                  }
-
-                  /** Clears any downloaded over-the-air web bundle and reloads the APK's bundled version. */
-                  @JavascriptInterface
-                  public void resetWebUpdate() {
-                      Updater.otaClear(getApplicationContext());
-                      runOnUiThread(() -> web.reload());
                   }
 
                   /** True when the LTA key was built into the app, so nobody needs to enter one. */
@@ -1983,12 +1897,9 @@ jobs:
           import android.content.pm.PackageInstaller;
           import android.os.Build;
 
-          import org.json.JSONArray;
           import org.json.JSONObject;
 
           import java.io.ByteArrayOutputStream;
-          import java.io.File;
-          import java.io.FileOutputStream;
           import java.io.IOException;
           import java.io.InputStream;
           import java.io.OutputStream;
@@ -1998,15 +1909,15 @@ jobs:
           import java.util.Locale;
 
           /**
-           * In-app updates (direct HTTPS URL or GitHub Releases).
+           * In-app updates.
            *
-           * Supports both signed APK updates (version.json + mrt-tracker.apk) and instant over-the-air
-           * web bundle updates (web-update.json + listed web assets) from either a user/build-configured
-           * HTTPS base URL (e.g. Cloudflare Pages, no GitHub required) or GitHub Releases.
+           * Every build publishes the app and a small version.json to this project's public "latest" release
+           * on GitHub (BuildConfig.UPDATE_REPO). The app checks that file when it
+           * opens and every few hours in the background, shows a notification when a newer version exists,
+           * and installs it in one tap.
            *
-           * Safety: all downloads require HTTPS and stay pinned to the configured host (or GitHub when
-           * using the default). Android refuses any APK not signed with this app's signing key, and OTA
-           * web files are path-validated and swapped atomically with automatic fallback to bundled assets.
+           * Safety: downloads only come from GitHub over HTTPS, and Android itself refuses to install an
+           * update that isn't signed with this app's own signing key, so a tampered file can't be installed.
            */
           final class Updater {
 
@@ -2014,63 +1925,11 @@ jobs:
               static final int NOTIFY_ID = 1001;
               static final int JOB_ID = 2001;
               private static final long MAX_APK = 120L * 1024 * 1024; // allow the bundled train/audio assets to grow
-              private static final long MAX_OTA_FILE = 8L * 1024 * 1024;
-              private static final long MAX_OTA_TOTAL = 30L * 1024 * 1024;
-              private static final int MAX_OTA_FILES = 64;
-              private static final String PREF_UPDATE_URL = "update_url";
-              private static final String PREF_OTA_VER = "ota_version";
-              private static final String PREF_OTA_APK = "ota_apk_code";
 
               private Updater() {}
 
-              static String normalizeUrl(String raw) {
-                  if (raw == null) return "";
-                  String s = raw.trim();
-                  if (s.isEmpty()) return "";
-                  try {
-                      URL u = new URL(s);
-                      if (!"https".equalsIgnoreCase(u.getProtocol())) return "";
-                      String host = u.getHost();
-                      if (host == null || host.isEmpty() || u.getUserInfo() != null) return "";
-                      String path = u.getPath();
-                      if (path == null || path.isEmpty()) path = "/";
-                      if (path.endsWith("/version.json")) path = path.substring(0, path.length() - "version.json".length());
-                      else if (path.endsWith("/web-update.json")) path = path.substring(0, path.length() - "web-update.json".length());
-                      else if (!path.endsWith("/")) path = path + "/";
-                      String port = u.getPort() > 0 ? ":" + u.getPort() : "";
-                      return "https://" + host.toLowerCase(Locale.ROOT) + port + path;
-                  } catch (Exception e) {
-                      return "";
-                  }
-              }
-
-              static String customBase(Context c) {
-                  if (c != null) {
-                      String saved = normalizeUrl(c.getSharedPreferences("settings", Context.MODE_PRIVATE).getString(PREF_UPDATE_URL, ""));
-                      if (!saved.isEmpty()) return saved;
-                  }
-                  return normalizeUrl(BuildConfig.UPDATE_URL);
-              }
-
-              static boolean setCustomUrl(Context c, String raw) {
-                  if (c == null) return false;
-                  SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                  if (raw == null || raw.trim().isEmpty()) {
-                      p.edit().remove(PREF_UPDATE_URL).apply();
-                      return true;
-                  }
-                  String norm = normalizeUrl(raw);
-                  if (norm.isEmpty()) return false;
-                  p.edit().putString(PREF_UPDATE_URL, norm).apply();
-                  return true;
-              }
-
               static boolean enabled() {
-                  return !BuildConfig.UPDATE_REPO.isEmpty() || !normalizeUrl(BuildConfig.UPDATE_URL).isEmpty();
-              }
-
-              static boolean enabled(Context c) {
-                  return !customBase(c).isEmpty() || !BuildConfig.UPDATE_REPO.isEmpty();
+                  return !BuildConfig.UPDATE_REPO.isEmpty();
               }
 
               /** MRT Tracker (beta) takes the latest release; MRT Tracker takes the "dev" pre-release. */
@@ -2078,27 +1937,15 @@ jobs:
                   return "dev".equals(BuildConfig.CHANNEL);
               }
 
-              private static String base(Context c) {
-                  String custom = customBase(c);
-                  if (!custom.isEmpty()) return custom;
+              private static String base() {
                   return "https://github.com/" + BuildConfig.UPDATE_REPO + (dev() ? "/releases/download/dev/" : "/releases/latest/download/");
               }
 
-              private static String customHost(Context c) {
-                  String custom = customBase(c);
-                  if (custom.isEmpty()) return null;
+              /** The version waiting on GitHub, or null if none can be read. */
+              static JSONObject latest() {
+                  if (!enabled()) return null;
                   try {
-                      return new URL(custom).getHost().toLowerCase(Locale.ROOT);
-                  } catch (Exception e) {
-                      return null;
-                  }
-              }
-
-              /** The APK version waiting at the update source, or null if none can be read. */
-              static JSONObject latest(Context c) {
-                  if (!enabled(c)) return null;
-                  try {
-                      byte[] b = get(base(c) + "version.json", 64 * 1024, null, customHost(c));
+                      byte[] b = get(base() + "version.json", 64 * 1024, null);
                       JSONObject j = new JSONObject(new String(b, StandardCharsets.UTF_8));
                       return j.optBoolean("buildComplete", false) && j.has("versionCode") ? j : null;
                   } catch (Exception e) {
@@ -2123,166 +1970,17 @@ jobs:
                   }
               }
 
-              /** Newer APK version info if one is available, otherwise null. */
+              /** Newer version info if one is available, otherwise null. */
               static JSONObject newer(Context c) {
-                  JSONObject j = latest(c);
+                  JSONObject j = latest();
                   if (j == null) return null;
                   return j.optLong("versionCode", 0) > installedCode(c) ? j : null;
-              }
-
-              /* ---------- over-the-air web bundle updates (no APK rebuild or GitHub needed) ---------- */
-
-              private static boolean validRelPath(String rel) {
-                  if (rel == null || rel.isEmpty() || rel.length() > 160) return false;
-                  if (rel.startsWith("/") || rel.endsWith("/") || rel.contains("..") || rel.contains("//") || rel.contains("\\")) return false;
-                  return rel.matches("[A-Za-z0-9._/-]+");
-              }
-
-              private static File otaDir(Context c) {
-                  return new File(c.getFilesDir(), "web_ota");
-              }
-
-              static String otaVersion(Context c) {
-                  if (c == null) return "";
-                  SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                  if (p.getLong(PREF_OTA_APK, -1L) != installedCode(c)) return "";
-                  if (!new File(otaDir(c), "index.html").isFile()) return "";
-                  return p.getString(PREF_OTA_VER, "");
-              }
-
-              static File otaFile(Context c, String relPath) {
-                  if (c == null || !validRelPath(relPath)) return null;
-                  SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                  if (p.getLong(PREF_OTA_APK, -1L) != installedCode(c)) return null;
-                  try {
-                      File root = otaDir(c).getCanonicalFile();
-                      File target = new File(root, relPath).getCanonicalFile();
-                      if (!target.getPath().startsWith(root.getPath() + File.separator)) return null;
-                      return target.isFile() && target.length() > 0 ? target : null;
-                  } catch (Exception e) {
-                      return null;
-                  }
-              }
-
-              static void otaClear(Context c) {
-                  if (c == null) return;
-                  deleteTree(otaDir(c));
-                  deleteTree(new File(c.getFilesDir(), "web_ota_stage"));
-                  deleteTree(new File(c.getFilesDir(), "web_ota_prev"));
-                  c.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
-                          .remove(PREF_OTA_VER).remove(PREF_OTA_APK).apply();
-              }
-
-              static JSONObject otaLatest(Context c) {
-                  if (!enabled(c)) return null;
-                  try {
-                      byte[] b = get(base(c) + "web-update.json", 64 * 1024, null, customHost(c));
-                      JSONObject j = new JSONObject(new String(b, StandardCharsets.UTF_8));
-                      String ver = j.optString("version", "").trim();
-                      JSONArray files = j.optJSONArray("files");
-                      if (ver.isEmpty() || files == null || files.length() == 0 || files.length() > MAX_OTA_FILES) return null;
-                      return j;
-                  } catch (Exception e) {
-                      return null;
-                  }
-              }
-
-              static JSONObject otaNewer(Context c) {
-                  JSONObject j = otaLatest(c);
-                  if (j == null) return null;
-                  String ver = j.optString("version", "").trim();
-                  if (ver.isEmpty()) return null;
-                  String curOta = otaVersion(c);
-                  if (ver.equals(curOta)) return null;
-                  if (curOta.isEmpty() && ver.equals(installedName(c))) return null;
-                  return j;
-              }
-
-              static String otaDownload(Context c, Progress progress) throws Exception {
-                  JSONObject manifest = otaLatest(c);
-                  if (manifest == null) throw new IOException("No valid web-update.json found");
-                  String ver = manifest.optString("version", "").trim();
-                  JSONArray files = manifest.getJSONArray("files");
-                  String b = base(c);
-                  String host = customHost(c);
-
-                  File stage = new File(c.getFilesDir(), "web_ota_stage");
-                  deleteTree(stage);
-                  if (!stage.mkdirs()) throw new IOException("Cannot prepare update folder");
-                  File stageCanon = stage.getCanonicalFile();
-
-                  long totalBytes = 0;
-                  boolean hasIndex = false;
-                  try {
-                      for (int i = 0; i < files.length(); i++) {
-                          String rel = files.optString(i, "").trim();
-                          if (!validRelPath(rel)) throw new IOException("Invalid file path: " + rel);
-                          if ("index.html".equals(rel)) hasIndex = true;
-                          byte[] data = get(b + rel, MAX_OTA_FILE, null, host);
-                          if (data == null || data.length == 0) throw new IOException("Empty file: " + rel);
-                          totalBytes += data.length;
-                          if (totalBytes > MAX_OTA_TOTAL) throw new IOException("Web update exceeds size limit");
-                          File out = new File(stageCanon, rel).getCanonicalFile();
-                          if (!out.getPath().startsWith(stageCanon.getPath() + File.separator)) throw new IOException("Path outside bundle");
-                          File parent = out.getParentFile();
-                          if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IOException("Cannot create folder");
-                          try (FileOutputStream fos = new FileOutputStream(out)) {
-                              fos.write(data);
-                          }
-                          if (progress != null) progress.on((int) ((i + 1) * 100L / files.length()));
-                      }
-                      if (!hasIndex) throw new IOException("Manifest missing index.html");
-
-                      File live = otaDir(c);
-                      File prev = new File(c.getFilesDir(), "web_ota_prev");
-                      deleteTree(prev);
-                      if (live.exists() && !live.renameTo(prev)) {
-                          deleteTree(live);
-                      }
-                      if (!stage.renameTo(live)) {
-                          if (prev.exists()) prev.renameTo(live);
-                          throw new IOException("Cannot activate web update");
-                      }
-                      c.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
-                              .putString(PREF_OTA_VER, ver)
-                              .putLong(PREF_OTA_APK, installedCode(c))
-                              .apply();
-                      deleteTree(prev);
-                      return ver;
-                  } catch (Exception e) {
-                      deleteTree(stage);
-                      throw e;
-                  }
-              }
-
-              static String mimeFor(String rel) {
-                  String s = rel == null ? "" : rel.toLowerCase(Locale.ROOT);
-                  if (s.endsWith(".html")) return "text/html";
-                  if (s.endsWith(".js") || s.endsWith(".mjs")) return "application/javascript";
-                  if (s.endsWith(".css")) return "text/css";
-                  if (s.endsWith(".json") || s.endsWith(".webmanifest")) return "application/json";
-                  if (s.endsWith(".svg")) return "image/svg+xml";
-                  if (s.endsWith(".png")) return "image/png";
-                  if (s.endsWith(".jpg") || s.endsWith(".jpeg")) return "image/jpeg";
-                  if (s.endsWith(".webp")) return "image/webp";
-                  if (s.endsWith(".woff2")) return "font/woff2";
-                  if (s.endsWith(".woff")) return "font/woff";
-                  return "application/octet-stream";
-              }
-
-              private static void deleteTree(File f) {
-                  if (f == null || !f.exists()) return;
-                  if (f.isDirectory()) {
-                      File[] kids = f.listFiles();
-                      if (kids != null) for (File k : kids) deleteTree(k);
-                  }
-                  f.delete();
               }
 
               /* ---------- background checks and notifications ---------- */
 
               static void schedule(Context c) {
-                  if (!enabled(c)) return;
+                  if (!enabled()) return;
                   try {
                       JobScheduler js = (JobScheduler) c.getSystemService(Context.JOB_SCHEDULER_SERVICE);
                       if (js == null) return;
@@ -2300,20 +1998,11 @@ jobs:
               /** Posts "New version available" once per new version. */
               static void notifyIfNew(Context c) {
                   JSONObject j = newer(c);
-                  if (j != null) {
-                      long code = j.optLong("versionCode", 0);
-                      SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                      if (p.getLong("notified_code", 0) == code) return;
-                      if (showNotification(c, j.optString("versionName", ""))) p.edit().putLong("notified_code", code).apply();
-                      return;
-                  }
-                  JSONObject ota = otaNewer(c);
-                  if (ota != null) {
-                      String ver = ota.optString("version", "");
-                      SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
-                      if (ver.equals(p.getString("notified_ota", ""))) return;
-                      if (showNotification(c, ver)) p.edit().putString("notified_ota", ver).apply();
-                  }
+                  if (j == null) return;
+                  long code = j.optLong("versionCode", 0);
+                  SharedPreferences p = c.getSharedPreferences("settings", Context.MODE_PRIVATE);
+                  if (p.getLong("notified_code", 0) == code) return;
+                  if (showNotification(c, j.optString("versionName", ""))) p.edit().putLong("notified_code", code).apply();
               }
 
               static boolean showNotification(Context c, String versionName) {
@@ -2350,9 +2039,6 @@ jobs:
                * Android shows its usual "Do you want to update this app?" screen to confirm.
                */
               static void downloadAndInstall(Context c, Progress progress) throws Exception {
-                  JSONObject meta = latest(c);
-                  String apkName = meta != null ? meta.optString("apk", "mrt-tracker.apk") : "mrt-tracker.apk";
-                  if (!apkName.matches("[A-Za-z0-9._-]+\\.apk")) apkName = "mrt-tracker.apk";
                   PackageInstaller pi = c.getPackageManager().getPackageInstaller();
                   PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
                   params.setAppPackageName(c.getPackageName());
@@ -2360,7 +2046,7 @@ jobs:
                   PackageInstaller.Session s = pi.openSession(id);
                   try {
                       try (OutputStream out = s.openWrite("update.apk", 0, -1)) {
-                          get(base(c) + apkName, MAX_APK, new Sink(out, progress), customHost(c));
+                          get(base() + (dev() ? "mrt-tracker.apk" : "mrt-tracker.apk"), MAX_APK, new Sink(out, progress));
                           s.fsync(out);
                       }
                       Intent i = new Intent(c, InstallReceiver.class);
@@ -2375,26 +2061,23 @@ jobs:
                   }
               }
 
-              /* ---------- HTTPS, host-pinned ---------- */
+              /* ---------- HTTPS, GitHub only ---------- */
 
               private static final class Sink {
                   final OutputStream out; final Progress progress;
                   Sink(OutputStream out, Progress progress) { this.out = out; this.progress = progress; }
               }
 
-              private static boolean allowedHost(String h, String customHost) {
+              private static boolean allowedHost(String h) {
                   h = h.toLowerCase(Locale.ROOT);
-                  if (customHost != null && !customHost.isEmpty()) {
-                      return h.equals(customHost) || h.endsWith("." + customHost);
-                  }
                   return h.equals("github.com") || h.endsWith(".githubusercontent.com");
               }
 
-              /** GET with redirects followed by hand, so every hop stays HTTPS and pinned to the allowed host. */
-              private static byte[] get(String url, long max, Sink sink, String customHost) throws IOException {
+              /** GET with redirects followed by hand, so every hop is checked against GitHub's hosts. */
+              private static byte[] get(String url, long max, Sink sink) throws IOException {
                   for (int hop = 0; hop < 6; hop++) {
                       URL u = new URL(url);
-                      if (!"https".equals(u.getProtocol()) || !allowedHost(u.getHost(), customHost)) throw new IOException("Host not allowed");
+                      if (!"https".equals(u.getProtocol()) || !allowedHost(u.getHost())) throw new IOException("Host not allowed");
                       HttpURLConnection c = (HttpURLConnection) u.openConnection();
                       c.setInstanceFollowRedirects(false);
                       c.setConnectTimeout(15000);

@@ -370,7 +370,7 @@ button.devtag{border:0;cursor:pointer;display:inline-flex;align-items:center;gap
 .set{display:grid;gap:10px}
 .set label{font-weight:600;font-size:14px}
 .set .rowi{display:flex;gap:8px}
-.set input[type=password],.set input[type=text],.set input[type=url]{flex:1;min-width:0;font:500 15px var(--mono);padding:9px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--fg)}
+.set input[type=password],.set input[type=text]{flex:1;min-width:0;font:500 15px var(--mono);padding:9px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--bg);color:var(--fg)}
 .btn{border:0;border-radius:8px;padding:9px 14px;font:600 14px var(--body);background:var(--fg);color:var(--bg);cursor:pointer}
 .btn.ghost{background:var(--soft);color:var(--fg)}
 .toggle{display:flex;align-items:center;gap:10px;font-size:14px}
@@ -5283,42 +5283,25 @@ function rtHTML(){
 }
 
 /* ---------- In-app updates ----------
-   The app checks the configured HTTPS update URL (or GitHub Releases) when it opens; these show APK and instant OTA web update banners. */
-let updState = null;   // {version, pct, error, needPerm, kind: "apk" | "ota"}
+   The app checks GitHub for a newer version when it opens; these show the banner and progress. */
+let updState = null;   // {version, pct, error, needPerm}
 function renderUpd(){
   const b = $("updBanner");
   if (!updState){ b.hidden = true; return; }
   b.hidden = false;
-  const u = updState, isOta = u.kind === "ota", busy = u.pct !== null && u.pct !== undefined && !u.error;
-  const label = u.error ? "Try again" : busy ? (u.pct >= 100 ? (isOta ? "Reloading…" : "Installing…") : `${u.pct}%`) : (isOta ? "Apply now" : "Update");
-  b.innerHTML = `<div><b>${isOta ? "Instant app update available" : "New version available"}</b><br><span class="sub">${u.error ? esc(u.error)
+  const u = updState, busy = u.pct !== null && u.pct !== undefined && !u.error;
+  const label = u.error ? "Try again" : busy ? (u.pct >= 100 ? "Installing…" : `${u.pct}%`) : "Update";
+  b.innerHTML = `<div><b>New version available</b><br><span class="sub">${u.error ? esc(u.error)
       : u.needPerm ? "Allow MRT Spotter to install updates, then come back and tap Update."
-      : busy ? (u.pct >= 100 ? (isOta ? "Applying update and reloading…" : "Confirm the update on the next screen.") : "Downloading…")
-      : (isOta ? `Web update ${esc(u.version)} · applies instantly` : `Version ${esc(u.version)}`)}</span></div>
+      : busy ? (u.pct >= 100 ? "Confirm the update on the next screen." : "Downloading…") : `Version ${esc(u.version)}`}</span></div>
     <button class="ubtn" type="button" id="updGo"${busy ? " disabled" : ""}>${label}</button>
     ${busy ? `<div class="ubar"><i style="width:${Math.min(100, u.pct)}%"></i></div>` : ""}`;
-  $("updGo").onclick = () => {
-    if (isOta && APP && APP.installWebUpdate){
-      updState = {version: u.version, pct: 0, kind: "ota"}; renderUpd();
-      const id = "w" + (++reqId);
-      pending[id] = (code, body) => {
-        let r = {}; try { r = JSON.parse(body); } catch(e){}
-        if (code !== 200 || r.ok === false){
-          updState = {version: u.version, pct: null, error: r.error || "The web update couldn't be applied.", kind: "ota"};
-          renderUpd();
-        }
-      };
-      APP.installWebUpdate(id);
-      return;
-    }
-    updState = {version: u.version, pct: 0, kind: "apk"}; renderUpd(); APP.installUpdate();
-  };
+  $("updGo").onclick = () => { updState = {version: u.version, pct: 0}; renderUpd(); APP.installUpdate(); };
 }
-window.updateAvailable = v => { if (!updState || updState.error || updState.needPerm || updState.kind === "ota") updState = {version: v || (updState && updState.version) || "", pct: null, kind: "apk"}; renderUpd(); };
-window.webUpdateAvailable = v => { if (!updState || updState.error || updState.needPerm || updState.kind === "ota") updState = {version: v || (updState && updState.version) || "", pct: null, kind: "ota"}; renderUpd(); };
-window.updateProgress = p => { if (!updState) updState = {version: "", kind: "apk"}; updState.pct = p; updState.error = null; renderUpd(); };
-window.updateError = m => { updState = {...(updState || {version: "", kind: "apk"}), pct: null, error: m || "The update couldn't be installed."}; renderUpd(); };
-window.updateNeedsPermission = () => { updState = {...(updState || {version: "", kind: "apk"}), pct: null, needPerm: true}; renderUpd(); };
+window.updateAvailable = v => { if (!updState || updState.error || updState.needPerm) updState = {version: v || (updState && updState.version) || "", pct: null}; renderUpd(); };
+window.updateProgress = p => { if (!updState) updState = {version: ""}; updState.pct = p; updState.error = null; renderUpd(); };
+window.updateError = m => { updState = {...(updState || {version: ""}), pct: null, error: m || "The update couldn't be installed."}; renderUpd(); };
+window.updateNeedsPermission = () => { updState = {...(updState || {version: ""}), pct: null, needPerm: true}; renderUpd(); };
 setInterval(() => { if (APP && autoRefresh && !document.hidden) refreshAll(); }, 60000);
 
 /* --- rendering --- */
@@ -5474,8 +5457,6 @@ function renderSettings(){
   const el = $("settingsCard");
   if (!APP){ el.hidden = true; return; }
   const k = hasKey();
-  const otaVer = APP.getOtaVersion ? String(APP.getOtaVersion() || "") : "";
-  const updUrl = APP.getUpdateUrl ? String(APP.getUpdateUrl() || "") : "";
   el.innerHTML = `<h2>Settings</h2><div class="set">
     <label>Live disruption alerts</label>
     <p class="muted">${k ? `<b style="color:var(--good)">✓ Included.</b> Alerts come straight from LTA.` : ((window.MRT_WEB && !MRT_WEB.live) ? "Unavailable on this website right now." : "Not included in this version of the app.")}</p>
@@ -5484,32 +5465,13 @@ function renderSettings(){
     <label>Train times</label>
     <p class="muted">${TT ? `<b style="color:var(--good)">✓ LTA official timetable</b>, downloaded ${esc(TT.feed.built)}. ${TT.feed.lines.length < ORDER.length ? `Estimated on: ${ORDER.filter(c => !TT.lines[c]).map(c => c === "CG" ? "CGL" : c).join(", ")}.` : "Covers every line."}` : "Estimated from typical frequencies. This version of the app doesn't include LTA's timetable."}</p>
     ${APP.getVersion ? `<label>App version</label>
-    <p class="muted"><b>${esc(APP.getVersion())}</b> · ${"MRT Spotter (beta)"}${otaVer ? ` · Web update <b>${esc(otaVer)}</b>` : ""}</p>` : ""}
-    ${otaVer && APP.resetWebUpdate ? `<div><button class="btn ghost" type="button" id="updReset">Reset to bundled version</button></div>` : ""}
+    <p class="muted"><b>${esc(APP.getVersion())}</b> · ${"MRT Spotter (beta)"}</p>` : ""}
     ${APP.checkUpdateNow ? `<div><button class="btn ghost" type="button" id="updCheck">Check for updates</button></div><p class="muted" id="updMsg"></p>` : ""}
-    ${APP.setUpdateUrl ? `<label for="updUrlIn">Direct update URL (no GitHub)</label>
-    <p class="muted">Optional HTTPS folder (such as Cloudflare Pages) hosting <code>web-update.json</code> for instant updates or <code>version.json</code> + APK. Leave blank to use GitHub Releases.</p>
-    <div class="rowi"><input type="url" id="updUrlIn" value="${esc(updUrl)}" placeholder="https://your-site.pages.dev/" autocomplete="off" spellcheck="false"><button class="btn ghost" type="button" id="updUrlSave">Save</button></div>
-    <p class="muted" id="updUrlMsg">${updUrl ? `Checking direct HTTPS: ${esc(updUrl)}` : "Currently using default GitHub Releases."}</p>` : ""}
     <label>What's new</label>
     <div><button class="btn ghost" type="button" id="wnOpen">What's new in every version</button></div></div>`;
 
   const wo = $("wnOpen");
   if (wo) wo.onclick = () => histOpen("wn", "all");
-  const ur = $("updReset");
-  if (ur && APP.resetWebUpdate) ur.onclick = () => { ur.disabled = true; APP.resetWebUpdate(); };
-  const us = $("updUrlSave"), ui = $("updUrlIn"), um = $("updUrlMsg");
-  if (us && ui) us.onclick = () => {
-    const raw = ui.value.trim();
-    const ok = APP.setUpdateUrl(raw);
-    if (!ok){
-      if (um) um.textContent = "Enter a valid https:// URL (or leave blank to use GitHub Releases).";
-      return;
-    }
-    const saved = APP.getUpdateUrl ? String(APP.getUpdateUrl() || "") : raw;
-    ui.value = saved;
-    if (um) um.textContent = saved ? `Saved — updates will check ${saved} directly.` : "Cleared — using default GitHub Releases.";
-  };
   const uc = $("updCheck");
   if (uc) uc.onclick = () => {
     uc.disabled = true; $("updMsg").textContent = "Checking…";
@@ -5517,11 +5479,9 @@ function renderSettings(){
     pending[id] = (code, body) => {
       uc.disabled = false;
       let r = {}; try { r = JSON.parse(body); } catch(e){}
-      const srcNote = r.source === "custom" ? " (direct HTTPS)" : "";
       if (r.enabled === false) $("updMsg").textContent = "Automatic updates aren't set up for this version of the app.";
-      else if (r.available){ $("updMsg").textContent = `APK version ${r.version} is available${srcNote}.`; updateAvailable(r.version); }
-      else if (r.otaAvailable){ $("updMsg").textContent = `Instant web update ${r.otaVersion} is available${srcNote}.`; webUpdateAvailable(r.otaVersion); }
-      else $("updMsg").textContent = `You have the latest version${r.source === "custom" ? " (checked direct HTTPS URL)" : ""}.`;
+      else if (r.available){ $("updMsg").textContent = `Version ${r.version} is available.`; updateAvailable(r.version); }
+      else $("updMsg").textContent = "You have the latest version.";
     };
     APP.checkUpdateNow(id);
   };
