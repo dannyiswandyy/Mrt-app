@@ -27,6 +27,12 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  # The build machine is Windows: make Python read, write and print UTF-8 instead of the Windows code page,
+  # which stopped the timetable, buildings, tracks and exits tools with UnicodeEncodeError.
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+
 defaults:
   run:
     shell: bash
@@ -151,6 +157,8 @@ jobs:
         if: steps.tools.outcome == 'success'
         continue-on-error: true
         run: |
+          # start from the full copy kept in the repository (data/osm-buildings.json, made by "Refresh 3D buildings")
+          if [ -s data/osm-buildings.json ] && [ ! -s osm-cache/buildings.json ]; then mkdir -p osm-cache && cp data/osm-buildings.json osm-cache/buildings.json; fi
           python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache
           if [ -f mrt-tracker-app/app/src/main/assets/buildings.json ]; then cp mrt-tracker-app/app/src/main/assets/buildings.json _site/data/buildings.json; fi
 

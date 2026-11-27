@@ -1,0 +1,107 @@
+# Refresh 3D buildings: downloads the building outlines and heights around every station from OpenStreetMap,
+# taking as long as it needs (up to 50 minutes, part by part), and keeps the full copy in the repository as
+# data/osm-buildings.json. The app build and the website start from that copy, so they always have every
+# station's buildings, even on a day when OpenStreetMap's servers are too slow to answer within a build.
+# Runs once a week, and from Actions > Refresh 3D buildings > Run workflow. When the copy changes, it starts
+# a new app build and website deploy so they pick it up.
+name: Refresh 3D buildings
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 19 * * 0'     # Mondays 3:23am Singapore time
+
+permissions:
+  contents: write
+  actions: write    # to start the app build and the website deploy afterwards
+
+concurrency:
+  group: refresh-buildings
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+  BUILDINGS_MAX_SECONDS: "3000"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  refresh:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 60
+    steps:
+      - name: Select verified Git for Windows Bash (not WSL)
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'MRT-PortableGit'
+          $installed = Join-Path $env:ProgramFiles 'Git'
+          if (Test-Path (Join-Path $installed 'bin\bash.exe')) { $root = $installed }
+          if (!(Test-Path (Join-Path $root 'bin\bash.exe'))) { throw 'Git Bash missing: run the app build once first, it installs it' }
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          [System.IO.File]::AppendAllLines($env:GITHUB_PATH, [string[]]@((Join-Path $root 'cmd'), (Join-Path $root 'usr\bin'), (Join-Path $root 'bin')), $utf8NoBom)
+
+      - name: Use the build machine's Python
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'MRT-Python-3.12.10'
+          if (!(Test-Path (Join-Path $root 'tools\python3.exe'))) { throw 'Python missing: run the app build once first, it installs it' }
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          [System.IO.File]::AppendAllLines($env:GITHUB_PATH, [string[]]@((Join-Path $root 'tools')), $utf8NoBom)
+
+      - uses: actions/checkout@v4
+
+      - name: Restore saved building parts
+        uses: actions/cache/restore@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+          restore-keys: osm-buildings-v1-
+
+      - name: Download every station's buildings
+        run: |
+          # the tool reads the station positions from the app page, so give it the page where it looks
+          mkdir -p bld/app/src/main/assets
+          cp web/index.html bld/app/src/main/assets/index.html
+          # always ask OpenStreetMap again (only for parts not already downloaded in the last 30 days)
+          rm -f osm-cache/buildings.json
+          python3 tools/build_buildings.py bld osm-cache
+
+      - name: Save building parts for next time
+        if: always() && hashFiles('osm-fresh') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: osm-cache
+          key: osm-buildings-v1-${{ github.run_id }}
+
+      - name: Keep the full copy in the repository
+        id: keep
+        run: |
+          # build_buildings.py only writes osm-cache/buildings.json when every part downloaded
+          if [ ! -s osm-cache/buildings.json ]; then
+            echo "::warning::Some parts didn't download, so the saved copy wasn't changed. Run this again to fetch the rest."
+            exit 0
+          fi
+          mkdir -p data
+          cp osm-cache/buildings.json data/osm-buildings.json
+          if [ -z "$(git status --porcelain data/osm-buildings.json)" ]; then echo "No change to the buildings."; exit 0; fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add data/osm-buildings.json
+          git commit -q -m "3D buildings: refresh the saved copy from OpenStreetMap [skip ci]"
+          for i in 1 2 3; do git pull -q --rebase origin main && git push -q origin HEAD:main && break; sleep 5; done
+          echo "changed=1" >> "$GITHUB_OUTPUT"
+          echo "✅ Saved $(python3 -c "import json;print(len(json.load(open('data/osm-buildings.json'))['b']))") buildings to data/osm-buildings.json." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Rebuild the app and the website with them
+        if: steps.keep.outputs.changed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build-android.yml/dispatches" -d '{"ref":"main"}'
+          echo "Started a new app build; the website deploys after it."

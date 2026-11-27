@@ -2661,7 +2661,11 @@ jobs:
           restore-keys: osm-buildings-v1-
 
       - name: Fetch buildings from OpenStreetMap
-        run: python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache
+        run: |
+          # start from the full copy kept in the repository (data/osm-buildings.json, made by "Refresh 3D buildings"),
+          # so a slow OpenStreetMap day can't leave the app with only some of the buildings
+          if [ -s data/osm-buildings.json ] && [ ! -s osm-cache/buildings.json ]; then mkdir -p osm-cache && cp data/osm-buildings.json osm-cache/buildings.json; fi
+          python3 mrt-tracker-app/tools/build_buildings.py mrt-tracker-app osm-cache
 
       - name: Fetch RTS Link and Sentosa Express tracks from OpenStreetMap
         run: |
