@@ -16,8 +16,57 @@ jobs:
   check:
     # Never execute untrusted fork pull requests on a self-hosted runner.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     steps:
+      - name: Select verified Git for Windows Bash (not WSL)
+        shell: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'MRT-PortableGit'
+          $installed = Join-Path $env:ProgramFiles 'Git'
+          if (Test-Path (Join-Path $installed 'bin\bash.exe')) { $root = $installed }
+          if (!(Test-Path (Join-Path $root 'bin\bash.exe'))) {
+            $release = Invoke-RestMethod 'https://api.github.com/repos/git-for-windows/git/releases/latest'
+            $asset = $release.assets | Where-Object { $_.name -match '^PortableGit-.*-64-bit\.7z\.exe
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check trains in service and headways
+        run: |
+          node tests/timetable-check.js
+          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/overnight-trains.test.mjs tests/extension-opening.test.mjs tests/changelog.test.mjs tests/bunching.test.mjs tests/lta-delays.test.mjs tests/lta-all-lines-match.test.mjs tests/direct-updater.test.mjs
+ } | Select-Object -First 1
+            if (!$asset -or $asset.digest -notmatch '^sha256:[a-fA-F0-9]{64}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check trains in service and headways
+        run: |
+          node tests/timetable-check.js
+          node --test tests/special-events.test.mjs tests/duty-classification.test.mjs tests/timetable-intelligence.test.mjs tests/overnight-trains.test.mjs tests/extension-opening.test.mjs tests/changelog.test.mjs tests/bunching.test.mjs tests/lta-delays.test.mjs tests/lta-all-lines-match.test.mjs tests/direct-updater.test.mjs
+) { throw 'Official PortableGit checksum unavailable' }
+            $installer = Join-Path $env:RUNNER_TEMP $asset.name
+            Invoke-WebRequest -UseBasicParsing $asset.browser_download_url -OutFile $installer
+            if ((Get-FileHash $installer -Algorithm SHA256).Hash -ne $asset.digest.Substring(7)) { throw 'Git download checksum mismatch' }
+            New-Item -ItemType Directory -Force -Path $root | Out-Null
+            $proc = Start-Process -FilePath $installer -ArgumentList @('-y', ('-o"' + $root + '"')) -Wait -PassThru
+            if ($proc.ExitCode -ne 0) { throw "Portable Git extraction failed: $($proc.ExitCode)" }
+            Remove-Item $installer
+          }
+          if (!(Test-Path (Join-Path $root 'bin\bash.exe'))) { throw 'Git Bash missing' }
+          @((Join-Path $root 'cmd'), (Join-Path $root 'usr\bin'), (Join-Path $root 'bin')) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & (Join-Path $root 'bin\bash.exe') --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Bash resolves to Git for Windows
+        run: |
+          case "$(uname -s)" in
+            MINGW*|MSYS*|CYGWIN*) echo "Using native Windows Git Bash" ;;
+            *) echo "::error::Expected Git for Windows Bash"; exit 1 ;;
+          esac
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
