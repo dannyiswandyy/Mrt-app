@@ -5778,10 +5778,20 @@ function trackCamera(){
 window.focusTrainOnMap = (line, id) => {
   try {
     const t = trainById(mapTrains(line, sgNow()), id);
-    if (!t) return false;
+    if (!t) return false; // Upcoming/finished TRNs have no map icon to focus.
+    if (!view || !mW || !mH) mapResize();
+    if (!view) return false;
+    stopFollowing();
+    // Use the exact same position as the rendered train icon, including live GPS coordinates.
+    const rv = window.mrtRealtimeVehicle && window.mrtRealtimeVehicle(t);
+    const [x, y] = rv && Number.isFinite(rv.lat) && Number.isFinite(rv.lon)
+      ? [(rv.lon - 103.819) * 111320 * Math.cos(1.352 * Math.PI / 180), (1.352 - rv.lat) * 111320]
+      : posOn(line, t.idx);
     mSel = {type: "train", line, id: t.id};
-    const [x, y] = posOn(line, t.idx);
-    view = viewAt(x, y, Math.max(view.s || 0.08, 0.16), view.a || 0);
+    if (typeof M3 !== "undefined" && M3.on && typeof M3.focus === "function")
+      M3.focus(x, y);
+    else
+      flyTo(x, y, Math.min(fitScale * 48, Math.max(view.s, fitScale * 10)));
     mapInfo(); mDirty = true;
     return true;
   } catch(e){ return false; }
